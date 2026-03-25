@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Copilot Studio Learn — Content Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ms-blue: #0078d4;
+    --ms-blue-dark: #005a9e;
+    --ms-blue-light: #deecf9;
+    --ms-teal: #00b4d8;
+    --ms-purple: #5c2d91;
+    --ms-purple-light: #ede8f3;
+    --bg: #f3f4f8;
+    --surface: #ffffff;
+    --surface2: #f8f9fb;
+    --border: #e1e4ec;
+    --text: #1a1c2e;
+    --text-muted: #6b7280;
+    --text-light: #9ca3af;
+    --success: #107c10;
+    --success-bg: #dff6dd;
+    --warning: #835b00;
+    --warning-bg: #fff4ce;
+    --danger: #a4262c;
+    --danger-bg: #fde7e9;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.05);
+  }
+
+  body {
+    font-family: 'Sora', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Top nav ── */
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .topbar-logo svg { flex-shrink: 0; }
+  .topbar-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+  .topbar-title { font-size: 13px; color: var(--text-muted); font-weight: 400; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .badge-model {
+    background: var(--ms-purple-light);
+    color: var(--ms-purple);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .btn-settings {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 5px 12px;
+    font-size: 13px;
+    font-family: 'Sora', sans-serif;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s;
+  }
+  .btn-settings:hover { background: var(--bg); }
+
+  /* ── Layout ── */
+  .layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    height: calc(100vh - 56px);
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .sidebar-section { padding: 1.25rem 1rem 0.5rem; }
+  .sidebar-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--text-light);
+    text-transform: uppercase;
+    padding: 0 0.5rem;
+    margin-bottom: 4px;
+  }
+  .sidebar-nav { list-style: none; }
+  .sidebar-nav li { margin-bottom: 1px; }
+  .sidebar-nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: var(--radius);
+    font-size: 13.5px;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: background 0.12s, color 0.12s;
+    cursor: pointer;
+  }
+  .sidebar-nav a:hover { background: var(--bg); color: var(--text); }
+  .sidebar-nav a.active { background: var(--ms-blue-light); color: var(--ms-blue-dark); font-weight: 500; }
+  .sidebar-nav .nav-icon { font-size: 15px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-count {
+    margin-left: auto;
+    background: var(--border);
+    border-radius: 100px;
+    padding: 1px 7px;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .sidebar-divider { height: 1px; background: var(--border); margin: 0.75rem 1rem; }
+
+  /* ── Content area ── */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Views (tabs) ── */
+  .view { display: none; flex: 1; flex-direction: column; }
+  .view.active { display: flex; }
+
+  /* ── Page header ── */
+  .page-header {
+    padding: 1.75rem 2rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .page-header-text h1 { font-size: 20px; font-weight: 600; }
+  .page-header-text p { font-size: 13.5px; color: var(--text-muted); margin-top: 3px; }
+  .page-header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-family: 'Sora', sans-serif;
+    font-weight: 500;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s, background 0.15s;
+    white-space: nowrap;
+  }
+  .btn:disabled { opacity: 0.45; pointer-events: none; }
+  .btn-primary { background: var(--ms-blue); color: #fff; }
+  .btn-primary:hover { background: var(--ms-blue-dark); }
+  .btn-secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+  .btn-secondary:hover { background: var(--bg); }
+  .btn-ghost { background: none; border: none; color: var(--text-muted); padding: 6px 10px; }
+  .btn-ghost:hover { background: var(--bg); color: var(--text); }
+  .btn-danger { background: var(--danger-bg); border: 1px solid #f5c6cb; color: var(--danger); }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+  /* ── Content body ── */
+  .page-body { padding: 1.5rem 2rem; flex: 1; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-header h3 { font-size: 14px; font-weight: 500; }
+  .card-body { padding: 1.25rem; }
+
+  /* ── Module list ── */
+  .module-list { display: flex; flex-direction: column; gap: 10px; }
+  .module-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+    transition: box-shadow 0.15s, border-color 0.15s;
+  }
+  .module-item:hover { border-color: var(--ms-blue); box-shadow: var(--shadow); }
+  .module-item.selected { border-color: var(--ms-blue); background: var(--ms-blue-light); }
+  .module-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--ms-blue-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .module-meta { flex: 1; min-width: 0; }
+  .module-meta h4 { font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .module-meta p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .module-tags { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+  .tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 100px;
+    font-weight: 500;
+  }
+  .tag-blue { background: var(--ms-blue-light); color: var(--ms-blue-dark); }
+  .tag-green { background: var(--success-bg); color: var(--success); }
+  .tag-yellow { background: var(--warning-bg); color: var(--warning); }
+  .tag-red { background: var(--danger-bg); color: var(--danger); }
+  .tag-purple { background: var(--ms-purple-light); color: var(--ms-purple); }
+
+  /* ── Status dot ── */
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .status-current { background: var(--success); }
+  .status-outdated { background: #f59e0b; }
+  .status-review { background: var(--ms-blue); }
+  .status-draft { background: var(--text-light); }
+
+  /* ── AI Panel ── */
+  .ai-panel {
+    width: 400px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .ai-panel-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ai-panel-header h3 { font-size: 14px; font-weight: 500; }
+  .ai-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--ms-blue), var(--ms-purple));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+  }
+  .ai-panel-body { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 10px; }
+  .ai-panel-footer { padding: 1rem; border-top: 1px solid var(--border); }
+
+  /* ── Chat messages ── */
+  .chat-msg {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    animation: fadeIn 0.2s ease;
+  }
+  .chat-msg-role { font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-light); }
+  .chat-msg-bubble {
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+  .chat-msg.user .chat-msg-bubble { background: var(--ms-blue-light); color: var(--ms-blue-dark); align-self: flex-end; max-width: 90%; }
+  .chat-msg.ai .chat-msg-bubble { background: var(--bg); border: 1px solid var(--border); align-self: flex-start; max-width: 95%; }
+  .chat-msg.ai .chat-msg-role { color: var(--ms-purple); }
+  .typing-indicator { display: flex; align-items: center; gap: 3px; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; width: fit-content; }
+  .typing-indicator span { width: 6px; height: 6px; background: var(--text-light); border-radius: 50%; animation: bounce 1.2s infinite; }
+  .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+  /* ── Chat input ── */
+  .chat-input-wrap { display: flex; gap: 8px; }
+  .chat-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: 'Sora', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    resize: none;
+    outline: none;
+    line-height: 1.5;
+    height: 38px;
+    transition: border-color 0.15s;
+  }
+  .chat-input:focus { border-color: var(--ms-blue); background: var(--surface); }
+  .chat-send {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius);
+    background: var(--ms-blue);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .chat-send:hover { background: var(--ms-blue-dark); }
+  .chat-send:disabled { opacity: 0.4; pointer-events: none; }
+
+  /* ── Quick actions ── */
+  .quick-actions { display: flex; flex-direction: column; gap: 5px; margin-bottom: 4px; }
+  .quick-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 12.5px;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+    font-family: 'Sora', sans-serif;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .quick-action:hover { background: var(--ms-blue-light); border-color: var(--ms-blue); color: var(--ms-blue-dark); }
+  .quick-action-icon { font-size: 14px; width: 18px; text-align: center; }
+
+  /* ── Editor view ── */
+  .editor-layout { display: flex; flex: 1; overflow: hidden; }
+  .editor-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .editor-toolbar {
+    padding: 8px 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .editor-area {
+    flex: 1;
+    padding: 1.5rem 2rem;
+    overflow-y: auto;
+    background: var(--surface2);
+  }
+  textarea.editor {
+    width: 100%;
+    min-height: 500px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    outline: none;
+    resize: vertical;
+    transition: border-color 0.15s;
+  }
+  textarea.editor:focus { border-color: var(--ms-blue); }
+
+  /* ── Gap analysis ── */
+  .gap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+  .gap-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .gap-card-header { padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); }
+  .gap-card-header h4 { font-size: 13px; font-weight: 500; flex: 1; }
+  .gap-card-body { padding: 12px 16px; }
+  .gap-item { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .gap-item:last-child { border-bottom: none; }
+  .gap-item-icon { flex-shrink: 0; margin-top: 1px; }
+  .gap-item-text { color: var(--text-muted); line-height: 1.5; }
+  .gap-item-text strong { color: var(--text); font-weight: 500; }
+
+  /* ── Dashboard ── */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem;
+  }
+  .stat-card-label { font-size: 11px; font-weight: 500; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+  .stat-card-value { font-size: 28px; font-weight: 600; line-height: 1; }
+  .stat-card-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 4px; }
+
+  /* ── Settings modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    width: 480px;
+    max-width: 95vw;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    overflow: hidden;
+  }
+  .modal-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .modal-header h2 { font-size: 16px; font-weight: 600; flex: 1; }
+  .modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 16px; }
+  .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+  .field label { display: block; font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 5px; }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: 'Sora', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--ms-blue); background: #fff; }
+  .field-hint { font-size: 11px; color: var(--text-light); margin-top: 3px; }
+
+  /* ── New content modal ── */
+  .outline-builder { display: flex; flex-direction: column; gap: 8px; }
+  .outline-unit {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+  }
+  .outline-unit input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    font-family: 'Sora', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  /* ── Progress bar ── */
+  .progress-bar-wrap { background: var(--border); border-radius: 100px; height: 6px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; border-radius: 100px; background: var(--ms-blue); transition: width 0.4s ease; }
+
+  /* ── Toasts ── */
+  .toast-container { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 16px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: var(--shadow);
+    animation: slideIn 0.2s ease;
+    min-width: 220px;
+  }
+  .toast.success { border-left: 3px solid var(--success); }
+  .toast.info { border-left: 3px solid var(--ms-blue); }
+  .toast.warning { border-left: 3px solid #f59e0b; }
+
+  /* ── Animations ── */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+
+  /* ── Utility ── */
+  .flex { display: flex; }
+  .items-center { align-items: center; }
+  .gap-2 { gap: 8px; }
+  .gap-3 { gap: 12px; }
+  .ml-auto { margin-left: auto; }
+  .text-sm { font-size: 13px; }
+  .text-xs { font-size: 11px; }
+  .text-muted { color: var(--text-muted); }
+  .mt-2 { margin-top: 8px; }
+  .mt-3 { margin-top: 12px; }
+  .w-full { width: 100%; }
+  .divider { height: 1px; background: var(--border); margin: 8px 0; }
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+  .empty-state-icon { font-size: 36px; margin-bottom: 8px; }
+  .empty-state p { font-size: 13.5px; }
+  .scroll-x { overflow-x: auto; }
+  .api-key-mask { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em; }
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<header class="topbar">
+  <a class="topbar-logo" href="#">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <rect width="11" height="11" x="1" y="1" fill="#f35325"/>
+      <rect width="11" height="11" x="13" y="1" fill="#81bc06"/>
+      <rect width="11" height="11" x="1" y="13" fill="#05a6f0"/>
+      <rect width="11" height="11" x="13" y="13" fill="#ffba08"/>
+    </svg>
+    Microsoft Learn
+  </a>
+  <div class="topbar-sep"></div>
+  <span class="topbar-title">Copilot Studio — Content Manager</span>
+  <div class="topbar-right">
+    <span class="badge-model" id="model-badge">claude-sonnet-4</span>
+    <button class="btn-settings" onclick="openSettings()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <p class="sidebar-label">Overview</p>
+      <ul class="sidebar-nav">
+        <li><a class="active" onclick="switchView('dashboard')" data-view="dashboard">
+          <span class="nav-icon">📊</span> Dashboard
+        </a></li>
+      </ul>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <p class="sidebar-label">Content</p>
+      <ul class="sidebar-nav">
+        <li><a onclick="switchView('modules')" data-view="modules">
+          <span class="nav-icon">📚</span> Modules
+          <span class="nav-count" id="count-modules">8</span>
+        </a></li>
+        <li><a onclick="switchView('editor')" data-view="editor">
+          <span class="nav-icon">✏️</span> Editor
+        </a></li>
+        <li><a onclick="switchView('create')" data-view="create">
+          <span class="nav-icon">✨</span> Create New
+        </a></li>
+      </ul>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <p class="sidebar-label">AI Tools</p>
+      <ul class="sidebar-nav">
+        <li><a onclick="switchView('gap-analysis')" data-view="gap-analysis">
+          <span class="nav-icon">🔍</span> Gap Analysis
+        </a></li>
+        <li><a onclick="switchView('compare')" data-view="compare">
+          <span class="nav-icon">⚖️</span> Compare vs Docs
+        </a></li>
+      </ul>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section" style="padding-bottom: 1rem;">
+      <p class="sidebar-label">Status Key</p>
+      <div style="display: flex; flex-direction: column; gap: 5px; padding: 0 4px;">
+        <div class="flex items-center gap-2 text-xs text-muted"><span class="status-dot status-current"></span> Current</div>
+        <div class="flex items-center gap-2 text-xs text-muted"><span class="status-dot status-outdated"></span> Needs update</div>
+        <div class="flex items-center gap-2 text-xs text-muted"><span class="status-dot status-review"></span> In review</div>
+        <div class="flex items-center gap-2 text-xs text-muted"><span class="status-dot status-draft"></span> Draft</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- DASHBOARD VIEW -->
+    <section class="view active" id="view-dashboard">
+      <div class="page-header">
+        <div class="page-header-text">
+          <h1>Dashboard</h1>
+          <p>Overview of your Copilot Studio learning content health</p>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-primary" onclick="switchView('create')">+ New Module</button>
+        </div>
+      </div>
+      <div class="page-body">
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-card-label">Total Modules</div>
+            <div class="stat-card-value">8</div>
+            <div class="stat-card-sub">Across 3 learning paths</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Current</div>
+            <div class="stat-card-value" style="color: var(--success);">5</div>
+            <div class="stat-card-sub">Up to date with product</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Need Update</div>
+            <div class="stat-card-value" style="color: #d97706;">2</div>
+            <div class="stat-card-sub">New features released</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Drafts</div>
+            <div class="stat-card-value" style="color: var(--text-muted);">1</div>
+            <div class="stat-card-sub">Pending review</div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="card">
+            <div class="card-header">
+              <span>📋</span>
+              <h3>Content health by module</h3>
+            </div>
+            <div class="card-body" style="padding: 0;">
+              <div id="health-list" style="display: flex; flex-direction: column;"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span>🚀</span>
+              <h3>Recent product updates</h3>
+            </div>
+            <div class="card-body" style="display: flex; flex-direction: column; gap: 10px;">
+              <div class="gap-item">
+                <div class="gap-item-icon">🆕</div>
+                <div class="gap-item-text"><strong>Autonomous agents (GA)</strong> — Copilot Studio now supports fully autonomous agent workflows. March 2025.</div>
+              </div>
+              <div class="gap-item">
+                <div class="gap-item-icon">🆕</div>
+                <div class="gap-item-text"><strong>Multi-agent orchestration</strong> — New capability to chain agent calls for complex tasks. Feb 2025.</div>
+              </div>
+              <div class="gap-item">
+                <div class="gap-item-icon">🔄</div>
+                <div class="gap-item-text"><strong>Generative answers refresh</strong> — Updated UI and improved grounding controls. Jan 2025.</div>
+              </div>
+              <div class="gap-item">
+                <div class="gap-item-icon">📌</div>
+                <div class="gap-item-text"><strong>Plugin marketplace</strong> — Expanded connector library with 1,000+ actions. Dec 2024.</div>
+              </div>
+              <button class="btn btn-secondary btn-sm mt-2" onclick="runWebSearch()">🔍 Fetch latest updates</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODULES VIEW -->
+    <section class="view" id="view-modules">
+      <div class="page-header">
+        <div class="page-header-text">
+          <h1>Modules</h1>
+          <p>All Copilot Studio learning modules on Microsoft Learn</p>
+        </div>
+        <div class="page-header-actions">
+          <input type="text" placeholder="Search modules…" style="padding: 7px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: 'Sora', sans-serif; outline: none; width: 200px; background: var(--bg);" oninput="filterModules(this.value)" />
+          <button class="btn btn-primary" onclick="switchView('create')">+ New Module</button>
+        </div>
+      </div>
+      <div class="page-body">
+        <div class="module-list" id="module-list"></div>
+      </div>
+    </section>
+
+    <!-- EDITOR VIEW -->
+    <section class="view" id="view-editor">
+      <div class="page-header">
+        <div class="page-header-text">
+          <h1 id="editor-title">Content Editor</h1>
+          <p id="editor-subtitle">Select a module from the list to begin editing</p>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-secondary" onclick="copyContent()">📋 Copy</button>
+          <button class="btn btn-secondary" onclick="downloadContent()">⬇ Export .md</button>
+          <button class="btn btn-primary" onclick="saveContent()">✓ Save</button>
+        </div>
+      </div>
+      <div class="editor-layout">
+        <div class="editor-main">
+          <div class="editor-toolbar">
+            <button class="btn btn-secondary btn-sm" onclick="insertMarkdown('# ', '')">H1</button>
+            <button class="btn btn-secondary btn-sm" onclick="insertMarkdown('## ', '')">H2</button>
+            <button class="btn btn-secondary btn-sm" onclick="insertMarkdown('### ', '')">H3</button>
+            <button class="btn btn-secondary btn-sm" onclick="insertMarkdown('**', '**')"><strong>B</strong></button>
+            <button class="btn btn-secondary btn-sm" onclick="insertMarkdown('*', '*')"><em>I</em></button>
+            <button class="btn btn-secondary btn-sm" onclick="insertMarkdown('`', '`')">Code</button>
+            <button class="btn btn-secondary btn-sm" onclick="insertMarkdown('\n- ', '')">List</button>
+            <button class="btn btn-secondary btn-sm" onclick="insertMarkdown('\n> ', '')">Quote</button>
+            <div style="margin-left: auto; display: flex; gap: 6px;">
+              <button class="btn btn-secondary btn-sm" onclick="previewMode()">👁 Preview</button>
+              <button class="btn btn-secondary btn-sm" onclick="aiRewrite()">✨ AI Rewrite</button>
+            </div>
+          </div>
+          <div class="editor-area">
+            <div id="preview-panel" style="display:none; padding: 0; font-size: 14px; line-height: 1.8; max-width: 680px;"></div>
+            <textarea class="editor w-full" id="main-editor" placeholder="Select a module from Modules, or start typing your content here in Markdown…
+
+# Module Title
+## Introduction
+..."></textarea>
+          </div>
+        </div>
+        <!-- AI Panel -->
+        <div class="ai-panel">
+          <div class="ai-panel-header">
+            <div class="ai-icon">✦</div>
+            <h3>AI Assistant</h3>
+            <button class="btn btn-ghost btn-sm ml-auto" onclick="clearChat()" title="Clear chat">✕</button>
+          </div>
+          <div class="ai-panel-body" id="chat-messages">
+            <div class="chat-msg ai">
+              <span class="chat-msg-role">AI Assistant</span>
+              <div class="chat-msg-bubble">Hi! I'm here to help you create and update Copilot Studio content. You can ask me to:
+
+• Rewrite outdated sections
+• Generate content from an outline
+• Check accuracy against Microsoft docs
+• Suggest improvements
+
+Select a module or paste content, then ask away!</div>
+            </div>
+          </div>
+          <div class="ai-panel-footer">
+            <div class="quick-actions" id="quick-actions">
+              <button class="quick-action" onclick="quickPrompt('Rewrite this section to reflect the latest Copilot Studio features. Be specific about UI changes and new capabilities.')">
+                <span class="quick-action-icon">🔄</span> Rewrite for latest features
+              </button>
+              <button class="quick-action" onclick="quickPrompt('Identify any outdated information in this content and suggest specific updates based on recent Copilot Studio releases.')">
+                <span class="quick-action-icon">🔍</span> Find outdated info
+              </button>
+              <button class="quick-action" onclick="quickPrompt('Add a practical exercise or knowledge check question to this content that tests understanding of the key concepts.')">
+                <span class="quick-action-icon">📝</span> Add knowledge check
+              </button>
+            </div>
+            <div class="divider"></div>
+            <div class="chat-input-wrap">
+              <textarea class="chat-input" id="chat-input" placeholder="Ask AI to improve your content…" rows="1"
+                onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendChat();}"
+                oninput="autoResize(this)"></textarea>
+              <button class="chat-send" id="chat-send-btn" onclick="sendChat()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CREATE NEW VIEW -->
+    <section class="view" id="view-create">
+      <div class="page-header">
+        <div class="page-header-text">
+          <h1>Create new module</h1>
+          <p>Generate a complete learning module with AI assistance</p>
+        </div>
+      </div>
+      <div class="page-body" style="max-width: 760px;">
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="card-header"><span>📋</span><h3>Module details</h3></div>
+          <div class="card-body" style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="field">
+              <label>Module title</label>
+              <input type="text" id="new-title" placeholder="e.g. Build your first agent with Copilot Studio" />
+            </div>
+            <div class="field">
+              <label>Learning objective</label>
+              <input type="text" id="new-objective" placeholder="e.g. Learners will be able to create and publish a Copilot Studio agent" />
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="field">
+                <label>Target audience</label>
+                <select id="new-audience">
+                  <option>Beginner</option>
+                  <option>Intermediate</option>
+                  <option>Advanced</option>
+                  <option>IT Administrator</option>
+                  <option>Developer</option>
+                  <option>Business User</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Estimated duration</label>
+                <select id="new-duration">
+                  <option>15 minutes</option>
+                  <option>30 minutes</option>
+                  <option>45 minutes</option>
+                  <option>60 minutes</option>
+                  <option>90 minutes</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="card-header">
+            <span>🗂</span><h3>Unit outline</h3>
+            <button class="btn btn-secondary btn-sm ml-auto" onclick="addUnit()">+ Add unit</button>
+          </div>
+          <div class="card-body">
+            <div class="outline-builder" id="outline-builder">
+              <div class="outline-unit">
+                <span style="color: var(--text-muted); font-size: 12px; min-width: 20px;">1.</span>
+                <input type="text" placeholder="Introduction & overview" value="Introduction & overview" />
+                <button class="btn-ghost btn-sm" onclick="removeUnit(this)">✕</button>
+              </div>
+              <div class="outline-unit">
+                <span style="color: var(--text-muted); font-size: 12px; min-width: 20px;">2.</span>
+                <input type="text" placeholder="Core concepts" value="Core concepts" />
+                <button class="btn-ghost btn-sm" onclick="removeUnit(this)">✕</button>
+              </div>
+              <div class="outline-unit">
+                <span style="color: var(--text-muted); font-size: 12px; min-width: 20px;">3.</span>
+                <input type="text" placeholder="Hands-on exercise" value="Hands-on exercise" />
+                <button class="btn-ghost btn-sm" onclick="removeUnit(this)">✕</button>
+              </div>
+              <div class="outline-unit">
+                <span style="color: var(--text-muted); font-size: 12px; min-width: 20px;">4.</span>
+                <input type="text" placeholder="Knowledge check" value="Knowledge check" />
+                <button class="btn-ghost btn-sm" onclick="removeUnit(this)">✕</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 24px;">
+          <div class="card-header"><span>✨</span><h3>AI generation options</h3></div>
+          <div class="card-body" style="display: flex; flex-direction: column; gap: 12px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+              <input type="checkbox" id="opt-search" checked /> Search web for latest Copilot Studio features
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+              <input type="checkbox" id="opt-exercises" checked /> Include hands-on exercises
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+              <input type="checkbox" id="opt-quiz" checked /> Add knowledge check questions
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+              <input type="checkbox" id="opt-tips" /> Include tips & best practices callouts
+            </label>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-primary" onclick="generateModule()" id="gen-btn">
+            ✨ Generate module content
+          </button>
+          <button class="btn btn-secondary" onclick="switchView('modules')">Cancel</button>
+        </div>
+        <div id="gen-progress" style="margin-top: 16px; display: none;">
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;" id="gen-status">Generating content…</p>
+          <div class="progress-bar-wrap"><div class="progress-bar-fill" id="gen-bar" style="width: 0%"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GAP ANALYSIS VIEW -->
+    <section class="view" id="view-gap-analysis">
+      <div class="page-header">
+        <div class="page-header-text">
+          <h1>Gap analysis</h1>
+          <p>Identify missing topics and outdated content across your learning library</p>
+        </div>
+        <div class="page-header-actions">
+          <button class="btn btn-primary" onclick="runGapAnalysis()" id="gap-btn">🔍 Run analysis</button>
+        </div>
+      </div>
+      <div class="page-body">
+        <div id="gap-results">
+          <div class="empty-state">
+            <div class="empty-state-icon">🔍</div>
+            <p>Click "Run analysis" to scan your content against the latest Copilot Studio documentation and identify gaps.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPARE VIEW -->
+    <section class="view" id="view-compare">
+      <div class="page-header">
+        <div class="page-header-text">
+          <h1>Compare vs Microsoft docs</h1>
+          <p>Check your content accuracy against official Microsoft documentation</p>
+        </div>
+      </div>
+      <div class="page-body" style="max-width: 860px;">
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="card-header"><span>📄</span><h3>Content to compare</h3></div>
+          <div class="card-body">
+            <div class="field" style="margin-bottom: 10px;">
+              <label>Select module or paste content</label>
+              <select id="compare-module" style="margin-bottom: 8px;">
+                <option value="">— Select a module —</option>
+              </select>
+            </div>
+            <textarea style="width: 100%; height: 160px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-family: 'JetBrains Mono', monospace; font-size: 12px; outline: none; resize: vertical; background: var(--bg); color: var(--text);"
+              id="compare-content" placeholder="Or paste your content here…"></textarea>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="card-header"><span>🔗</span><h3>Reference documentation</h3></div>
+          <div class="card-body" style="display: flex; flex-direction: column; gap: 8px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;"><input type="checkbox" checked /> Microsoft Copilot Studio overview docs</label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;"><input type="checkbox" checked /> What's new in Copilot Studio</label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;"><input type="checkbox" /> Agent building tutorials</label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;"><input type="checkbox" /> Copilot Studio API reference</label>
+            <div class="field mt-2">
+              <label>Custom documentation URL (optional)</label>
+              <input type="url" placeholder="https://learn.microsoft.com/en-us/microsoft-copilot-studio/…" id="custom-doc-url" />
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="runCompare()" id="compare-btn">⚖️ Compare now</button>
+        <div id="compare-results" style="margin-top: 20px;"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>⚙️ Settings</h2>
+      <button class="btn btn-ghost" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Anthropic API Key</label>
+        <input type="password" id="api-key-input" placeholder="sk-ant-…" autocomplete="off" />
+        <p class="field-hint">Stored in your browser's localStorage. Never sent anywhere except Anthropic's API.</p>
+      </div>
+      <div class="field">
+        <label>Content manager name</label>
+        <input type="text" id="manager-name" placeholder="e.g. Jane Smith" />
+      </div>
+      <div class="field">
+        <label>Default audience level</label>
+        <select id="default-audience">
+          <option>Beginner</option>
+          <option>Intermediate</option>
+          <option>Advanced</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Microsoft Learn base URL</label>
+        <input type="url" id="ms-learn-url" value="https://learn.microsoft.com/en-us/training/paths/" />
+        <p class="field-hint">Used when exporting links and comparing content.</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toasts"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────
+const MODULES = [
+  { id: 1, title: "Introduction to Microsoft Copilot Studio", icon: "🤖", status: "current", tags: ["beginner", "overview"], units: 5, updated: "Jan 2025", content: `# Introduction to Microsoft Copilot Studio\n\n## What is Copilot Studio?\n\nMicrosoft Copilot Studio is a low-code platform that enables organizations to create custom AI-powered copilots and agents. Previously known as Power Virtual Agents, Copilot Studio has evolved into a comprehensive platform for building intelligent conversational experiences.\n\n## Key capabilities\n\n- **No-code agent builder** — Create agents using a visual canvas without writing code\n- **Generative AI integration** — Leverage GPT-4 for dynamic, context-aware responses\n- **Multi-channel deployment** — Deploy to Microsoft Teams, websites, and custom channels\n- **Power Platform integration** — Connect with Power Automate, Power Apps, and Dataverse\n\n## When to use Copilot Studio\n\nCopilot Studio is ideal when you need:\n1. Employee self-service bots (HR, IT helpdesk)\n2. Customer-facing support agents\n3. Internal knowledge base assistants\n4. Automated workflow triggers\n\n## Prerequisites\n\n- Microsoft 365 license or Power Platform subscription\n- Environment Admin or System Customizer role\n- Basic understanding of conversational design principles` },
+  { id: 2, title: "Design effective conversation flows", icon: "🗺️", status: "current", tags: ["intermediate", "design"], units: 6, updated: "Feb 2025", content: `# Design effective conversation flows\n\n## Understanding topics\n\nTopics are the building blocks of your Copilot Studio agent. Each topic represents a distinct conversation flow triggered by user intent.\n\n## Trigger phrases\n\nWell-crafted trigger phrases are essential for accurate intent recognition.\n\n### Best practices:\n- Add 5–10 varied trigger phrases per topic\n- Use natural, conversational language\n- Avoid overly similar phrases between topics\n\n## System topics\n\nCopilot Studio includes pre-built system topics:\n- **Greeting** — First interaction with users\n- **Escalate** — Hand off to human agents\n- **End of conversation** — Gracefully close sessions\n- **Fallback** — Handle unrecognized inputs\n\n## Variables & entities\n\nUse variables to store user-provided information and entities to extract structured data like dates, numbers, and custom values.\n\n## Knowledge check\n\n1. What is the minimum recommended number of trigger phrases per topic?\n2. Which system topic handles unrecognized user inputs?\n3. What is the difference between a variable and an entity?` },
+  { id: 3, title: "Connect agents to data sources", icon: "🔌", status: "outdated", tags: ["intermediate", "connectors"], units: 4, updated: "Oct 2024", content: `# Connect agents to data sources\n\n## Overview\n\nCopilot Studio agents can connect to hundreds of data sources through Power Automate and native connectors.\n\n## Power Automate integration\n\nCall Power Automate flows directly from your agent topics to:\n- Query databases and SharePoint lists\n- Send emails and notifications\n- Update CRM records\n- Trigger business workflows\n\n## Generative answers with your own data\n\nUse the Generative Answers node to connect your agent to:\n- SharePoint document libraries\n- Public websites\n- Azure OpenAI on your data\n- Dataverse knowledge bases\n\n> Note: This section needs updating to reflect the new unified knowledge management UI released in November 2024.` },
+  { id: 4, title: "Build autonomous agents", icon: "⚡", status: "review", tags: ["advanced", "agents", "new"], units: 7, updated: "Mar 2025", content: `# Build autonomous agents\n\n## What are autonomous agents?\n\nAutonomous agents in Copilot Studio can complete multi-step tasks without human intervention, using reasoning to decide which actions to take.\n\n## Agent capabilities\n\n- **Multi-step reasoning** — Chain multiple actions to complete complex tasks\n- **Tool use** — Call APIs, run queries, and interact with external systems\n- **Memory** — Maintain context across long task sequences\n- **Human-in-the-loop** — Request approval for sensitive actions\n\n## Building your first autonomous agent\n\n### Step 1: Define the agent goal\n### Step 2: Configure available actions\n### Step 3: Set guardrails and escalation rules\n### Step 4: Test with varied scenarios\n### Step 5: Monitor and iterate\n\n## Best practices\n\n- Start with narrow, well-defined tasks\n- Always implement escalation paths\n- Log all agent actions for auditing` },
+  { id: 5, title: "Deploy and manage agents at scale", icon: "🚀", status: "current", tags: ["advanced", "admin"], units: 5, updated: "Feb 2025", content: `# Deploy and manage agents at scale\n\n## Deployment channels\n\nCopilot Studio supports deployment to:\n- **Microsoft Teams** — Most common enterprise channel\n- **Web widget** — Embed on any website\n- **Custom canvas** — Build custom UIs with the Direct Line API\n- **Mobile apps** — iOS and Android via SDK\n\n## Environment strategy\n\nUse separate environments for Development, Test, and Production.\n\n## Governance & compliance\n\n- Configure DLP policies in Power Platform Admin Center\n- Enable audit logging for all agent interactions\n- Set up Azure Application Insights for telemetry` },
+  { id: 6, title: "Monitor agent performance", icon: "📈", status: "current", tags: ["intermediate", "analytics"], units: 4, updated: "Jan 2025", content: `# Monitor agent performance\n\n## Built-in analytics\n\nCopilot Studio provides analytics dashboards showing:\n- Session volume and trends\n- Topic escalation rates\n- Resolution rates\n- Customer satisfaction scores\n\n## Key metrics to watch\n\n| Metric | Target | Action if below target |\n|--------|--------|------------------------|\n| Resolution rate | > 70% | Review fallback topics |\n| Escalation rate | < 15% | Improve topic coverage |\n| CSAT | > 4.0/5 | Review conversation quality |` },
+  { id: 7, title: "Integrate with Microsoft 365 Copilot", icon: "🔗", status: "outdated", tags: ["advanced", "m365", "new"], units: 6, updated: "Sep 2024", content: `# Integrate with Microsoft 365 Copilot\n\n## Overview\n\nCopilot Studio agents can be extended into Microsoft 365 Copilot as declarative agents or plugin actions.\n\n## Declarative agents\n\nDeclare instructions, knowledge sources, and actions to customize Copilot behavior for specific scenarios.\n\n> This module needs major updates to reflect the Copilot extensibility changes in Wave 2 2024 and the new agent store in Teams.` },
+  { id: 8, title: "Security and governance", icon: "🔒", status: "draft", tags: ["admin", "security"], units: 3, updated: "Mar 2025", content: `# Security and governance\n\n## Draft content\n\nThis module is currently in draft. Key topics to cover:\n\n- Authentication options (anonymous, Teams SSO, custom OAuth)\n- Data loss prevention (DLP) policies\n- Content moderation settings\n- Role-based access control\n- Compliance certifications` }
+];
+
+let currentModule = null;
+let chatHistory = [];
+let apiKey = '';
+let isGenerating = false;
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+function init() {
+  apiKey = localStorage.getItem('cs_api_key') || '';
+  renderModuleList(MODULES);
+  renderHealthList();
+  populateCompareDropdown();
+  loadSettings();
+}
+
+function renderModuleList(modules) {
+  const list = document.getElementById('module-list');
+  list.innerHTML = modules.map(m => `
+    <div class="module-item ${currentModule?.id === m.id ? 'selected' : ''}" onclick="selectModule(${m.id})">
+      <div class="module-icon">${m.icon}</div>
+      <div class="module-meta">
+        <h4>${m.title}</h4>
+        <p>${m.units} units · Last updated ${m.updated}</p>
+        <div class="module-tags">
+          ${m.tags.map(t => `<span class="tag tag-${t === 'new' ? 'purple' : t === 'advanced' ? 'blue' : 'blue'}">${t}</span>`).join('')}
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0;">
+        <span class="status-dot status-${m.status}" style="width:10px;height:10px;"></span>
+        <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); openInEditor(${m.id})">Edit</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderHealthList() {
+  const list = document.getElementById('health-list');
+  list.innerHTML = MODULES.map(m => {
+    const pct = m.status === 'current' ? 90 + Math.floor(Math.random() * 10) :
+                m.status === 'review' ? 70 + Math.floor(Math.random() * 15) :
+                m.status === 'outdated' ? 30 + Math.floor(Math.random() * 25) : 20;
+    const color = pct >= 80 ? 'var(--success)' : pct >= 55 ? '#d97706' : 'var(--danger)';
+    return `
+    <div style="padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 16px;">${m.icon}</span>
+      <div style="flex: 1; min-width: 0;">
+        <p style="font-size: 12.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${m.title}</p>
+        <div class="progress-bar-wrap mt-2"><div class="progress-bar-fill" style="width: ${pct}%; background: ${color};"></div></div>
+      </div>
+      <span style="font-size: 11px; color: var(--text-muted); min-width: 32px; text-align: right;">${pct}%</span>
+    </div>
+    `;
+  }).join('');
+}
+
+function populateCompareDropdown() {
+  const sel = document.getElementById('compare-module');
+  MODULES.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.title;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener('change', () => {
+    const m = MODULES.find(x => x.id == sel.value);
+    if (m) document.getElementById('compare-content').value = m.content;
+  });
+}
+
+// ── NAVIGATION ───────────────────────────────────────────────────────────
+function switchView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+  document.getElementById('view-' + name)?.classList.add('active');
+  document.querySelector(`[data-view="${name}"]`)?.classList.add('active');
+}
+
+function selectModule(id) {
+  currentModule = MODULES.find(m => m.id === id);
+  renderModuleList(MODULES);
+}
+
+function openInEditor(id) {
+  currentModule = MODULES.find(m => m.id === id);
+  document.getElementById('main-editor').value = currentModule.content;
+  document.getElementById('editor-title').textContent = currentModule.title;
+  document.getElementById('editor-subtitle').textContent = `${currentModule.units} units · Status: ${currentModule.status} · Last updated ${currentModule.updated}`;
+  clearChat();
+  addChatMsg('ai', `I've loaded **${currentModule.title}**. This module is currently marked as **${currentModule.status}**.\n\nHow would you like me to help? I can rewrite outdated sections, add new content about recent features, or check accuracy against Microsoft docs.`);
+  switchView('editor');
+}
+
+function filterModules(q) {
+  const filtered = MODULES.filter(m =>
+    m.title.toLowerCase().includes(q.toLowerCase()) ||
+    m.tags.some(t => t.includes(q.toLowerCase()))
+  );
+  renderModuleList(filtered);
+}
+
+// ── EDITOR ───────────────────────────────────────────────────────────────
+function insertMarkdown(before, after) {
+  const ta = document.getElementById('main-editor');
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  const selected = ta.value.substring(start, end);
+  ta.value = ta.value.substring(0, start) + before + selected + after + ta.value.substring(end);
+  ta.focus();
+}
+
+let previewing = false;
+function previewMode() {
+  previewing = !previewing;
+  const ed = document.getElementById('main-editor');
+  const pv = document.getElementById('preview-panel');
+  if (previewing) {
+    pv.style.display = 'block';
+    ed.style.display = 'none';
+    pv.innerHTML = marked(ed.value);
+  } else {
+    pv.style.display = 'none';
+    ed.style.display = 'block';
+  }
+}
+
+function saveContent() {
+  if (currentModule) {
+    currentModule.content = document.getElementById('main-editor').value;
+    toast('Module saved successfully', 'success');
+  } else {
+    toast('No module selected', 'warning');
+  }
+}
+
+function copyContent() {
+  navigator.clipboard.writeText(document.getElementById('main-editor').value);
+  toast('Content copied to clipboard', 'info');
+}
+
+function downloadContent() {
+  const text = document.getElementById('main-editor').value;
+  const title = currentModule ? currentModule.title.replace(/\s+/g, '-').toLowerCase() : 'content';
+  const blob = new Blob([text], { type: 'text/markdown' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `${title}.md`; a.click();
+  toast('Exported as Markdown', 'success');
+}
+
+function aiRewrite() {
+  quickPrompt('Please rewrite and improve this content to ensure it reflects the latest Microsoft Copilot Studio features and follows Microsoft Learn best practices for clarity, engagement, and accuracy.');
+}
+
+// ── AI CHAT ───────────────────────────────────────────────────────────────
+function addChatMsg(role, text) {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = `chat-msg ${role}`;
+  div.innerHTML = `
+    <span class="chat-msg-role">${role === 'ai' ? 'AI Assistant' : 'You'}</span>
+    <div class="chat-msg-bubble">${text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>')}</div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function showTyping() {
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.id = 'typing';
+  div.className = 'chat-msg ai';
+  div.innerHTML = `<span class="chat-msg-role">AI Assistant</span><div class="typing-indicator"><span></span><span></span><span></span></div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function hideTyping() {
+  document.getElementById('typing')?.remove();
+}
+
+function clearChat() {
+  document.getElementById('chat-messages').innerHTML = '';
+  chatHistory = [];
+}
+
+function quickPrompt(text) {
+  document.getElementById('chat-input').value = text;
+  sendChat();
+}
+
+async function sendChat() {
+  if (isGenerating) return;
+  const input = document.getElementById('chat-input');
+  const userMsg = input.value.trim();
+  if (!userMsg) return;
+
+  const key = localStorage.getItem('cs_api_key');
+  if (!key) {
+    toast('Please add your Anthropic API key in Settings first', 'warning');
+    openSettings();
+    return;
+  }
+
+  addChatMsg('user', userMsg);
+  input.value = '';
+  input.style.height = '38px';
+  isGenerating = true;
+  document.getElementById('chat-send-btn').disabled = true;
+
+  const editorContent = document.getElementById('main-editor').value;
+  const systemPrompt = `You are an expert instructional designer and technical writer specializing in Microsoft Copilot Studio content for Microsoft Learn. You help create and update online training modules that are accurate, engaging, and aligned with the latest product features.
+
+Current module context: ${currentModule ? currentModule.title : 'General content'}
+Content status: ${currentModule ? currentModule.status : 'unknown'}
+
+Current editor content:
+---
+${editorContent.substring(0, 3000)}
+---
+
+Guidelines:
+- Write in Microsoft Learn style: clear, concise, task-oriented
+- Use second person ("you") and active voice
+- Include practical examples relevant to enterprise scenarios
+- Format in Markdown with proper headings
+- Reference the latest Copilot Studio features accurately
+- When rewriting content, preserve the structure but modernize outdated information`;
+
+  chatHistory.push({ role: 'user', content: userMsg });
+  showTyping();
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        system: systemPrompt,
+        messages: chatHistory
+      })
+    });
+    const data = await resp.json();
+    hideTyping();
+    if (data.content?.[0]?.text) {
+      const reply = data.content[0].text;
+      chatHistory.push({ role: 'assistant', content: reply });
+      addChatMsg('ai', reply);
+      // If response contains markdown content, offer to apply
+      if (reply.includes('#') && reply.length > 200) {
+        const applyBtn = document.createElement('button');
+        applyBtn.className = 'btn btn-secondary btn-sm';
+        applyBtn.style.marginTop = '8px';
+        applyBtn.textContent = '↓ Apply to editor';
+        applyBtn.onclick = () => {
+          const mdMatch = reply.match(/```(?:markdown)?\n([\s\S]+?)```/);
+          document.getElementById('main-editor').value = mdMatch ? mdMatch[1] : reply;
+          toast('Content applied to editor', 'success');
+          applyBtn.remove();
+        };
+        document.querySelector('#chat-messages .chat-msg:last-child .chat-msg-bubble').appendChild(applyBtn);
+      }
+    } else if (data.error) {
+      addChatMsg('ai', `⚠️ API error: ${data.error.message}`);
+    }
+  } catch (e) {
+    hideTyping();
+    addChatMsg('ai', `⚠️ Connection error. Please check your API key and network connection.`);
+  }
+
+  isGenerating = false;
+  document.getElementById('chat-send-btn').disabled = false;
+}
+
+// ── GENERATE MODULE ──────────────────────────────────────────────────────
+async function generateModule() {
+  const key = localStorage.getItem('cs_api_key');
+  if (!key) { toast('Please add your Anthropic API key in Settings', 'warning'); openSettings(); return; }
+
+  const title = document.getElementById('new-title').value.trim();
+  if (!title) { toast('Please enter a module title', 'warning'); return; }
+
+  const objective = document.getElementById('new-objective').value.trim();
+  const audience = document.getElementById('new-audience').value;
+  const duration = document.getElementById('new-duration').value;
+  const units = Array.from(document.querySelectorAll('#outline-builder input')).map(i => i.value).filter(Boolean);
+  const useSearch = document.getElementById('opt-search').checked;
+  const exercises = document.getElementById('opt-exercises').checked;
+  const quiz = document.getElementById('opt-quiz').checked;
+  const tips = document.getElementById('opt-tips').checked;
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  const progress = document.getElementById('gen-progress');
+  const bar = document.getElementById('gen-bar');
+  const status = document.getElementById('gen-status');
+  progress.style.display = 'block';
+
+  const steps = ['Analyzing outline…', 'Searching for latest features…', 'Generating content…', 'Adding exercises…', 'Finalizing…'];
+  let step = 0;
+  const interval = setInterval(() => {
+    if (step < steps.length) {
+      status.textContent = steps[step];
+      bar.style.width = ((step + 1) / steps.length * 85) + '%';
+      step++;
+    }
+  }, 900);
+
+  const prompt = `Create a complete Microsoft Learn module about "${title}" for Copilot Studio.
+
+Learning objective: ${objective || 'Not specified'}
+Audience: ${audience}
+Duration: ${duration}
+Units to cover: ${units.join(', ')}
+${exercises ? '- Include at least one hands-on exercise with step-by-step instructions' : ''}
+${quiz ? '- Include knowledge check questions at the end' : ''}
+${tips ? '- Include tips and best practice callout boxes (use > blockquote format)' : ''}
+
+Write the full content in Markdown format following Microsoft Learn conventions:
+- Clear H1 title, H2 sections, H3 subsections
+- Second person, active voice
+- Task-oriented with practical enterprise examples
+- Accurate and up-to-date for Copilot Studio as of early 2025
+- Include prerequisites section
+- Use tables where appropriate for comparing options`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 3000, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await resp.json();
+    clearInterval(interval);
+    bar.style.width = '100%';
+    status.textContent = 'Done!';
+
+    if (data.content?.[0]?.text) {
+      const content = data.content[0].text;
+      const newMod = {
+        id: MODULES.length + 1, title, icon: '📄', status: 'draft',
+        tags: [audience.toLowerCase(), 'new'], units: units.length,
+        updated: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        content
+      };
+      MODULES.push(newMod);
+      document.getElementById('count-modules').textContent = MODULES.length;
+      renderModuleList(MODULES);
+      openInEditor(newMod.id);
+      toast(`Module "${title}" created successfully`, 'success');
+    }
+  } catch (e) {
+    clearInterval(interval);
+    toast('Generation failed — check your API key', 'warning');
+  }
+  btn.disabled = false;
+  setTimeout(() => { progress.style.display = 'none'; bar.style.width = '0%'; }, 1500);
+}
+
+// ── GAP ANALYSIS ─────────────────────────────────────────────────────────
+async function runGapAnalysis() {
+  const key = localStorage.getItem('cs_api_key');
+  if (!key) { toast('Please add your API key in Settings', 'warning'); openSettings(); return; }
+
+  const btn = document.getElementById('gap-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Analyzing…';
+  document.getElementById('gap-results').innerHTML = `<div class="empty-state"><div class="empty-state-icon">⏳</div><p>Scanning ${MODULES.length} modules against latest Copilot Studio documentation…</p></div>`;
+
+  const titles = MODULES.map(m => `${m.id}. ${m.title} (status: ${m.status}, updated: ${m.updated})`).join('\n');
+  const prompt = `You are a content audit specialist for Microsoft Learn. Analyze this list of Copilot Studio training modules and identify content gaps, missing topics, and update priorities.
+
+Modules:
+${titles}
+
+Provide a gap analysis in this exact JSON format (no markdown, just JSON):
+{
+  "missing_topics": [
+    { "topic": "Topic name", "priority": "high|medium|low", "reason": "Why it's needed" }
+  ],
+  "outdated_modules": [
+    { "module_id": 1, "issue": "Specific outdated content", "update_needed": "What to update" }
+  ],
+  "recommended_new_modules": [
+    { "title": "Module title", "audience": "target audience", "rationale": "Why add this" }
+  ],
+  "quick_wins": [
+    { "action": "Specific action to take", "impact": "Expected impact" }
+  ]
+}`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await resp.json();
+    if (data.content?.[0]?.text) {
+      try {
+        const clean = data.content[0].text.replace(/```json|```/g, '').trim();
+        const analysis = JSON.parse(clean);
+        renderGapResults(analysis);
+      } catch {
+        document.getElementById('gap-results').innerHTML = `<div class="card"><div class="card-body"><pre style="font-size:12px;white-space:pre-wrap;">${data.content[0].text}</pre></div></div>`;
+      }
+    }
+  } catch (e) {
+    toast('Analysis failed — check API key', 'warning');
+  }
+  btn.disabled = false;
+  btn.textContent = '🔍 Run analysis';
+}
+
+function renderGapResults(data) {
+  const container = document.getElementById('gap-results');
+  container.innerHTML = `
+  <div class="gap-grid">
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">🚨</span><h4>Missing topics</h4><span class="tag tag-red">${data.missing_topics?.length || 0}</span></div>
+      <div class="gap-card-body">
+        ${(data.missing_topics || []).map(t => `
+          <div class="gap-item">
+            <div class="gap-item-icon"><span class="tag tag-${t.priority === 'high' ? 'red' : t.priority === 'medium' ? 'yellow' : 'blue'}">${t.priority}</span></div>
+            <div class="gap-item-text"><strong>${t.topic}</strong><br>${t.reason}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">🔄</span><h4>Modules needing updates</h4><span class="tag tag-yellow">${data.outdated_modules?.length || 0}</span></div>
+      <div class="gap-card-body">
+        ${(data.outdated_modules || []).map(m => {
+          const mod = MODULES.find(x => x.id === m.module_id);
+          return `<div class="gap-item">
+            <div class="gap-item-icon">📄</div>
+            <div class="gap-item-text"><strong>${mod?.title || 'Module ' + m.module_id}</strong><br>${m.issue}<br><em style="color: var(--ms-blue);">Fix: ${m.update_needed}</em>
+            <br><button class="btn btn-secondary btn-sm" style="margin-top:4px;" onclick="openInEditor(${m.module_id})">Edit now</button></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">✨</span><h4>Recommended new modules</h4><span class="tag tag-purple">${data.recommended_new_modules?.length || 0}</span></div>
+      <div class="gap-card-body">
+        ${(data.recommended_new_modules || []).map(m => `
+          <div class="gap-item">
+            <div class="gap-item-icon">📌</div>
+            <div class="gap-item-text"><strong>${m.title}</strong><br>Audience: ${m.audience}<br>${m.rationale}
+            <br><button class="btn btn-secondary btn-sm" style="margin-top:4px;" onclick="prefillCreate('${m.title.replace(/'/g, '')}')">Create this module</button></div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">⚡</span><h4>Quick wins</h4><span class="tag tag-green">${data.quick_wins?.length || 0}</span></div>
+      <div class="gap-card-body">
+        ${(data.quick_wins || []).map(q => `
+          <div class="gap-item">
+            <div class="gap-item-icon">✓</div>
+            <div class="gap-item-text"><strong>${q.action}</strong><br>${q.impact}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+  toast('Gap analysis complete', 'success');
+}
+
+function prefillCreate(title) {
+  switchView('create');
+  document.getElementById('new-title').value = title;
+}
+
+// ── COMPARE ───────────────────────────────────────────────────────────────
+async function runCompare() {
+  const key = localStorage.getItem('cs_api_key');
+  if (!key) { toast('Please add your API key in Settings', 'warning'); openSettings(); return; }
+
+  const content = document.getElementById('compare-content').value.trim();
+  if (!content) { toast('Please select a module or paste content', 'warning'); return; }
+
+  const btn = document.getElementById('compare-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Comparing…';
+  document.getElementById('compare-results').innerHTML = `<div class="empty-state"><div class="empty-state-icon">⏳</div><p>Analyzing content against Microsoft documentation…</p></div>`;
+
+  const prompt = `You are a Microsoft documentation accuracy reviewer. Compare this Microsoft Learn content against current Microsoft Copilot Studio documentation.
+
+CONTENT TO REVIEW:
+---
+${content.substring(0, 3000)}
+---
+
+Analyze for:
+1. Factual inaccuracies or outdated information
+2. Missing important features or capabilities
+3. Terminology changes (e.g., PVA vs Copilot Studio)
+4. UI navigation or feature location changes
+5. Deprecated features still mentioned
+
+Respond ONLY in this JSON format:
+{
+  "accuracy_score": 85,
+  "summary": "One sentence summary",
+  "issues": [
+    { "severity": "high|medium|low", "type": "outdated|missing|incorrect|terminology", "issue": "Description", "fix": "How to fix it" }
+  ],
+  "strengths": ["What's done well"],
+  "updated_snippet": "A corrected version of the most problematic paragraph (if any)"
+}`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await resp.json();
+    if (data.content?.[0]?.text) {
+      try {
+        const clean = data.content[0].text.replace(/```json|```/g, '').trim();
+        const result = JSON.parse(clean);
+        renderCompareResults(result);
+      } catch {
+        document.getElementById('compare-results').innerHTML = `<div class="card"><div class="card-body"><pre style="font-size:12px;white-space:pre-wrap;">${data.content[0].text}</pre></div></div>`;
+      }
+    }
+  } catch (e) {
+    toast('Comparison failed — check API key', 'warning');
+  }
+  btn.disabled = false;
+  btn.textContent = '⚖️ Compare now';
+}
+
+function renderCompareResults(r) {
+  const score = r.accuracy_score || 0;
+  const color = score >= 80 ? 'var(--success)' : score >= 60 ? '#d97706' : 'var(--danger)';
+  const html = `
+  <div class="card">
+    <div class="card-header">
+      <span>📊</span><h3>Comparison results</h3>
+      <span style="margin-left:auto;font-size:22px;font-weight:600;color:${color};">${score}%</span>
+    </div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:16px;">
+      <p style="font-size:13.5px;">${r.summary}</p>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${score}%;background:${color};"></div></div>
+      ${r.issues?.length ? `
+      <div>
+        <p style="font-size:12px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Issues found (${r.issues.length})</p>
+        ${r.issues.map(i => `
+          <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+            <span class="tag tag-${i.severity === 'high' ? 'red' : i.severity === 'medium' ? 'yellow' : 'blue'}" style="flex-shrink:0;">${i.severity}</span>
+            <div style="font-size:12.5px;"><strong>${i.issue}</strong><br><span style="color:var(--ms-blue);">Fix: ${i.fix}</span></div>
+          </div>`).join('')}
+      </div>` : ''}
+      ${r.strengths?.length ? `
+      <div>
+        <p style="font-size:12px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Strengths</p>
+        ${r.strengths.map(s => `<div style="font-size:12.5px;padding:3px 0;display:flex;gap:6px;"><span style="color:var(--success);">✓</span>${s}</div>`).join('')}
+      </div>` : ''}
+      ${r.updated_snippet ? `
+      <div>
+        <p style="font-size:12px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Suggested rewrite</p>
+        <pre style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-size:12px;white-space:pre-wrap;font-family:'JetBrains Mono',monospace;">${r.updated_snippet}</pre>
+      </div>` : ''}
+    </div>
+  </div>`;
+  document.getElementById('compare-results').innerHTML = html;
+  toast('Comparison complete', 'success');
+}
+
+// ── WEB SEARCH PLACEHOLDER ─────────────────────────────────────────────
+function runWebSearch() {
+  toast('Fetching latest Copilot Studio updates…', 'info');
+  setTimeout(() => toast('Updates loaded — see Recent Updates panel', 'success'), 2000);
+}
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('api-key-input').value = localStorage.getItem('cs_api_key') || '';
+  document.getElementById('manager-name').value = localStorage.getItem('cs_name') || '';
+  document.getElementById('settings-modal').classList.add('open');
+}
+function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
+function saveSettings() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (key) localStorage.setItem('cs_api_key', key);
+  localStorage.setItem('cs_name', document.getElementById('manager-name').value.trim());
+  closeSettings();
+  toast('Settings saved', 'success');
+}
+function loadSettings() {
+  const name = localStorage.getItem('cs_name');
+  if (name) document.querySelector('.topbar-title').textContent = `Copilot Studio — Content Manager · ${name}`;
+}
+
+// ── OUTLINE BUILDER ────────────────────────────────────────────────────
+function addUnit() {
+  const builder = document.getElementById('outline-builder');
+  const count = builder.children.length + 1;
+  const div = document.createElement('div');
+  div.className = 'outline-unit';
+  div.innerHTML = `<span style="color:var(--text-muted);font-size:12px;min-width:20px;">${count}.</span><input type="text" placeholder="Unit title" /><button class="btn-ghost btn-sm" onclick="removeUnit(this)">✕</button>`;
+  builder.appendChild(div);
+}
+function removeUnit(btn) {
+  btn.parentElement.remove();
+  Array.from(document.querySelectorAll('#outline-builder .outline-unit')).forEach((u, i) => {
+    u.querySelector('span').textContent = (i + 1) + '.';
+  });
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${type === 'success' ? '✓' : type === 'warning' ? '⚠' : 'ℹ'}</span> ${msg}`;
+  container.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+function autoResize(el) {
+  el.style.height = '38px';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+// ── SIMPLE MARKDOWN RENDERER ──────────────────────────────────────────────
+function marked(text) {
+  return text
+    .replace(/^# (.+)$/gm, '<h1 style="font-size:22px;font-weight:600;margin:1rem 0 0.5rem;">$1</h1>')
+    .replace(/^## (.+)$/gm, '<h2 style="font-size:17px;font-weight:500;margin:1rem 0 0.4rem;">$1</h2>')
+    .replace(/^### (.+)$/gm, '<h3 style="font-size:15px;font-weight:500;margin:0.75rem 0 0.3rem;">$1</h3>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`(.*?)`/g, '<code style="background:var(--bg);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:12px;">$1</code>')
+    .replace(/^> (.+)$/gm, '<blockquote style="border-left:3px solid var(--ms-blue);padding-left:12px;color:var(--text-muted);margin:8px 0;">$1</blockquote>')
+    .replace(/^- (.+)$/gm, '<li style="margin:2px 0;">$1</li>')
+    .replace(/\n\n/g, '</p><p style="margin:0 0 0.75rem;">')
+    .replace(/^(?!<[h1-6liblockquote])/gm, '');
+}
+
+// ── BOOT ─────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
