@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Copilot Studio Learn — Content Manager</title>
+<title>Microsoft Learn — Content Gap Manager</title>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -557,6 +557,93 @@
   .empty-state p { font-size: 13.5px; }
   .scroll-x { overflow-x: auto; }
   .api-key-mask { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.1em; }
+
+  /* ── Product selector ── */
+  .product-select {
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: 'Sora', sans-serif;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    cursor: pointer;
+    max-width: 260px;
+    transition: border-color 0.15s;
+  }
+  .product-select:focus { border-color: var(--ms-blue); }
+  .product-select optgroup { font-weight: 600; font-size: 11px; }
+
+  /* ── Loading states ── */
+  .loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top: 2px solid var(--ms-blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-overlay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 3rem;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  /* ── Coverage bar ── */
+  .coverage-bar {
+    display: flex;
+    height: 8px;
+    border-radius: 100px;
+    overflow: hidden;
+    background: var(--border);
+  }
+  .coverage-bar .covered { background: var(--success); }
+  .coverage-bar .partial { background: #f59e0b; }
+  .coverage-bar .uncovered { background: var(--danger); }
+
+  /* ── Tabs for gap view ── */
+  .tab-bar { display: flex; gap: 0; border-bottom: 1px solid var(--border); padding: 0 2rem; background: var(--surface); }
+  .tab-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-family: 'Sora', sans-serif;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--ms-blue); border-bottom-color: var(--ms-blue); }
+
+  /* ── Doc topic tree ── */
+  .doc-tree { font-size: 12.5px; }
+  .doc-tree-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    transition: background 0.1s;
+  }
+  .doc-tree-item:hover { background: var(--bg); }
+  .doc-tree-item .indent { flex-shrink: 0; }
+  .doc-tree-item .coverage-badge {
+    flex-shrink: 0;
+    font-size: 9px;
+    padding: 1px 6px;
+    border-radius: 100px;
+    font-weight: 600;
+  }
 </style>
 </head>
 <body>
@@ -573,7 +660,11 @@
     Microsoft Learn
   </a>
   <div class="topbar-sep"></div>
-  <span class="topbar-title">Copilot Studio — Content Manager</span>
+  <span class="topbar-title" id="topbar-title">Content Gap Manager</span>
+  <div class="topbar-sep"></div>
+  <select class="product-select" id="product-select" onchange="onProductChange(this.value)">
+    <option value="">— Select a product —</option>
+  </select>
   <div class="topbar-right">
     <span class="badge-model" id="model-badge">claude-sonnet-4</span>
     <button class="btn-settings" onclick="openSettings()">
@@ -600,14 +691,15 @@
       <p class="sidebar-label">Content</p>
       <ul class="sidebar-nav">
         <li><a onclick="switchView('modules')" data-view="modules">
-          <span class="nav-icon">📚</span> Modules
-          <span class="nav-count" id="count-modules">8</span>
+          <span class="nav-icon">📚</span> Training Modules
+          <span class="nav-count" id="count-modules">0</span>
+        </a></li>
+        <li><a onclick="switchView('docs')" data-view="docs">
+          <span class="nav-icon">📖</span> Documentation
+          <span class="nav-count" id="count-docs">0</span>
         </a></li>
         <li><a onclick="switchView('editor')" data-view="editor">
           <span class="nav-icon">✏️</span> Editor
-        </a></li>
-        <li><a onclick="switchView('create')" data-view="create">
-          <span class="nav-icon">✨</span> Create New
         </a></li>
       </ul>
     </div>
@@ -643,69 +735,60 @@
       <div class="page-header">
         <div class="page-header-text">
           <h1>Dashboard</h1>
-          <p>Overview of your Copilot Studio learning content health</p>
+          <p id="dashboard-subtitle">Select a product above to begin analyzing content gaps</p>
         </div>
         <div class="page-header-actions">
-          <button class="btn btn-primary" onclick="switchView('create')">+ New Module</button>
+          <button class="btn btn-secondary" onclick="refreshData()">🔄 Refresh data</button>
+          <button class="btn btn-primary" onclick="switchView('gap-analysis')">🔍 Run gap analysis</button>
         </div>
       </div>
-      <div class="page-body">
-        <div class="stat-grid">
+      <div class="page-body" id="dashboard-body">
+        <div class="stat-grid" id="stat-grid">
           <div class="stat-card">
-            <div class="stat-card-label">Total Modules</div>
-            <div class="stat-card-value">8</div>
-            <div class="stat-card-sub">Across 3 learning paths</div>
+            <div class="stat-card-label">Training Modules</div>
+            <div class="stat-card-value" id="stat-modules">—</div>
+            <div class="stat-card-sub" id="stat-modules-sub">Select a product</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-label">Current</div>
-            <div class="stat-card-value" style="color: var(--success);">5</div>
-            <div class="stat-card-sub">Up to date with product</div>
+            <div class="stat-card-label">Learning Paths</div>
+            <div class="stat-card-value" id="stat-paths" style="color: var(--ms-blue);">—</div>
+            <div class="stat-card-sub" id="stat-paths-sub">Select a product</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-label">Need Update</div>
-            <div class="stat-card-value" style="color: #d97706;">2</div>
-            <div class="stat-card-sub">New features released</div>
+            <div class="stat-card-label">Doc Topics</div>
+            <div class="stat-card-value" id="stat-docs" style="color: var(--ms-purple);">—</div>
+            <div class="stat-card-sub" id="stat-docs-sub">From documentation TOC</div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-label">Drafts</div>
-            <div class="stat-card-value" style="color: var(--text-muted);">1</div>
-            <div class="stat-card-sub">Pending review</div>
+            <div class="stat-card-label">Coverage</div>
+            <div class="stat-card-value" id="stat-coverage" style="color: var(--text-muted);">—</div>
+            <div class="stat-card-sub" id="stat-coverage-sub">Run gap analysis</div>
           </div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
           <div class="card">
             <div class="card-header">
-              <span>📋</span>
-              <h3>Content health by module</h3>
+              <span>📚</span>
+              <h3>Training modules</h3>
+              <span class="tag tag-blue ml-auto" id="module-count-badge">0</span>
             </div>
-            <div class="card-body" style="padding: 0;">
-              <div id="health-list" style="display: flex; flex-direction: column;"></div>
+            <div class="card-body" style="padding: 0; max-height: 400px; overflow-y: auto;">
+              <div id="health-list">
+                <div class="empty-state"><p>Select a product to load training modules</p></div>
+              </div>
             </div>
           </div>
           <div class="card">
             <div class="card-header">
-              <span>🚀</span>
-              <h3>Recent product updates</h3>
+              <span>📖</span>
+              <h3>Documentation topics</h3>
+              <span class="tag tag-purple ml-auto" id="doc-count-badge">0</span>
             </div>
-            <div class="card-body" style="display: flex; flex-direction: column; gap: 10px;">
-              <div class="gap-item">
-                <div class="gap-item-icon">🆕</div>
-                <div class="gap-item-text"><strong>Autonomous agents (GA)</strong> — Copilot Studio now supports fully autonomous agent workflows. March 2025.</div>
+            <div class="card-body" style="padding: 0; max-height: 400px; overflow-y: auto;">
+              <div id="doc-list">
+                <div class="empty-state"><p>Select a product to load documentation topics</p></div>
               </div>
-              <div class="gap-item">
-                <div class="gap-item-icon">🆕</div>
-                <div class="gap-item-text"><strong>Multi-agent orchestration</strong> — New capability to chain agent calls for complex tasks. Feb 2025.</div>
-              </div>
-              <div class="gap-item">
-                <div class="gap-item-icon">🔄</div>
-                <div class="gap-item-text"><strong>Generative answers refresh</strong> — Updated UI and improved grounding controls. Jan 2025.</div>
-              </div>
-              <div class="gap-item">
-                <div class="gap-item-icon">📌</div>
-                <div class="gap-item-text"><strong>Plugin marketplace</strong> — Expanded connector library with 1,000+ actions. Dec 2024.</div>
-              </div>
-              <button class="btn btn-secondary btn-sm mt-2" onclick="runWebSearch()">🔍 Fetch latest updates</button>
             </div>
           </div>
         </div>
@@ -716,16 +799,42 @@
     <section class="view" id="view-modules">
       <div class="page-header">
         <div class="page-header-text">
-          <h1>Modules</h1>
-          <p>All Copilot Studio learning modules on Microsoft Learn</p>
+          <h1>Training Modules</h1>
+          <p id="modules-subtitle">Microsoft Learn training modules for the selected product</p>
         </div>
         <div class="page-header-actions">
           <input type="text" placeholder="Search modules…" style="padding: 7px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: 'Sora', sans-serif; outline: none; width: 200px; background: var(--bg);" oninput="filterModules(this.value)" />
-          <button class="btn btn-primary" onclick="switchView('create')">+ New Module</button>
+          <select id="module-sort" style="padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; font-family: 'Sora', sans-serif; background: var(--bg);" onchange="sortModules(this.value)">
+            <option value="title">Sort: Title</option>
+            <option value="date">Sort: Last Modified</option>
+            <option value="duration">Sort: Duration</option>
+            <option value="popularity">Sort: Popularity</option>
+          </select>
         </div>
       </div>
       <div class="page-body">
-        <div class="module-list" id="module-list"></div>
+        <div class="module-list" id="module-list">
+          <div class="empty-state"><div class="empty-state-icon">📚</div><p>Select a product to load training modules</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DOCUMENTATION VIEW -->
+    <section class="view" id="view-docs">
+      <div class="page-header">
+        <div class="page-header-text">
+          <h1>Documentation</h1>
+          <p id="docs-subtitle">Documentation table of contents for the selected product</p>
+        </div>
+        <div class="page-header-actions">
+          <input type="text" placeholder="Search topics…" style="padding: 7px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: 'Sora', sans-serif; outline: none; width: 200px; background: var(--bg);" oninput="filterDocs(this.value)" />
+          <span class="text-xs text-muted" id="doc-topic-total"></span>
+        </div>
+      </div>
+      <div class="page-body">
+        <div id="doc-tree-container">
+          <div class="empty-state"><div class="empty-state-icon">📖</div><p>Select a product to load documentation topics</p></div>
+        </div>
       </div>
     </section>
 
@@ -777,26 +886,26 @@
           <div class="ai-panel-body" id="chat-messages">
             <div class="chat-msg ai">
               <span class="chat-msg-role">AI Assistant</span>
-              <div class="chat-msg-bubble">Hi! I'm here to help you create and update Copilot Studio content. You can ask me to:
+              <div class="chat-msg-bubble">Hi! I'm here to help you analyze and improve Microsoft Learn training content. You can ask me to:
 
-• Rewrite outdated sections
-• Generate content from an outline
-• Check accuracy against Microsoft docs
-• Suggest improvements
+• Compare training against documentation
+• Identify outdated information
+• Suggest content improvements
+• Rewrite sections
 
-Select a module or paste content, then ask away!</div>
+Select a module from Training Modules, then ask away!</div>
             </div>
           </div>
           <div class="ai-panel-footer">
             <div class="quick-actions" id="quick-actions">
-              <button class="quick-action" onclick="quickPrompt('Rewrite this section to reflect the latest Copilot Studio features. Be specific about UI changes and new capabilities.')">
+              <button class="quick-action" onclick="quickPrompt('Rewrite this section to reflect the latest product features. Be specific about UI changes and new capabilities.')">
                 <span class="quick-action-icon">🔄</span> Rewrite for latest features
               </button>
-              <button class="quick-action" onclick="quickPrompt('Identify any outdated information in this content and suggest specific updates based on recent Copilot Studio releases.')">
+              <button class="quick-action" onclick="quickPrompt('Identify any outdated information in this content and suggest specific updates based on the latest documentation.')">
                 <span class="quick-action-icon">🔍</span> Find outdated info
               </button>
-              <button class="quick-action" onclick="quickPrompt('Add a practical exercise or knowledge check question to this content that tests understanding of the key concepts.')">
-                <span class="quick-action-icon">📝</span> Add knowledge check
+              <button class="quick-action" onclick="quickPrompt('Compare this training module against the product documentation topics and identify gaps or missing coverage.')">
+                <span class="quick-action-icon">📊</span> Check doc coverage
               </button>
             </div>
             <div class="divider"></div>
@@ -813,130 +922,46 @@ Select a module or paste content, then ask away!</div>
       </div>
     </section>
 
-    <!-- CREATE NEW VIEW -->
-    <section class="view" id="view-create">
-      <div class="page-header">
-        <div class="page-header-text">
-          <h1>Create new module</h1>
-          <p>Generate a complete learning module with AI assistance</p>
-        </div>
-      </div>
-      <div class="page-body" style="max-width: 760px;">
-        <div class="card" style="margin-bottom: 16px;">
-          <div class="card-header"><span>📋</span><h3>Module details</h3></div>
-          <div class="card-body" style="display: flex; flex-direction: column; gap: 14px;">
-            <div class="field">
-              <label>Module title</label>
-              <input type="text" id="new-title" placeholder="e.g. Build your first agent with Copilot Studio" />
-            </div>
-            <div class="field">
-              <label>Learning objective</label>
-              <input type="text" id="new-objective" placeholder="e.g. Learners will be able to create and publish a Copilot Studio agent" />
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-              <div class="field">
-                <label>Target audience</label>
-                <select id="new-audience">
-                  <option>Beginner</option>
-                  <option>Intermediate</option>
-                  <option>Advanced</option>
-                  <option>IT Administrator</option>
-                  <option>Developer</option>
-                  <option>Business User</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Estimated duration</label>
-                <select id="new-duration">
-                  <option>15 minutes</option>
-                  <option>30 minutes</option>
-                  <option>45 minutes</option>
-                  <option>60 minutes</option>
-                  <option>90 minutes</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card" style="margin-bottom: 16px;">
-          <div class="card-header">
-            <span>🗂</span><h3>Unit outline</h3>
-            <button class="btn btn-secondary btn-sm ml-auto" onclick="addUnit()">+ Add unit</button>
-          </div>
-          <div class="card-body">
-            <div class="outline-builder" id="outline-builder">
-              <div class="outline-unit">
-                <span style="color: var(--text-muted); font-size: 12px; min-width: 20px;">1.</span>
-                <input type="text" placeholder="Introduction & overview" value="Introduction & overview" />
-                <button class="btn-ghost btn-sm" onclick="removeUnit(this)">✕</button>
-              </div>
-              <div class="outline-unit">
-                <span style="color: var(--text-muted); font-size: 12px; min-width: 20px;">2.</span>
-                <input type="text" placeholder="Core concepts" value="Core concepts" />
-                <button class="btn-ghost btn-sm" onclick="removeUnit(this)">✕</button>
-              </div>
-              <div class="outline-unit">
-                <span style="color: var(--text-muted); font-size: 12px; min-width: 20px;">3.</span>
-                <input type="text" placeholder="Hands-on exercise" value="Hands-on exercise" />
-                <button class="btn-ghost btn-sm" onclick="removeUnit(this)">✕</button>
-              </div>
-              <div class="outline-unit">
-                <span style="color: var(--text-muted); font-size: 12px; min-width: 20px;">4.</span>
-                <input type="text" placeholder="Knowledge check" value="Knowledge check" />
-                <button class="btn-ghost btn-sm" onclick="removeUnit(this)">✕</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card" style="margin-bottom: 24px;">
-          <div class="card-header"><span>✨</span><h3>AI generation options</h3></div>
-          <div class="card-body" style="display: flex; flex-direction: column; gap: 12px;">
-            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
-              <input type="checkbox" id="opt-search" checked /> Search web for latest Copilot Studio features
-            </label>
-            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
-              <input type="checkbox" id="opt-exercises" checked /> Include hands-on exercises
-            </label>
-            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
-              <input type="checkbox" id="opt-quiz" checked /> Add knowledge check questions
-            </label>
-            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
-              <input type="checkbox" id="opt-tips" /> Include tips & best practices callouts
-            </label>
-          </div>
-        </div>
-
-        <div style="display: flex; gap: 10px;">
-          <button class="btn btn-primary" onclick="generateModule()" id="gen-btn">
-            ✨ Generate module content
-          </button>
-          <button class="btn btn-secondary" onclick="switchView('modules')">Cancel</button>
-        </div>
-        <div id="gen-progress" style="margin-top: 16px; display: none;">
-          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;" id="gen-status">Generating content…</p>
-          <div class="progress-bar-wrap"><div class="progress-bar-fill" id="gen-bar" style="width: 0%"></div></div>
-        </div>
-      </div>
-    </section>
+    <!-- (Create New view removed — now uses live API data) -->
 
     <!-- GAP ANALYSIS VIEW -->
     <section class="view" id="view-gap-analysis">
       <div class="page-header">
         <div class="page-header-text">
-          <h1>Gap analysis</h1>
-          <p>Identify missing topics and outdated content across your learning library</p>
+          <h1>Gap Analysis</h1>
+          <p>Compare training content against documentation to find coverage gaps</p>
         </div>
         <div class="page-header-actions">
-          <button class="btn btn-primary" onclick="runGapAnalysis()" id="gap-btn">🔍 Run analysis</button>
+          <button class="btn btn-secondary" onclick="runClientGapAnalysis()" id="client-gap-btn">⚡ Quick scan</button>
+          <button class="btn btn-primary" onclick="runGapAnalysis()" id="gap-btn">🤖 AI deep analysis</button>
         </div>
       </div>
       <div class="page-body">
+        <div id="gap-summary" style="margin-bottom: 16px; display: none;">
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-card-label">Doc Topics</div>
+              <div class="stat-card-value" id="gap-total-docs">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">Covered by Training</div>
+              <div class="stat-card-value" style="color: var(--success);" id="gap-covered">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">Partially Covered</div>
+              <div class="stat-card-value" style="color: #d97706;" id="gap-partial">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">Not Covered</div>
+              <div class="stat-card-value" style="color: var(--danger);" id="gap-uncovered">0</div>
+            </div>
+          </div>
+          <div class="coverage-bar" id="gap-coverage-bar" style="margin-top: 8px;"></div>
+        </div>
         <div id="gap-results">
           <div class="empty-state">
             <div class="empty-state-icon">🔍</div>
-            <p>Click "Run analysis" to scan your content against the latest Copilot Studio documentation and identify gaps.</p>
+            <p>Load a product first, then click "Quick scan" for keyword-based comparison or "AI deep analysis" for semantic analysis.</p>
           </div>
         </div>
       </div>
@@ -946,34 +971,31 @@ Select a module or paste content, then ask away!</div>
     <section class="view" id="view-compare">
       <div class="page-header">
         <div class="page-header-text">
-          <h1>Compare vs Microsoft docs</h1>
-          <p>Check your content accuracy against official Microsoft documentation</p>
+          <h1>Compare vs Documentation</h1>
+          <p>Check training content accuracy against official product documentation</p>
         </div>
       </div>
       <div class="page-body" style="max-width: 860px;">
         <div class="card" style="margin-bottom: 16px;">
-          <div class="card-header"><span>📄</span><h3>Content to compare</h3></div>
+          <div class="card-header"><span>📄</span><h3>Select training module</h3></div>
           <div class="card-body">
             <div class="field" style="margin-bottom: 10px;">
-              <label>Select module or paste content</label>
+              <label>Choose a module to compare</label>
               <select id="compare-module" style="margin-bottom: 8px;">
                 <option value="">— Select a module —</option>
               </select>
             </div>
             <textarea style="width: 100%; height: 160px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-family: 'JetBrains Mono', monospace; font-size: 12px; outline: none; resize: vertical; background: var(--bg); color: var(--text);"
-              id="compare-content" placeholder="Or paste your content here…"></textarea>
+              id="compare-content" placeholder="Or paste content to compare…"></textarea>
           </div>
         </div>
         <div class="card" style="margin-bottom: 16px;">
           <div class="card-header"><span>🔗</span><h3>Reference documentation</h3></div>
-          <div class="card-body" style="display: flex; flex-direction: column; gap: 8px;">
-            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;"><input type="checkbox" checked /> Microsoft Copilot Studio overview docs</label>
-            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;"><input type="checkbox" checked /> What's new in Copilot Studio</label>
-            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;"><input type="checkbox" /> Agent building tutorials</label>
-            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;"><input type="checkbox" /> Copilot Studio API reference</label>
-            <div class="field mt-2">
+          <div class="card-body">
+            <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 8px;">The AI will compare against known documentation for the selected product. You can also add a specific URL:</p>
+            <div class="field">
               <label>Custom documentation URL (optional)</label>
-              <input type="url" placeholder="https://learn.microsoft.com/en-us/microsoft-copilot-studio/…" id="custom-doc-url" />
+              <input type="url" placeholder="https://learn.microsoft.com/en-us/…" id="custom-doc-url" />
             </div>
           </div>
         </div>
@@ -1012,8 +1034,18 @@ Select a module or paste content, then ask away!</div>
       </div>
       <div class="field">
         <label>Microsoft Learn base URL</label>
-        <input type="url" id="ms-learn-url" value="https://learn.microsoft.com/en-us/training/paths/" />
-        <p class="field-hint">Used when exporting links and comparing content.</p>
+        <input type="url" id="ms-learn-url" value="https://learn.microsoft.com/en-us/" />
+        <p class="field-hint">Base URL for fetching catalog and documentation data.</p>
+      </div>
+      <div class="field">
+        <label>Cache duration (hours)</label>
+        <select id="cache-hours">
+          <option value="1">1 hour</option>
+          <option value="6">6 hours</option>
+          <option value="24" selected>24 hours</option>
+          <option value="72">72 hours</option>
+        </select>
+        <p class="field-hint">How long to cache Catalog API and TOC data.</p>
       </div>
     </div>
     <div class="modal-footer">
@@ -1027,84 +1059,802 @@ Select a module or paste content, then ask away!</div>
 <div class="toast-container" id="toasts"></div>
 
 <script>
-// ── DATA ──────────────────────────────────────────────────────────────────
-const MODULES = [
-  { id: 1, title: "Introduction to Microsoft Copilot Studio", icon: "🤖", status: "current", tags: ["beginner", "overview"], units: 5, updated: "Jan 2025", content: `# Introduction to Microsoft Copilot Studio\n\n## What is Copilot Studio?\n\nMicrosoft Copilot Studio is a low-code platform that enables organizations to create custom AI-powered copilots and agents. Previously known as Power Virtual Agents, Copilot Studio has evolved into a comprehensive platform for building intelligent conversational experiences.\n\n## Key capabilities\n\n- **No-code agent builder** — Create agents using a visual canvas without writing code\n- **Generative AI integration** — Leverage GPT-4 for dynamic, context-aware responses\n- **Multi-channel deployment** — Deploy to Microsoft Teams, websites, and custom channels\n- **Power Platform integration** — Connect with Power Automate, Power Apps, and Dataverse\n\n## When to use Copilot Studio\n\nCopilot Studio is ideal when you need:\n1. Employee self-service bots (HR, IT helpdesk)\n2. Customer-facing support agents\n3. Internal knowledge base assistants\n4. Automated workflow triggers\n\n## Prerequisites\n\n- Microsoft 365 license or Power Platform subscription\n- Environment Admin or System Customizer role\n- Basic understanding of conversational design principles` },
-  { id: 2, title: "Design effective conversation flows", icon: "🗺️", status: "current", tags: ["intermediate", "design"], units: 6, updated: "Feb 2025", content: `# Design effective conversation flows\n\n## Understanding topics\n\nTopics are the building blocks of your Copilot Studio agent. Each topic represents a distinct conversation flow triggered by user intent.\n\n## Trigger phrases\n\nWell-crafted trigger phrases are essential for accurate intent recognition.\n\n### Best practices:\n- Add 5–10 varied trigger phrases per topic\n- Use natural, conversational language\n- Avoid overly similar phrases between topics\n\n## System topics\n\nCopilot Studio includes pre-built system topics:\n- **Greeting** — First interaction with users\n- **Escalate** — Hand off to human agents\n- **End of conversation** — Gracefully close sessions\n- **Fallback** — Handle unrecognized inputs\n\n## Variables & entities\n\nUse variables to store user-provided information and entities to extract structured data like dates, numbers, and custom values.\n\n## Knowledge check\n\n1. What is the minimum recommended number of trigger phrases per topic?\n2. Which system topic handles unrecognized user inputs?\n3. What is the difference between a variable and an entity?` },
-  { id: 3, title: "Connect agents to data sources", icon: "🔌", status: "outdated", tags: ["intermediate", "connectors"], units: 4, updated: "Oct 2024", content: `# Connect agents to data sources\n\n## Overview\n\nCopilot Studio agents can connect to hundreds of data sources through Power Automate and native connectors.\n\n## Power Automate integration\n\nCall Power Automate flows directly from your agent topics to:\n- Query databases and SharePoint lists\n- Send emails and notifications\n- Update CRM records\n- Trigger business workflows\n\n## Generative answers with your own data\n\nUse the Generative Answers node to connect your agent to:\n- SharePoint document libraries\n- Public websites\n- Azure OpenAI on your data\n- Dataverse knowledge bases\n\n> Note: This section needs updating to reflect the new unified knowledge management UI released in November 2024.` },
-  { id: 4, title: "Build autonomous agents", icon: "⚡", status: "review", tags: ["advanced", "agents", "new"], units: 7, updated: "Mar 2025", content: `# Build autonomous agents\n\n## What are autonomous agents?\n\nAutonomous agents in Copilot Studio can complete multi-step tasks without human intervention, using reasoning to decide which actions to take.\n\n## Agent capabilities\n\n- **Multi-step reasoning** — Chain multiple actions to complete complex tasks\n- **Tool use** — Call APIs, run queries, and interact with external systems\n- **Memory** — Maintain context across long task sequences\n- **Human-in-the-loop** — Request approval for sensitive actions\n\n## Building your first autonomous agent\n\n### Step 1: Define the agent goal\n### Step 2: Configure available actions\n### Step 3: Set guardrails and escalation rules\n### Step 4: Test with varied scenarios\n### Step 5: Monitor and iterate\n\n## Best practices\n\n- Start with narrow, well-defined tasks\n- Always implement escalation paths\n- Log all agent actions for auditing` },
-  { id: 5, title: "Deploy and manage agents at scale", icon: "🚀", status: "current", tags: ["advanced", "admin"], units: 5, updated: "Feb 2025", content: `# Deploy and manage agents at scale\n\n## Deployment channels\n\nCopilot Studio supports deployment to:\n- **Microsoft Teams** — Most common enterprise channel\n- **Web widget** — Embed on any website\n- **Custom canvas** — Build custom UIs with the Direct Line API\n- **Mobile apps** — iOS and Android via SDK\n\n## Environment strategy\n\nUse separate environments for Development, Test, and Production.\n\n## Governance & compliance\n\n- Configure DLP policies in Power Platform Admin Center\n- Enable audit logging for all agent interactions\n- Set up Azure Application Insights for telemetry` },
-  { id: 6, title: "Monitor agent performance", icon: "📈", status: "current", tags: ["intermediate", "analytics"], units: 4, updated: "Jan 2025", content: `# Monitor agent performance\n\n## Built-in analytics\n\nCopilot Studio provides analytics dashboards showing:\n- Session volume and trends\n- Topic escalation rates\n- Resolution rates\n- Customer satisfaction scores\n\n## Key metrics to watch\n\n| Metric | Target | Action if below target |\n|--------|--------|------------------------|\n| Resolution rate | > 70% | Review fallback topics |\n| Escalation rate | < 15% | Improve topic coverage |\n| CSAT | > 4.0/5 | Review conversation quality |` },
-  { id: 7, title: "Integrate with Microsoft 365 Copilot", icon: "🔗", status: "outdated", tags: ["advanced", "m365", "new"], units: 6, updated: "Sep 2024", content: `# Integrate with Microsoft 365 Copilot\n\n## Overview\n\nCopilot Studio agents can be extended into Microsoft 365 Copilot as declarative agents or plugin actions.\n\n## Declarative agents\n\nDeclare instructions, knowledge sources, and actions to customize Copilot behavior for specific scenarios.\n\n> This module needs major updates to reflect the Copilot extensibility changes in Wave 2 2024 and the new agent store in Teams.` },
-  { id: 8, title: "Security and governance", icon: "🔒", status: "draft", tags: ["admin", "security"], units: 3, updated: "Mar 2025", content: `# Security and governance\n\n## Draft content\n\nThis module is currently in draft. Key topics to cover:\n\n- Authentication options (anonymous, Teams SSO, custom OAuth)\n- Data loss prevention (DLP) policies\n- Content moderation settings\n- Role-based access control\n- Compliance certifications` }
-];
+// ── PRODUCT-TO-DOCS MAPPING ─────────────────────────────────────────────
+// Maps Catalog API product IDs to their documentation TOC paths
+const PRODUCT_DOC_MAP = {
+  'microsoft-copilot-studio': { path: '/en-us/microsoft-copilot-studio/', name: 'Microsoft Copilot Studio' },
+  'dynamics-finance': { path: '/en-us/dynamics365/finance/', name: 'Dynamics 365 Finance' },
+  'dynamics-sales': { path: '/en-us/dynamics365/sales/', name: 'Dynamics 365 Sales' },
+  'dynamics-customer-service': { path: '/en-us/dynamics365/customer-service/', name: 'Dynamics 365 Customer Service' },
+  'dynamics-commerce': { path: '/en-us/dynamics365/commerce/', name: 'Dynamics 365 Commerce' },
+  'dynamics-scm': { path: '/en-us/dynamics365/supply-chain/', name: 'Dynamics 365 Supply Chain' },
+  'dynamics-field-service': { path: '/en-us/dynamics365/field-service/', name: 'Dynamics 365 Field Service' },
+  'dynamics-business-central': { path: '/en-us/dynamics365/business-central/', name: 'Dynamics 365 Business Central' },
+  'dynamics-human-resources': { path: '/en-us/dynamics365/human-resources/', name: 'Dynamics 365 Human Resources' },
+  'power-apps': { path: '/en-us/power-apps/', name: 'Power Apps' },
+  'power-automate': { path: '/en-us/power-automate/', name: 'Power Automate' },
+  'power-bi': { path: '/en-us/power-bi/', name: 'Power BI' },
+  'power-pages': { path: '/en-us/power-pages/', name: 'Power Pages' },
+  'ai-builder': { path: '/en-us/ai-builder/', name: 'AI Builder' },
+  'azure-functions': { path: '/en-us/azure/azure-functions/', name: 'Azure Functions' },
+  'azure-kubernetes-service': { path: '/en-us/azure/aks/', name: 'Azure Kubernetes Service' },
+  'azure-devops': { path: '/en-us/azure/devops/', name: 'Azure DevOps' },
+  'azure-cosmos-db': { path: '/en-us/azure/cosmos-db/', name: 'Azure Cosmos DB' },
+  'azure-openai': { path: '/en-us/azure/ai-services/openai/', name: 'Azure OpenAI' },
+  'azure-machine-learning': { path: '/en-us/azure/machine-learning/', name: 'Azure Machine Learning' },
+  'office-teams': { path: '/en-us/microsoftteams/', name: 'Microsoft Teams' },
+  'office-sp': { path: '/en-us/sharepoint/', name: 'SharePoint' },
+  'intune': { path: '/en-us/mem/intune/', name: 'Microsoft Intune' },
+  'entra-id': { path: '/en-us/entra/identity/', name: 'Microsoft Entra ID' },
+  'security-copilot': { path: '/en-us/copilot/security/', name: 'Security Copilot' },
+  'fabric': { path: '/en-us/fabric/', name: 'Microsoft Fabric' },
+  'sql-server': { path: '/en-us/sql/sql-server/', name: 'SQL Server' },
+  'windows-11': { path: '/en-us/windows/client-management/', name: 'Windows 11' },
+  'microsoft-365-copilot': { path: '/en-us/copilot/microsoft-365/', name: 'Microsoft 365 Copilot' },
+};
 
-let currentModule = null;
+// ── STATE ─────────────────────────────────────────────────────────────────
+let state = {
+  selectedProduct: null,
+  productName: '',
+  products: [],
+  modules: [],
+  learningPaths: [],
+  docTopics: [],
+  flatDocTopics: [],
+  gapResults: null,
+  currentModule: null,
+  catalogData: null,
+};
+
 let chatHistory = [];
 let apiKey = '';
 let isGenerating = false;
 
-// ── INIT ──────────────────────────────────────────────────────────────────
-function init() {
-  apiKey = localStorage.getItem('cs_api_key') || '';
-  renderModuleList(MODULES);
-  renderHealthList();
-  populateCompareDropdown();
-  loadSettings();
+// ── CACHE LAYER ──────────────────────────────────────────────────────────
+function getCacheTTL() {
+  const hours = parseInt(localStorage.getItem('cm_cache_hours') || '24');
+  return hours * 60 * 60 * 1000;
 }
 
+function getCached(key) {
+  try {
+    const raw = localStorage.getItem(`cm_cache_${key}`);
+    if (!raw) return null;
+    const item = JSON.parse(raw);
+    if (Date.now() - item.ts < getCacheTTL()) return item.data;
+    localStorage.removeItem(`cm_cache_${key}`);
+  } catch {}
+  return null;
+}
+
+function setCache(key, data) {
+  try {
+    localStorage.setItem(`cm_cache_${key}`, JSON.stringify({ ts: Date.now(), data }));
+  } catch (e) {
+    // localStorage full — clear old caches
+    Object.keys(localStorage).filter(k => k.startsWith('cm_cache_')).forEach(k => localStorage.removeItem(k));
+  }
+}
+
+function clearCache() {
+  Object.keys(localStorage).filter(k => k.startsWith('cm_cache_')).forEach(k => localStorage.removeItem(k));
+  toast('Cache cleared', 'info');
+}
+
+// ── API: CATALOG ─────────────────────────────────────────────────────────
+async function fetchProducts() {
+  const cached = getCached('products');
+  if (cached) return cached;
+
+  const resp = await fetch('https://learn.microsoft.com/api/catalog/?type=products');
+  const data = await resp.json();
+  const products = data.products || [];
+  setCache('products', products);
+  return products;
+}
+
+async function fetchCatalogForProduct(productId) {
+  const cacheKey = `catalog_${productId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  // Fetch the full catalog (modules + learningPaths)
+  const resp = await fetch('https://learn.microsoft.com/api/catalog/?type=modules,learningPaths');
+  const data = await resp.json();
+
+  // Filter by product
+  const modules = (data.modules || []).filter(m =>
+    m.products && m.products.some(p => p === productId || p.startsWith(productId))
+  );
+  const learningPaths = (data.learningPaths || []).filter(lp =>
+    lp.products && lp.products.some(p => p === productId || p.startsWith(productId))
+  );
+
+  const result = { modules, learningPaths };
+  setCache(cacheKey, result);
+  return result;
+}
+
+// ── API: DOCUMENTATION TOC ──────────────────────────────────────────────
+async function fetchDocToc(productId) {
+  const cacheKey = `toc_${productId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  const mapping = PRODUCT_DOC_MAP[productId];
+  if (!mapping) return null;
+
+  const url = `https://learn.microsoft.com${mapping.path}toc.json`;
+  const resp = await fetch(url);
+  if (!resp.ok) return null;
+
+  const data = await resp.json();
+  setCache(cacheKey, data);
+  return data;
+}
+
+// Flatten TOC tree into a list of topics with depth info
+function flattenToc(toc, depth = 0, parentPath = '') {
+  if (!toc) return [];
+  const items = toc.items || toc.children || toc;
+  if (!Array.isArray(items)) return [];
+
+  let result = [];
+  for (const item of items) {
+    const title = item.toc_title || item.title || '';
+    if (!title) continue;
+
+    const path = parentPath ? `${parentPath} > ${title}` : title;
+    result.push({
+      title,
+      path,
+      depth,
+      href: item.href || '',
+      hasChildren: !!(item.children && item.children.length > 0),
+    });
+
+    if (item.children) {
+      result = result.concat(flattenToc({ items: item.children }, depth + 1, path));
+    }
+  }
+  return result;
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+async function init() {
+  apiKey = localStorage.getItem('cs_api_key') || '';
+  loadSettings();
+
+  try {
+    const products = await fetchProducts();
+    state.products = products;
+    renderProductSelector(products);
+  } catch (e) {
+    toast('Failed to load product list — check your network', 'warning');
+  }
+
+  // Restore last selected product
+  const saved = localStorage.getItem('cm_selected_product');
+  if (saved) {
+    document.getElementById('product-select').value = saved;
+    onProductChange(saved);
+  }
+}
+
+// ── PRODUCT SELECTOR ────────────────────────────────────────────────────
+function renderProductSelector(products) {
+  const select = document.getElementById('product-select');
+  // Clear existing options except first
+  while (select.options.length > 1) select.remove(1);
+
+  // Group products that have doc mapping (priority) vs others
+  const withDocs = [];
+  const withoutDocs = [];
+
+  products.forEach(p => {
+    const allIds = [p.id, ...(p.children || []).map(c => c.id)];
+    const hasDocs = allIds.some(id => PRODUCT_DOC_MAP[id]);
+    const target = hasDocs ? withDocs : withoutDocs;
+
+    if (p.children && p.children.length > 0) {
+      p.children.forEach(child => {
+        target.push({ id: child.id, name: child.name || child.id, parent: p.name });
+      });
+    } else {
+      target.push({ id: p.id, name: p.name || p.id, parent: null });
+    }
+  });
+
+  // Add "with docs" group first
+  if (withDocs.length > 0) {
+    const grp = document.createElement('optgroup');
+    grp.label = '📖 Products with Documentation Mapping';
+    withDocs
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.parent ? `${p.name} (${p.parent})` : p.name;
+        if (PRODUCT_DOC_MAP[p.id]) opt.textContent += ' ✓';
+        grp.appendChild(opt);
+      });
+    select.appendChild(grp);
+  }
+
+  // Add "others" group
+  if (withoutDocs.length > 0) {
+    const grp = document.createElement('optgroup');
+    grp.label = '📚 Training Only (no doc TOC mapping yet)';
+    withoutDocs
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.parent ? `${p.name} (${p.parent})` : p.name;
+        grp.appendChild(opt);
+      });
+    select.appendChild(grp);
+  }
+}
+
+async function onProductChange(productId) {
+  if (!productId) return;
+
+  state.selectedProduct = productId;
+  const mapping = PRODUCT_DOC_MAP[productId];
+  state.productName = mapping ? mapping.name : productId;
+  localStorage.setItem('cm_selected_product', productId);
+
+  // Update branding
+  document.getElementById('topbar-title').textContent = `${state.productName} — Content Gap Manager`;
+  document.getElementById('dashboard-subtitle').textContent = `Training vs Documentation analysis for ${state.productName}`;
+  document.getElementById('modules-subtitle').textContent = `Microsoft Learn training modules for ${state.productName}`;
+  document.getElementById('docs-subtitle').textContent = `Documentation TOC for ${state.productName}`;
+
+  // Show loading
+  showLoading('health-list');
+  showLoading('doc-list');
+  showLoading('module-list');
+
+  try {
+    // Fetch training data
+    toast(`Loading training data for ${state.productName}…`, 'info');
+    const catalog = await fetchCatalogForProduct(productId);
+    state.modules = catalog.modules;
+    state.learningPaths = catalog.learningPaths;
+
+    // Fetch documentation TOC
+    if (mapping) {
+      toast(`Loading documentation for ${state.productName}…`, 'info');
+      const toc = await fetchDocToc(productId);
+      state.docTopics = toc;
+      state.flatDocTopics = flattenToc(toc);
+    } else {
+      state.docTopics = null;
+      state.flatDocTopics = [];
+      toast('No documentation mapping for this product — training only', 'warning');
+    }
+
+    renderAll();
+    toast(`Loaded ${state.modules.length} modules and ${state.flatDocTopics.length} doc topics`, 'success');
+  } catch (e) {
+    toast(`Error loading data: ${e.message}`, 'warning');
+    console.error(e);
+  }
+}
+
+function showLoading(containerId) {
+  const el = document.getElementById(containerId);
+  if (el) el.innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div> Loading…</div>';
+}
+
+async function refreshData() {
+  clearCache();
+  if (state.selectedProduct) {
+    await onProductChange(state.selectedProduct);
+  }
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────────────────
+function renderAll() {
+  renderDashboardStats();
+  renderHealthList();
+  renderDocList();
+  renderModuleList(state.modules);
+  renderDocTree();
+  populateCompareDropdown();
+  document.getElementById('count-modules').textContent = state.modules.length;
+  document.getElementById('count-docs').textContent = state.flatDocTopics.length;
+}
+
+// ── DASHBOARD STATS ──────────────────────────────────────────────────────
+function renderDashboardStats() {
+  document.getElementById('stat-modules').textContent = state.modules.length;
+  document.getElementById('stat-modules-sub').textContent =
+    state.modules.length > 0 ? `Avg ${Math.round(state.modules.reduce((s, m) => s + (m.duration_in_minutes || 0), 0) / state.modules.length)} min each` : 'No modules found';
+
+  document.getElementById('stat-paths').textContent = state.learningPaths.length;
+  document.getElementById('stat-paths-sub').textContent =
+    state.learningPaths.length > 0 ? `Organizing ${state.modules.length} modules` : 'No learning paths';
+
+  document.getElementById('stat-docs').textContent = state.flatDocTopics.length;
+  document.getElementById('stat-docs-sub').textContent =
+    state.flatDocTopics.length > 0 ? `${state.flatDocTopics.filter(d => d.depth === 0).length} top-level sections` : PRODUCT_DOC_MAP[state.selectedProduct] ? 'Loading…' : 'No doc mapping';
+
+  // Coverage placeholder (requires gap analysis)
+  if (state.gapResults) {
+    const pct = state.gapResults.coveragePct;
+    document.getElementById('stat-coverage').textContent = pct + '%';
+    document.getElementById('stat-coverage').style.color = pct >= 70 ? 'var(--success)' : pct >= 40 ? '#d97706' : 'var(--danger)';
+    document.getElementById('stat-coverage-sub').textContent = 'Training coverage of docs';
+  } else {
+    document.getElementById('stat-coverage').textContent = '—';
+    document.getElementById('stat-coverage-sub').textContent = 'Run gap analysis';
+  }
+}
+
+// ── HEALTH LIST (Training modules on dashboard) ──────────────────────────
+function renderHealthList() {
+  const list = document.getElementById('health-list');
+  if (state.modules.length === 0) {
+    list.innerHTML = '<div class="empty-state" style="padding:2rem;"><p>No training modules found</p></div>';
+    document.getElementById('module-count-badge').textContent = '0';
+    return;
+  }
+
+  document.getElementById('module-count-badge').textContent = state.modules.length;
+
+  // Sort by last_modified (newest first), show top 15
+  const sorted = [...state.modules].sort((a, b) =>
+    new Date(b.last_modified || 0) - new Date(a.last_modified || 0)
+  ).slice(0, 15);
+
+  list.innerHTML = sorted.map(m => {
+    const date = m.last_modified ? new Date(m.last_modified) : null;
+    const ageMonths = date ? Math.floor((Date.now() - date) / (30 * 24 * 60 * 60 * 1000)) : 99;
+    const color = ageMonths <= 3 ? 'var(--success)' : ageMonths <= 12 ? '#d97706' : 'var(--danger)';
+    const pct = ageMonths <= 3 ? 95 : ageMonths <= 6 ? 75 : ageMonths <= 12 ? 50 : 25;
+    const dateStr = date ? date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Unknown';
+
+    return `
+    <div style="padding: 8px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; cursor: pointer;" onclick="openModuleDetail('${m.uid}')">
+      <span style="font-size: 14px;">📄</span>
+      <div style="flex: 1; min-width: 0;">
+        <p style="font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${m.title}">${m.title}</p>
+        <p style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">${m.duration_in_minutes || '?'} min · Updated ${dateStr}</p>
+      </div>
+      <div style="width: 60px;">
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width: ${pct}%; background: ${color};"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  if (state.modules.length > 15) {
+    list.innerHTML += `<div style="padding: 8px 16px; text-align: center;"><button class="btn btn-ghost btn-sm" onclick="switchView('modules')">View all ${state.modules.length} modules →</button></div>`;
+  }
+}
+
+// ── DOC LIST (Dashboard) ─────────────────────────────────────────────────
+function renderDocList() {
+  const list = document.getElementById('doc-list');
+  if (state.flatDocTopics.length === 0) {
+    list.innerHTML = '<div class="empty-state" style="padding:2rem;"><p>No documentation topics loaded</p></div>';
+    document.getElementById('doc-count-badge').textContent = '0';
+    return;
+  }
+
+  document.getElementById('doc-count-badge').textContent = state.flatDocTopics.length;
+
+  // Show top-level topics
+  const topLevel = state.flatDocTopics.filter(d => d.depth <= 1).slice(0, 20);
+  list.innerHTML = topLevel.map(d => `
+    <div style="padding: 6px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
+      <span style="font-size: 13px; color: var(--text-muted);">${d.depth === 0 ? '📁' : '📄'}</span>
+      <div style="flex: 1; min-width: 0; padding-left: ${d.depth * 12}px;">
+        <p style="font-size: 12px; font-weight: ${d.depth === 0 ? '500' : '400'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${d.title}">${d.title}</p>
+      </div>
+      ${d.hasChildren ? `<span class="text-xs text-muted">${state.flatDocTopics.filter(x => x.path.startsWith(d.title + ' >')).length} sub</span>` : ''}
+    </div>
+  `).join('');
+
+  if (state.flatDocTopics.length > 20) {
+    list.innerHTML += `<div style="padding: 8px 16px; text-align: center;"><button class="btn btn-ghost btn-sm" onclick="switchView('docs')">View all ${state.flatDocTopics.length} topics →</button></div>`;
+  }
+}
+
+// ── MODULE LIST (Modules view) ───────────────────────────────────────────
 function renderModuleList(modules) {
   const list = document.getElementById('module-list');
-  list.innerHTML = modules.map(m => `
-    <div class="module-item ${currentModule?.id === m.id ? 'selected' : ''}" onclick="selectModule(${m.id})">
-      <div class="module-icon">${m.icon}</div>
+  if (!modules || modules.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📚</div><p>No training modules found for this product</p></div>';
+    return;
+  }
+
+  list.innerHTML = modules.map(m => {
+    const date = m.last_modified ? new Date(m.last_modified).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Unknown';
+    const levels = (m.levels || []).join(', ');
+    const rating = m.rating ? `★ ${m.rating.average.toFixed(1)} (${m.rating.count})` : '';
+
+    return `
+    <div class="module-item" onclick="openModuleDetail('${m.uid}')">
+      <div class="module-icon">📄</div>
       <div class="module-meta">
         <h4>${m.title}</h4>
-        <p>${m.units} units · Last updated ${m.updated}</p>
+        <p>${m.duration_in_minutes || '?'} min · ${m.number_of_children || '?'} units · Updated ${date}</p>
         <div class="module-tags">
-          ${m.tags.map(t => `<span class="tag tag-${t === 'new' ? 'purple' : t === 'advanced' ? 'blue' : 'blue'}">${t}</span>`).join('')}
+          ${(m.levels || []).map(l => `<span class="tag tag-blue">${l}</span>`).join('')}
+          ${(m.roles || []).slice(0, 2).map(r => `<span class="tag tag-purple">${r}</span>`).join('')}
+          ${rating ? `<span class="tag tag-green">${rating}</span>` : ''}
         </div>
       </div>
       <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0;">
-        <span class="status-dot status-${m.status}" style="width:10px;height:10px;"></span>
-        <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); openInEditor(${m.id})">Edit</button>
+        <a href="${m.url}" target="_blank" class="btn btn-secondary btn-sm" onclick="event.stopPropagation();">Open ↗</a>
       </div>
-    </div>
-  `).join('');
-}
-
-function renderHealthList() {
-  const list = document.getElementById('health-list');
-  list.innerHTML = MODULES.map(m => {
-    const pct = m.status === 'current' ? 90 + Math.floor(Math.random() * 10) :
-                m.status === 'review' ? 70 + Math.floor(Math.random() * 15) :
-                m.status === 'outdated' ? 30 + Math.floor(Math.random() * 25) : 20;
-    const color = pct >= 80 ? 'var(--success)' : pct >= 55 ? '#d97706' : 'var(--danger)';
-    return `
-    <div style="padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px;">
-      <span style="font-size: 16px;">${m.icon}</span>
-      <div style="flex: 1; min-width: 0;">
-        <p style="font-size: 12.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${m.title}</p>
-        <div class="progress-bar-wrap mt-2"><div class="progress-bar-fill" style="width: ${pct}%; background: ${color};"></div></div>
-      </div>
-      <span style="font-size: 11px; color: var(--text-muted); min-width: 32px; text-align: right;">${pct}%</span>
-    </div>
-    `;
+    </div>`;
   }).join('');
 }
 
-function populateCompareDropdown() {
-  const sel = document.getElementById('compare-module');
-  MODULES.forEach(m => {
-    const opt = document.createElement('option');
-    opt.value = m.id;
-    opt.textContent = m.title;
-    sel.appendChild(opt);
-  });
-  sel.addEventListener('change', () => {
-    const m = MODULES.find(x => x.id == sel.value);
-    if (m) document.getElementById('compare-content').value = m.content;
-  });
+function filterModules(q) {
+  const filtered = state.modules.filter(m =>
+    m.title.toLowerCase().includes(q.toLowerCase()) ||
+    (m.summary || '').toLowerCase().includes(q.toLowerCase())
+  );
+  renderModuleList(filtered);
+}
+
+function sortModules(by) {
+  const sorted = [...state.modules];
+  switch (by) {
+    case 'title': sorted.sort((a, b) => a.title.localeCompare(b.title)); break;
+    case 'date': sorted.sort((a, b) => new Date(b.last_modified || 0) - new Date(a.last_modified || 0)); break;
+    case 'duration': sorted.sort((a, b) => (b.duration_in_minutes || 0) - (a.duration_in_minutes || 0)); break;
+    case 'popularity': sorted.sort((a, b) => (b.popularity || 0) - (a.popularity || 0)); break;
+  }
+  renderModuleList(sorted);
+}
+
+// ── DOC TREE (Documentation view) ────────────────────────────────────────
+function renderDocTree() {
+  const container = document.getElementById('doc-tree-container');
+  if (state.flatDocTopics.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📖</div><p>No documentation loaded. Select a product with documentation mapping.</p></div>';
+    document.getElementById('doc-topic-total').textContent = '';
+    return;
+  }
+
+  document.getElementById('doc-topic-total').textContent = `${state.flatDocTopics.length} topics total`;
+
+  // Render as a tree
+  const maxDepth = 3;
+  const visible = state.flatDocTopics.filter(d => d.depth <= maxDepth);
+  container.innerHTML = `<div class="doc-tree">${visible.map(d => {
+    const indent = d.depth * 16;
+    const icon = d.hasChildren ? '📁' : '📄';
+    const weight = d.depth === 0 ? 'font-weight:600;' : d.depth === 1 ? 'font-weight:500;' : '';
+    const docUrl = d.href && !d.href.startsWith('http') && !d.href.startsWith('./')
+      ? `https://learn.microsoft.com${PRODUCT_DOC_MAP[state.selectedProduct]?.path || '/en-us/'}${d.href}`
+      : d.href;
+    const linkHtml = docUrl && docUrl !== './' ? `<a href="${docUrl}" target="_blank" style="color:var(--ms-blue);font-size:10px;text-decoration:none;flex-shrink:0;">open ↗</a>` : '';
+
+    return `<div class="doc-tree-item" style="padding-left:${indent}px;">
+      <span style="font-size:13px;">${icon}</span>
+      <span style="flex:1;${weight}">${d.title}</span>
+      ${linkHtml}
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function filterDocs(q) {
+  const container = document.getElementById('doc-tree-container');
+  if (!q) { renderDocTree(); return; }
+
+  const filtered = state.flatDocTopics.filter(d =>
+    d.title.toLowerCase().includes(q.toLowerCase())
+  );
+
+  container.innerHTML = `<div class="doc-tree">${filtered.map(d => `
+    <div class="doc-tree-item">
+      <span style="font-size:13px;">${d.hasChildren ? '📁' : '📄'}</span>
+      <span style="flex:1;">${d.title}</span>
+      <span class="text-xs text-muted">${d.path}</span>
+    </div>
+  `).join('')}</div>`;
+}
+
+// ── MODULE DETAIL ────────────────────────────────────────────────────────
+function openModuleDetail(uid) {
+  const m = state.modules.find(x => x.uid === uid);
+  if (!m) return;
+
+  state.currentModule = m;
+  const content = `# ${m.title}\n\n${m.summary || ''}\n\n## Details\n- Duration: ${m.duration_in_minutes || '?'} minutes\n- Units: ${m.number_of_children || '?'}\n- Levels: ${(m.levels || []).join(', ')}\n- Roles: ${(m.roles || []).join(', ')}\n- Last modified: ${m.last_modified || 'Unknown'}\n- URL: ${m.url || ''}\n\n## Units\n${(m.units || []).map((u, i) => `${i + 1}. ${u}`).join('\n')}`;
+
+  document.getElementById('main-editor').value = content;
+  document.getElementById('editor-title').textContent = m.title;
+  document.getElementById('editor-subtitle').textContent = `${m.number_of_children || '?'} units · ${m.duration_in_minutes || '?'} min · Last modified ${m.last_modified || 'Unknown'}`;
+  clearChat();
+  addChatMsg('ai', `I've loaded **${m.title}**.\n\nThis is a ${(m.levels || []).join('/')} level module with ${m.number_of_children || '?'} units.\n\nHow can I help? I can:\n• Compare against documentation\n• Suggest improvements\n• Identify outdated content`);
+  switchView('editor');
+}
+
+// ── CLIENT-SIDE GAP ANALYSIS ─────────────────────────────────────────────
+function runClientGapAnalysis() {
+  if (state.modules.length === 0 || state.flatDocTopics.length === 0) {
+    toast('Load a product with both training and documentation first', 'warning');
+    return;
+  }
+
+  const btn = document.getElementById('client-gap-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Scanning…';
+
+  setTimeout(() => {
+    // Keyword-based matching
+    const moduleKeywords = state.modules.map(m => ({
+      ...m,
+      keywords: extractKeywords(m.title + ' ' + (m.summary || ''))
+    }));
+
+    const results = state.flatDocTopics
+      .filter(d => d.depth >= 1 && d.title.length > 3)
+      .map(doc => {
+        const docKeywords = extractKeywords(doc.title);
+        let bestMatch = null;
+        let bestScore = 0;
+
+        for (const mod of moduleKeywords) {
+          const score = keywordOverlap(docKeywords, mod.keywords);
+          if (score > bestScore) {
+            bestScore = score;
+            bestMatch = mod;
+          }
+        }
+
+        return {
+          docTopic: doc,
+          bestMatch: bestScore >= 0.3 ? bestMatch : null,
+          score: bestScore,
+          coverage: bestScore >= 0.5 ? 'covered' : bestScore >= 0.2 ? 'partial' : 'uncovered',
+        };
+      });
+
+    const covered = results.filter(r => r.coverage === 'covered').length;
+    const partial = results.filter(r => r.coverage === 'partial').length;
+    const uncovered = results.filter(r => r.coverage === 'uncovered').length;
+    const total = results.length;
+    const coveragePct = total > 0 ? Math.round((covered + partial * 0.5) / total * 100) : 0;
+
+    state.gapResults = { results, covered, partial, uncovered, total, coveragePct };
+    renderGapSummary();
+    renderGapResults(results);
+    renderDashboardStats();
+    toast(`Gap analysis complete: ${coveragePct}% coverage`, 'success');
+
+    btn.disabled = false;
+    btn.textContent = '⚡ Quick scan';
+  }, 100);
+}
+
+function extractKeywords(text) {
+  const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'what', 'which', 'who', 'when', 'where', 'why', 'how', 'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'your', 'about', 'up', 'out', 'use', 'using', 'get', 'set', 'new', 'overview', 'introduction']);
+  return [...new Set(
+    text.toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, ' ')
+      .split(/[\s-]+/)
+      .filter(w => w.length > 2 && !stopWords.has(w))
+  )];
+}
+
+function keywordOverlap(a, b) {
+  if (a.length === 0 || b.length === 0) return 0;
+  const setB = new Set(b);
+  const matches = a.filter(w => setB.has(w) || b.some(bw => bw.includes(w) || w.includes(bw)));
+  return matches.length / Math.max(a.length, 1);
+}
+
+function renderGapSummary() {
+  const g = state.gapResults;
+  if (!g) return;
+
+  const summary = document.getElementById('gap-summary');
+  summary.style.display = 'block';
+  document.getElementById('gap-total-docs').textContent = g.total;
+  document.getElementById('gap-covered').textContent = g.covered;
+  document.getElementById('gap-partial').textContent = g.partial;
+  document.getElementById('gap-uncovered').textContent = g.uncovered;
+
+  const bar = document.getElementById('gap-coverage-bar');
+  const covPct = (g.covered / g.total * 100).toFixed(1);
+  const parPct = (g.partial / g.total * 100).toFixed(1);
+  const uncPct = (g.uncovered / g.total * 100).toFixed(1);
+  bar.innerHTML = `
+    <div class="covered" style="width:${covPct}%;" title="Covered: ${g.covered}"></div>
+    <div class="partial" style="width:${parPct}%;" title="Partial: ${g.partial}"></div>
+    <div class="uncovered" style="width:${uncPct}%;" title="Uncovered: ${g.uncovered}"></div>
+  `;
+}
+
+function renderGapResults(results) {
+  const container = document.getElementById('gap-results');
+
+  // Group by coverage
+  const uncovered = results.filter(r => r.coverage === 'uncovered');
+  const partial = results.filter(r => r.coverage === 'partial');
+  const covered = results.filter(r => r.coverage === 'covered');
+
+  container.innerHTML = `
+  <div class="gap-grid">
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">🚨</span><h4>Not covered by training</h4><span class="tag tag-red">${uncovered.length}</span></div>
+      <div class="gap-card-body" style="max-height: 400px; overflow-y: auto;">
+        ${uncovered.slice(0, 30).map(r => `
+          <div class="gap-item">
+            <div class="gap-item-icon">❌</div>
+            <div class="gap-item-text">
+              <strong>${r.docTopic.title}</strong>
+              <br><span style="font-size:10px;color:var(--text-light);">${r.docTopic.path}</span>
+            </div>
+          </div>`).join('')}
+        ${uncovered.length > 30 ? `<p class="text-xs text-muted" style="padding:8px 0;">+ ${uncovered.length - 30} more uncovered topics</p>` : ''}
+      </div>
+    </div>
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">⚠️</span><h4>Partially covered</h4><span class="tag tag-yellow">${partial.length}</span></div>
+      <div class="gap-card-body" style="max-height: 400px; overflow-y: auto;">
+        ${partial.slice(0, 30).map(r => `
+          <div class="gap-item">
+            <div class="gap-item-icon">🔶</div>
+            <div class="gap-item-text">
+              <strong>${r.docTopic.title}</strong>
+              ${r.bestMatch ? `<br><span style="font-size:10px;color:var(--ms-blue);">Closest: ${r.bestMatch.title}</span>` : ''}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">✅</span><h4>Covered by training</h4><span class="tag tag-green">${covered.length}</span></div>
+      <div class="gap-card-body" style="max-height: 400px; overflow-y: auto;">
+        ${covered.slice(0, 30).map(r => `
+          <div class="gap-item">
+            <div class="gap-item-icon">✅</div>
+            <div class="gap-item-text">
+              <strong>${r.docTopic.title}</strong>
+              ${r.bestMatch ? `<br><span style="font-size:10px;color:var(--success);">Match: ${r.bestMatch.title} (${Math.round(r.score * 100)}%)</span>` : ''}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── AI GAP ANALYSIS ──────────────────────────────────────────────────────
+async function runGapAnalysis() {
+  const key = localStorage.getItem('cs_api_key');
+  if (!key) { toast('Please add your Anthropic API key in Settings', 'warning'); openSettings(); return; }
+  if (state.modules.length === 0) { toast('Load a product first', 'warning'); return; }
+
+  const btn = document.getElementById('gap-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Analyzing with AI…';
+
+  // Prepare data summaries
+  const moduleSummary = state.modules.slice(0, 50).map(m =>
+    `- "${m.title}" (${m.duration_in_minutes}min, updated ${m.last_modified || 'unknown'})`
+  ).join('\n');
+
+  const docSummary = state.flatDocTopics.filter(d => d.depth <= 2).slice(0, 80).map(d =>
+    `${'  '.repeat(d.depth)}- ${d.title}`
+  ).join('\n');
+
+  const prompt = `You are a content audit specialist for Microsoft Learn. Analyze the training modules and documentation structure for "${state.productName}" and provide a gap analysis.
+
+TRAINING MODULES (${state.modules.length} total, showing top 50):
+${moduleSummary}
+
+DOCUMENTATION TABLE OF CONTENTS (${state.flatDocTopics.length} topics, showing top 80):
+${docSummary}
+
+Provide a thorough gap analysis in this exact JSON format (no markdown, just JSON):
+{
+  "coverage_score": 65,
+  "summary": "Brief overall assessment",
+  "missing_from_training": [
+    { "doc_topic": "Topic name from docs", "priority": "high|medium|low", "reason": "Why training should cover this" }
+  ],
+  "outdated_training": [
+    { "module": "Module title", "issue": "What seems outdated", "recommendation": "What to update" }
+  ],
+  "recommended_new_modules": [
+    { "title": "Suggested module title", "covers": "What doc topics it would address", "priority": "high|medium|low" }
+  ],
+  "strengths": ["What's well covered"],
+  "quick_wins": [
+    { "action": "Specific improvement", "impact": "Expected benefit" }
+  ]
+}`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 3000, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await resp.json();
+    if (data.content?.[0]?.text) {
+      try {
+        const clean = data.content[0].text.replace(/```json|```/g, '').trim();
+        const analysis = JSON.parse(clean);
+        renderAIGapResults(analysis);
+      } catch {
+        document.getElementById('gap-results').innerHTML = `<div class="card"><div class="card-body"><pre style="font-size:12px;white-space:pre-wrap;">${data.content[0].text}</pre></div></div>`;
+      }
+    } else if (data.error) {
+      toast(`API error: ${data.error.message}`, 'warning');
+    }
+  } catch (e) {
+    toast('AI analysis failed — check API key', 'warning');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🤖 AI deep analysis';
+}
+
+function renderAIGapResults(data) {
+  const container = document.getElementById('gap-results');
+  container.innerHTML = `
+  <div style="margin-bottom: 16px;">
+    <div class="card">
+      <div class="card-header"><span>📊</span><h3>AI Analysis Summary</h3><span style="margin-left:auto;font-size:20px;font-weight:600;color:${data.coverage_score >= 70 ? 'var(--success)' : data.coverage_score >= 40 ? '#d97706' : 'var(--danger)'};">${data.coverage_score}%</span></div>
+      <div class="card-body">
+        <p style="font-size:13.5px;">${data.summary}</p>
+        ${data.strengths?.length ? `<div style="margin-top:10px;">${data.strengths.map(s => `<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--success);margin-right:12px;">✓ ${s}</span>`).join('')}</div>` : ''}
+      </div>
+    </div>
+  </div>
+  <div class="gap-grid">
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">🚨</span><h4>Missing from training</h4><span class="tag tag-red">${data.missing_from_training?.length || 0}</span></div>
+      <div class="gap-card-body" style="max-height:400px;overflow-y:auto;">
+        ${(data.missing_from_training || []).map(t => `
+          <div class="gap-item">
+            <span class="tag tag-${t.priority === 'high' ? 'red' : t.priority === 'medium' ? 'yellow' : 'blue'}" style="flex-shrink:0;">${t.priority}</span>
+            <div class="gap-item-text"><strong>${t.doc_topic}</strong><br>${t.reason}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">🔄</span><h4>Outdated training</h4><span class="tag tag-yellow">${data.outdated_training?.length || 0}</span></div>
+      <div class="gap-card-body" style="max-height:400px;overflow-y:auto;">
+        ${(data.outdated_training || []).map(m => `
+          <div class="gap-item">
+            <div class="gap-item-icon">📄</div>
+            <div class="gap-item-text"><strong>${m.module}</strong><br>${m.issue}<br><em style="color:var(--ms-blue);">→ ${m.recommendation}</em></div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">✨</span><h4>Recommended new modules</h4><span class="tag tag-purple">${data.recommended_new_modules?.length || 0}</span></div>
+      <div class="gap-card-body" style="max-height:400px;overflow-y:auto;">
+        ${(data.recommended_new_modules || []).map(m => `
+          <div class="gap-item">
+            <span class="tag tag-${m.priority === 'high' ? 'red' : m.priority === 'medium' ? 'yellow' : 'blue'}" style="flex-shrink:0;">${m.priority}</span>
+            <div class="gap-item-text"><strong>${m.title}</strong><br>${m.covers}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">⚡</span><h4>Quick wins</h4><span class="tag tag-green">${data.quick_wins?.length || 0}</span></div>
+      <div class="gap-card-body" style="max-height:400px;overflow-y:auto;">
+        ${(data.quick_wins || []).map(q => `
+          <div class="gap-item">
+            <div class="gap-item-icon">✓</div>
+            <div class="gap-item-text"><strong>${q.action}</strong><br>${q.impact}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+  toast('AI gap analysis complete', 'success');
 }
 
 // ── NAVIGATION ───────────────────────────────────────────────────────────
@@ -1115,27 +1865,135 @@ function switchView(name) {
   document.querySelector(`[data-view="${name}"]`)?.classList.add('active');
 }
 
-function selectModule(id) {
-  currentModule = MODULES.find(m => m.id === id);
-  renderModuleList(MODULES);
+// ── COMPARE ──────────────────────────────────────────────────────────────
+function populateCompareDropdown() {
+  const sel = document.getElementById('compare-module');
+  // Clear all except first option
+  while (sel.options.length > 1) sel.remove(1);
+
+  state.modules.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.uid;
+    opt.textContent = m.title;
+    sel.appendChild(opt);
+  });
+
+  sel.onchange = () => {
+    const m = state.modules.find(x => x.uid === sel.value);
+    if (m) {
+      document.getElementById('compare-content').value =
+        `# ${m.title}\n\n${m.summary || ''}\n\nUnits: ${(m.units || []).join(', ')}`;
+    }
+  };
 }
 
-function openInEditor(id) {
-  currentModule = MODULES.find(m => m.id === id);
-  document.getElementById('main-editor').value = currentModule.content;
-  document.getElementById('editor-title').textContent = currentModule.title;
-  document.getElementById('editor-subtitle').textContent = `${currentModule.units} units · Status: ${currentModule.status} · Last updated ${currentModule.updated}`;
-  clearChat();
-  addChatMsg('ai', `I've loaded **${currentModule.title}**. This module is currently marked as **${currentModule.status}**.\n\nHow would you like me to help? I can rewrite outdated sections, add new content about recent features, or check accuracy against Microsoft docs.`);
-  switchView('editor');
+async function runCompare() {
+  const key = localStorage.getItem('cs_api_key');
+  if (!key) { toast('Please add your API key in Settings', 'warning'); openSettings(); return; }
+
+  const content = document.getElementById('compare-content').value.trim();
+  if (!content) { toast('Please select a module or paste content', 'warning'); return; }
+
+  const btn = document.getElementById('compare-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Comparing…';
+  document.getElementById('compare-results').innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div> Analyzing with AI…</div>';
+
+  const docContext = state.flatDocTopics.filter(d => d.depth <= 2).slice(0, 50).map(d => d.title).join(', ');
+
+  const prompt = `You are a Microsoft documentation accuracy reviewer. Compare this training content against the documentation structure for ${state.productName}.
+
+CONTENT TO REVIEW:
+---
+${content.substring(0, 3000)}
+---
+
+PRODUCT DOCUMENTATION TOPICS (for reference):
+${docContext}
+
+Analyze for:
+1. Factual inaccuracies or outdated information
+2. Missing important topics from documentation
+3. Terminology changes
+4. Deprecated features still mentioned
+5. Topics that should be expanded
+
+Respond ONLY in this JSON format:
+{
+  "accuracy_score": 85,
+  "summary": "One sentence summary",
+  "issues": [
+    { "severity": "high|medium|low", "type": "outdated|missing|incorrect|terminology", "issue": "Description", "fix": "How to fix it" }
+  ],
+  "strengths": ["What's done well"],
+  "missing_doc_topics": ["Doc topics not covered in this training"],
+  "updated_snippet": "A corrected version of the most problematic paragraph (if any)"
+}`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await resp.json();
+    if (data.content?.[0]?.text) {
+      try {
+        const clean = data.content[0].text.replace(/```json|```/g, '').trim();
+        const result = JSON.parse(clean);
+        renderCompareResults(result);
+      } catch {
+        document.getElementById('compare-results').innerHTML = `<div class="card"><div class="card-body"><pre style="font-size:12px;white-space:pre-wrap;">${data.content[0].text}</pre></div></div>`;
+      }
+    } else if (data.error) {
+      toast(`API error: ${data.error.message}`, 'warning');
+    }
+  } catch (e) {
+    toast('Comparison failed — check API key', 'warning');
+  }
+  btn.disabled = false;
+  btn.textContent = '⚖️ Compare now';
 }
 
-function filterModules(q) {
-  const filtered = MODULES.filter(m =>
-    m.title.toLowerCase().includes(q.toLowerCase()) ||
-    m.tags.some(t => t.includes(q.toLowerCase()))
-  );
-  renderModuleList(filtered);
+function renderCompareResults(r) {
+  const score = r.accuracy_score || 0;
+  const color = score >= 80 ? 'var(--success)' : score >= 60 ? '#d97706' : 'var(--danger)';
+  document.getElementById('compare-results').innerHTML = `
+  <div class="card">
+    <div class="card-header">
+      <span>📊</span><h3>Comparison results</h3>
+      <span style="margin-left:auto;font-size:22px;font-weight:600;color:${color};">${score}%</span>
+    </div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:16px;">
+      <p style="font-size:13.5px;">${r.summary}</p>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${score}%;background:${color};"></div></div>
+      ${r.issues?.length ? `
+      <div>
+        <p style="font-size:12px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Issues found (${r.issues.length})</p>
+        ${r.issues.map(i => `
+          <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+            <span class="tag tag-${i.severity === 'high' ? 'red' : i.severity === 'medium' ? 'yellow' : 'blue'}" style="flex-shrink:0;">${i.severity}</span>
+            <div style="font-size:12.5px;"><strong>${i.issue}</strong><br><span style="color:var(--ms-blue);">Fix: ${i.fix}</span></div>
+          </div>`).join('')}
+      </div>` : ''}
+      ${r.missing_doc_topics?.length ? `
+      <div>
+        <p style="font-size:12px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Missing doc topics</p>
+        ${r.missing_doc_topics.map(t => `<div style="font-size:12.5px;padding:3px 0;display:flex;gap:6px;"><span style="color:var(--danger);">✗</span>${t}</div>`).join('')}
+      </div>` : ''}
+      ${r.strengths?.length ? `
+      <div>
+        <p style="font-size:12px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Strengths</p>
+        ${r.strengths.map(s => `<div style="font-size:12.5px;padding:3px 0;display:flex;gap:6px;"><span style="color:var(--success);">✓</span>${s}</div>`).join('')}
+      </div>` : ''}
+      ${r.updated_snippet ? `
+      <div>
+        <p style="font-size:12px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Suggested rewrite</p>
+        <pre style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-size:12px;white-space:pre-wrap;font-family:'JetBrains Mono',monospace;">${r.updated_snippet}</pre>
+      </div>` : ''}
+    </div>
+  </div>`;
+  toast('Comparison complete', 'success');
 }
 
 // ── EDITOR ───────────────────────────────────────────────────────────────
@@ -1163,12 +2021,7 @@ function previewMode() {
 }
 
 function saveContent() {
-  if (currentModule) {
-    currentModule.content = document.getElementById('main-editor').value;
-    toast('Module saved successfully', 'success');
-  } else {
-    toast('No module selected', 'warning');
-  }
+  toast('Content saved to browser memory', 'success');
 }
 
 function copyContent() {
@@ -1178,7 +2031,7 @@ function copyContent() {
 
 function downloadContent() {
   const text = document.getElementById('main-editor').value;
-  const title = currentModule ? currentModule.title.replace(/\s+/g, '-').toLowerCase() : 'content';
+  const title = state.currentModule ? state.currentModule.title.replace(/\s+/g, '-').toLowerCase() : 'content';
   const blob = new Blob([text], { type: 'text/markdown' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = `${title}.md`; a.click();
@@ -1186,10 +2039,10 @@ function downloadContent() {
 }
 
 function aiRewrite() {
-  quickPrompt('Please rewrite and improve this content to ensure it reflects the latest Microsoft Copilot Studio features and follows Microsoft Learn best practices for clarity, engagement, and accuracy.');
+  quickPrompt('Please rewrite and improve this content to ensure it reflects the latest features and follows Microsoft Learn best practices for clarity, engagement, and accuracy.');
 }
 
-// ── AI CHAT ───────────────────────────────────────────────────────────────
+// ── AI CHAT ──────────────────────────────────────────────────────────────
 function addChatMsg(role, text) {
   const container = document.getElementById('chat-messages');
   const div = document.createElement('div');
@@ -1212,9 +2065,7 @@ function showTyping() {
   container.scrollTop = container.scrollHeight;
 }
 
-function hideTyping() {
-  document.getElementById('typing')?.remove();
-}
+function hideTyping() { document.getElementById('typing')?.remove(); }
 
 function clearChat() {
   document.getElementById('chat-messages').innerHTML = '';
@@ -1233,11 +2084,7 @@ async function sendChat() {
   if (!userMsg) return;
 
   const key = localStorage.getItem('cs_api_key');
-  if (!key) {
-    toast('Please add your Anthropic API key in Settings first', 'warning');
-    openSettings();
-    return;
-  }
+  if (!key) { toast('Please add your Anthropic API key in Settings first', 'warning'); openSettings(); return; }
 
   addChatMsg('user', userMsg);
   input.value = '';
@@ -1246,10 +2093,10 @@ async function sendChat() {
   document.getElementById('chat-send-btn').disabled = true;
 
   const editorContent = document.getElementById('main-editor').value;
-  const systemPrompt = `You are an expert instructional designer and technical writer specializing in Microsoft Copilot Studio content for Microsoft Learn. You help create and update online training modules that are accurate, engaging, and aligned with the latest product features.
+  const systemPrompt = `You are an expert instructional designer and technical writer specializing in ${state.productName || 'Microsoft'} content for Microsoft Learn. You help create and update online training modules.
 
-Current module context: ${currentModule ? currentModule.title : 'General content'}
-Content status: ${currentModule ? currentModule.status : 'unknown'}
+Current module context: ${state.currentModule ? state.currentModule.title : 'General content'}
+Product: ${state.productName || 'Not selected'}
 
 Current editor content:
 ---
@@ -1261,8 +2108,7 @@ Guidelines:
 - Use second person ("you") and active voice
 - Include practical examples relevant to enterprise scenarios
 - Format in Markdown with proper headings
-- Reference the latest Copilot Studio features accurately
-- When rewriting content, preserve the structure but modernize outdated information`;
+- Reference the latest product features accurately`;
 
   chatHistory.push({ role: 'user', content: userMsg });
   showTyping();
@@ -1270,13 +2116,8 @@ Guidelines:
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2000,
-        system: systemPrompt,
-        messages: chatHistory
-      })
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, system: systemPrompt, messages: chatHistory })
     });
     const data = await resp.json();
     hideTyping();
@@ -1284,337 +2125,23 @@ Guidelines:
       const reply = data.content[0].text;
       chatHistory.push({ role: 'assistant', content: reply });
       addChatMsg('ai', reply);
-      // If response contains markdown content, offer to apply
-      if (reply.includes('#') && reply.length > 200) {
-        const applyBtn = document.createElement('button');
-        applyBtn.className = 'btn btn-secondary btn-sm';
-        applyBtn.style.marginTop = '8px';
-        applyBtn.textContent = '↓ Apply to editor';
-        applyBtn.onclick = () => {
-          const mdMatch = reply.match(/```(?:markdown)?\n([\s\S]+?)```/);
-          document.getElementById('main-editor').value = mdMatch ? mdMatch[1] : reply;
-          toast('Content applied to editor', 'success');
-          applyBtn.remove();
-        };
-        document.querySelector('#chat-messages .chat-msg:last-child .chat-msg-bubble').appendChild(applyBtn);
-      }
     } else if (data.error) {
       addChatMsg('ai', `⚠️ API error: ${data.error.message}`);
     }
   } catch (e) {
     hideTyping();
-    addChatMsg('ai', `⚠️ Connection error. Please check your API key and network connection.`);
+    addChatMsg('ai', `⚠️ Connection error. Check your API key and network.`);
   }
 
   isGenerating = false;
   document.getElementById('chat-send-btn').disabled = false;
 }
 
-// ── GENERATE MODULE ──────────────────────────────────────────────────────
-async function generateModule() {
-  const key = localStorage.getItem('cs_api_key');
-  if (!key) { toast('Please add your Anthropic API key in Settings', 'warning'); openSettings(); return; }
-
-  const title = document.getElementById('new-title').value.trim();
-  if (!title) { toast('Please enter a module title', 'warning'); return; }
-
-  const objective = document.getElementById('new-objective').value.trim();
-  const audience = document.getElementById('new-audience').value;
-  const duration = document.getElementById('new-duration').value;
-  const units = Array.from(document.querySelectorAll('#outline-builder input')).map(i => i.value).filter(Boolean);
-  const useSearch = document.getElementById('opt-search').checked;
-  const exercises = document.getElementById('opt-exercises').checked;
-  const quiz = document.getElementById('opt-quiz').checked;
-  const tips = document.getElementById('opt-tips').checked;
-
-  const btn = document.getElementById('gen-btn');
-  btn.disabled = true;
-  const progress = document.getElementById('gen-progress');
-  const bar = document.getElementById('gen-bar');
-  const status = document.getElementById('gen-status');
-  progress.style.display = 'block';
-
-  const steps = ['Analyzing outline…', 'Searching for latest features…', 'Generating content…', 'Adding exercises…', 'Finalizing…'];
-  let step = 0;
-  const interval = setInterval(() => {
-    if (step < steps.length) {
-      status.textContent = steps[step];
-      bar.style.width = ((step + 1) / steps.length * 85) + '%';
-      step++;
-    }
-  }, 900);
-
-  const prompt = `Create a complete Microsoft Learn module about "${title}" for Copilot Studio.
-
-Learning objective: ${objective || 'Not specified'}
-Audience: ${audience}
-Duration: ${duration}
-Units to cover: ${units.join(', ')}
-${exercises ? '- Include at least one hands-on exercise with step-by-step instructions' : ''}
-${quiz ? '- Include knowledge check questions at the end' : ''}
-${tips ? '- Include tips and best practice callout boxes (use > blockquote format)' : ''}
-
-Write the full content in Markdown format following Microsoft Learn conventions:
-- Clear H1 title, H2 sections, H3 subsections
-- Second person, active voice
-- Task-oriented with practical enterprise examples
-- Accurate and up-to-date for Copilot Studio as of early 2025
-- Include prerequisites section
-- Use tables where appropriate for comparing options`;
-
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 3000, messages: [{ role: 'user', content: prompt }] })
-    });
-    const data = await resp.json();
-    clearInterval(interval);
-    bar.style.width = '100%';
-    status.textContent = 'Done!';
-
-    if (data.content?.[0]?.text) {
-      const content = data.content[0].text;
-      const newMod = {
-        id: MODULES.length + 1, title, icon: '📄', status: 'draft',
-        tags: [audience.toLowerCase(), 'new'], units: units.length,
-        updated: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-        content
-      };
-      MODULES.push(newMod);
-      document.getElementById('count-modules').textContent = MODULES.length;
-      renderModuleList(MODULES);
-      openInEditor(newMod.id);
-      toast(`Module "${title}" created successfully`, 'success');
-    }
-  } catch (e) {
-    clearInterval(interval);
-    toast('Generation failed — check your API key', 'warning');
-  }
-  btn.disabled = false;
-  setTimeout(() => { progress.style.display = 'none'; bar.style.width = '0%'; }, 1500);
-}
-
-// ── GAP ANALYSIS ─────────────────────────────────────────────────────────
-async function runGapAnalysis() {
-  const key = localStorage.getItem('cs_api_key');
-  if (!key) { toast('Please add your API key in Settings', 'warning'); openSettings(); return; }
-
-  const btn = document.getElementById('gap-btn');
-  btn.disabled = true;
-  btn.textContent = '⏳ Analyzing…';
-  document.getElementById('gap-results').innerHTML = `<div class="empty-state"><div class="empty-state-icon">⏳</div><p>Scanning ${MODULES.length} modules against latest Copilot Studio documentation…</p></div>`;
-
-  const titles = MODULES.map(m => `${m.id}. ${m.title} (status: ${m.status}, updated: ${m.updated})`).join('\n');
-  const prompt = `You are a content audit specialist for Microsoft Learn. Analyze this list of Copilot Studio training modules and identify content gaps, missing topics, and update priorities.
-
-Modules:
-${titles}
-
-Provide a gap analysis in this exact JSON format (no markdown, just JSON):
-{
-  "missing_topics": [
-    { "topic": "Topic name", "priority": "high|medium|low", "reason": "Why it's needed" }
-  ],
-  "outdated_modules": [
-    { "module_id": 1, "issue": "Specific outdated content", "update_needed": "What to update" }
-  ],
-  "recommended_new_modules": [
-    { "title": "Module title", "audience": "target audience", "rationale": "Why add this" }
-  ],
-  "quick_wins": [
-    { "action": "Specific action to take", "impact": "Expected impact" }
-  ]
-}`;
-
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] })
-    });
-    const data = await resp.json();
-    if (data.content?.[0]?.text) {
-      try {
-        const clean = data.content[0].text.replace(/```json|```/g, '').trim();
-        const analysis = JSON.parse(clean);
-        renderGapResults(analysis);
-      } catch {
-        document.getElementById('gap-results').innerHTML = `<div class="card"><div class="card-body"><pre style="font-size:12px;white-space:pre-wrap;">${data.content[0].text}</pre></div></div>`;
-      }
-    }
-  } catch (e) {
-    toast('Analysis failed — check API key', 'warning');
-  }
-  btn.disabled = false;
-  btn.textContent = '🔍 Run analysis';
-}
-
-function renderGapResults(data) {
-  const container = document.getElementById('gap-results');
-  container.innerHTML = `
-  <div class="gap-grid">
-    <div class="gap-card">
-      <div class="gap-card-header"><span style="font-size:18px;">🚨</span><h4>Missing topics</h4><span class="tag tag-red">${data.missing_topics?.length || 0}</span></div>
-      <div class="gap-card-body">
-        ${(data.missing_topics || []).map(t => `
-          <div class="gap-item">
-            <div class="gap-item-icon"><span class="tag tag-${t.priority === 'high' ? 'red' : t.priority === 'medium' ? 'yellow' : 'blue'}">${t.priority}</span></div>
-            <div class="gap-item-text"><strong>${t.topic}</strong><br>${t.reason}</div>
-          </div>`).join('')}
-      </div>
-    </div>
-    <div class="gap-card">
-      <div class="gap-card-header"><span style="font-size:18px;">🔄</span><h4>Modules needing updates</h4><span class="tag tag-yellow">${data.outdated_modules?.length || 0}</span></div>
-      <div class="gap-card-body">
-        ${(data.outdated_modules || []).map(m => {
-          const mod = MODULES.find(x => x.id === m.module_id);
-          return `<div class="gap-item">
-            <div class="gap-item-icon">📄</div>
-            <div class="gap-item-text"><strong>${mod?.title || 'Module ' + m.module_id}</strong><br>${m.issue}<br><em style="color: var(--ms-blue);">Fix: ${m.update_needed}</em>
-            <br><button class="btn btn-secondary btn-sm" style="margin-top:4px;" onclick="openInEditor(${m.module_id})">Edit now</button></div>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>
-    <div class="gap-card">
-      <div class="gap-card-header"><span style="font-size:18px;">✨</span><h4>Recommended new modules</h4><span class="tag tag-purple">${data.recommended_new_modules?.length || 0}</span></div>
-      <div class="gap-card-body">
-        ${(data.recommended_new_modules || []).map(m => `
-          <div class="gap-item">
-            <div class="gap-item-icon">📌</div>
-            <div class="gap-item-text"><strong>${m.title}</strong><br>Audience: ${m.audience}<br>${m.rationale}
-            <br><button class="btn btn-secondary btn-sm" style="margin-top:4px;" onclick="prefillCreate('${m.title.replace(/'/g, '')}')">Create this module</button></div>
-          </div>`).join('')}
-      </div>
-    </div>
-    <div class="gap-card">
-      <div class="gap-card-header"><span style="font-size:18px;">⚡</span><h4>Quick wins</h4><span class="tag tag-green">${data.quick_wins?.length || 0}</span></div>
-      <div class="gap-card-body">
-        ${(data.quick_wins || []).map(q => `
-          <div class="gap-item">
-            <div class="gap-item-icon">✓</div>
-            <div class="gap-item-text"><strong>${q.action}</strong><br>${q.impact}</div>
-          </div>`).join('')}
-      </div>
-    </div>
-  </div>`;
-  toast('Gap analysis complete', 'success');
-}
-
-function prefillCreate(title) {
-  switchView('create');
-  document.getElementById('new-title').value = title;
-}
-
-// ── COMPARE ───────────────────────────────────────────────────────────────
-async function runCompare() {
-  const key = localStorage.getItem('cs_api_key');
-  if (!key) { toast('Please add your API key in Settings', 'warning'); openSettings(); return; }
-
-  const content = document.getElementById('compare-content').value.trim();
-  if (!content) { toast('Please select a module or paste content', 'warning'); return; }
-
-  const btn = document.getElementById('compare-btn');
-  btn.disabled = true;
-  btn.textContent = '⏳ Comparing…';
-  document.getElementById('compare-results').innerHTML = `<div class="empty-state"><div class="empty-state-icon">⏳</div><p>Analyzing content against Microsoft documentation…</p></div>`;
-
-  const prompt = `You are a Microsoft documentation accuracy reviewer. Compare this Microsoft Learn content against current Microsoft Copilot Studio documentation.
-
-CONTENT TO REVIEW:
----
-${content.substring(0, 3000)}
----
-
-Analyze for:
-1. Factual inaccuracies or outdated information
-2. Missing important features or capabilities
-3. Terminology changes (e.g., PVA vs Copilot Studio)
-4. UI navigation or feature location changes
-5. Deprecated features still mentioned
-
-Respond ONLY in this JSON format:
-{
-  "accuracy_score": 85,
-  "summary": "One sentence summary",
-  "issues": [
-    { "severity": "high|medium|low", "type": "outdated|missing|incorrect|terminology", "issue": "Description", "fix": "How to fix it" }
-  ],
-  "strengths": ["What's done well"],
-  "updated_snippet": "A corrected version of the most problematic paragraph (if any)"
-}`;
-
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] })
-    });
-    const data = await resp.json();
-    if (data.content?.[0]?.text) {
-      try {
-        const clean = data.content[0].text.replace(/```json|```/g, '').trim();
-        const result = JSON.parse(clean);
-        renderCompareResults(result);
-      } catch {
-        document.getElementById('compare-results').innerHTML = `<div class="card"><div class="card-body"><pre style="font-size:12px;white-space:pre-wrap;">${data.content[0].text}</pre></div></div>`;
-      }
-    }
-  } catch (e) {
-    toast('Comparison failed — check API key', 'warning');
-  }
-  btn.disabled = false;
-  btn.textContent = '⚖️ Compare now';
-}
-
-function renderCompareResults(r) {
-  const score = r.accuracy_score || 0;
-  const color = score >= 80 ? 'var(--success)' : score >= 60 ? '#d97706' : 'var(--danger)';
-  const html = `
-  <div class="card">
-    <div class="card-header">
-      <span>📊</span><h3>Comparison results</h3>
-      <span style="margin-left:auto;font-size:22px;font-weight:600;color:${color};">${score}%</span>
-    </div>
-    <div class="card-body" style="display:flex;flex-direction:column;gap:16px;">
-      <p style="font-size:13.5px;">${r.summary}</p>
-      <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${score}%;background:${color};"></div></div>
-      ${r.issues?.length ? `
-      <div>
-        <p style="font-size:12px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Issues found (${r.issues.length})</p>
-        ${r.issues.map(i => `
-          <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
-            <span class="tag tag-${i.severity === 'high' ? 'red' : i.severity === 'medium' ? 'yellow' : 'blue'}" style="flex-shrink:0;">${i.severity}</span>
-            <div style="font-size:12.5px;"><strong>${i.issue}</strong><br><span style="color:var(--ms-blue);">Fix: ${i.fix}</span></div>
-          </div>`).join('')}
-      </div>` : ''}
-      ${r.strengths?.length ? `
-      <div>
-        <p style="font-size:12px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Strengths</p>
-        ${r.strengths.map(s => `<div style="font-size:12.5px;padding:3px 0;display:flex;gap:6px;"><span style="color:var(--success);">✓</span>${s}</div>`).join('')}
-      </div>` : ''}
-      ${r.updated_snippet ? `
-      <div>
-        <p style="font-size:12px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Suggested rewrite</p>
-        <pre style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-size:12px;white-space:pre-wrap;font-family:'JetBrains Mono',monospace;">${r.updated_snippet}</pre>
-      </div>` : ''}
-    </div>
-  </div>`;
-  document.getElementById('compare-results').innerHTML = html;
-  toast('Comparison complete', 'success');
-}
-
-// ── WEB SEARCH PLACEHOLDER ─────────────────────────────────────────────
-function runWebSearch() {
-  toast('Fetching latest Copilot Studio updates…', 'info');
-  setTimeout(() => toast('Updates loaded — see Recent Updates panel', 'success'), 2000);
-}
-
-// ── SETTINGS ──────────────────────────────────────────────────────────────
+// ── SETTINGS ─────────────────────────────────────────────────────────────
 function openSettings() {
   document.getElementById('api-key-input').value = localStorage.getItem('cs_api_key') || '';
   document.getElementById('manager-name').value = localStorage.getItem('cs_name') || '';
+  document.getElementById('cache-hours').value = localStorage.getItem('cm_cache_hours') || '24';
   document.getElementById('settings-modal').classList.add('open');
 }
 function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
@@ -1622,38 +2149,23 @@ function saveSettings() {
   const key = document.getElementById('api-key-input').value.trim();
   if (key) localStorage.setItem('cs_api_key', key);
   localStorage.setItem('cs_name', document.getElementById('manager-name').value.trim());
+  localStorage.setItem('cm_cache_hours', document.getElementById('cache-hours').value);
   closeSettings();
   toast('Settings saved', 'success');
 }
 function loadSettings() {
   const name = localStorage.getItem('cs_name');
-  if (name) document.querySelector('.topbar-title').textContent = `Copilot Studio — Content Manager · ${name}`;
+  if (name) document.getElementById('topbar-title').textContent = `Content Gap Manager · ${name}`;
 }
 
-// ── OUTLINE BUILDER ────────────────────────────────────────────────────
-function addUnit() {
-  const builder = document.getElementById('outline-builder');
-  const count = builder.children.length + 1;
-  const div = document.createElement('div');
-  div.className = 'outline-unit';
-  div.innerHTML = `<span style="color:var(--text-muted);font-size:12px;min-width:20px;">${count}.</span><input type="text" placeholder="Unit title" /><button class="btn-ghost btn-sm" onclick="removeUnit(this)">✕</button>`;
-  builder.appendChild(div);
-}
-function removeUnit(btn) {
-  btn.parentElement.remove();
-  Array.from(document.querySelectorAll('#outline-builder .outline-unit')).forEach((u, i) => {
-    u.querySelector('span').textContent = (i + 1) + '.';
-  });
-}
-
-// ── UTILS ─────────────────────────────────────────────────────────────────
+// ── UTILS ────────────────────────────────────────────────────────────────
 function toast(msg, type = 'info') {
   const container = document.getElementById('toasts');
   const t = document.createElement('div');
   t.className = `toast ${type}`;
   t.innerHTML = `<span>${type === 'success' ? '✓' : type === 'warning' ? '⚠' : 'ℹ'}</span> ${msg}`;
   container.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
+  setTimeout(() => t.remove(), 3500);
 }
 
 function autoResize(el) {
@@ -1661,7 +2173,6 @@ function autoResize(el) {
   el.style.height = Math.min(el.scrollHeight, 100) + 'px';
 }
 
-// ── SIMPLE MARKDOWN RENDERER ──────────────────────────────────────────────
 function marked(text) {
   return text
     .replace(/^# (.+)$/gm, '<h1 style="font-size:22px;font-weight:600;margin:1rem 0 0.5rem;">$1</h1>')
@@ -1672,8 +2183,7 @@ function marked(text) {
     .replace(/`(.*?)`/g, '<code style="background:var(--bg);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:12px;">$1</code>')
     .replace(/^> (.+)$/gm, '<blockquote style="border-left:3px solid var(--ms-blue);padding-left:12px;color:var(--text-muted);margin:8px 0;">$1</blockquote>')
     .replace(/^- (.+)$/gm, '<li style="margin:2px 0;">$1</li>')
-    .replace(/\n\n/g, '</p><p style="margin:0 0 0.75rem;">')
-    .replace(/^(?!<[h1-6liblockquote])/gm, '');
+    .replace(/\n\n/g, '</p><p style="margin:0 0 0.75rem;">');
 }
 
 // ── BOOT ─────────────────────────────────────────────────────────────────
