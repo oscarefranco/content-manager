@@ -644,6 +644,48 @@
     border-radius: 100px;
     font-weight: 600;
   }
+
+  /* ── Heatmap ── */
+  .heatmap { display: flex; flex-wrap: wrap; gap: 3px; padding: 8px 0; }
+  .heatmap-cell {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: transform 0.1s;
+    position: relative;
+  }
+  .heatmap-cell:hover { transform: scale(1.6); z-index: 2; }
+  .heatmap-cell.covered { background: var(--success); }
+  .heatmap-cell.partial { background: #f59e0b; }
+  .heatmap-cell.uncovered { background: var(--danger); opacity: 0.7; }
+
+  /* ── Timeline ── */
+  .timeline { display: flex; flex-direction: column; gap: 2px; }
+  .timeline-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 11px; }
+  .timeline-bar-wrap { flex: 1; height: 14px; background: var(--border); border-radius: 100px; overflow: hidden; position: relative; }
+  .timeline-bar { height: 100%; border-radius: 100px; min-width: 2px; }
+  .timeline-label { width: 180px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-muted); }
+  .timeline-date { width: 70px; flex-shrink: 0; text-align: right; color: var(--text-light); font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+
+  /* ── Tooltip ── */
+  .tooltip-wrap { position: relative; display: inline-block; }
+  .tooltip-text {
+    visibility: hidden;
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text);
+    color: #fff;
+    font-size: 10px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .tooltip-wrap:hover .tooltip-text { visibility: visible; }
 </style>
 </head>
 <body>
@@ -932,6 +974,8 @@ Select a module from Training Modules, then ask away!</div>
           <p>Compare training content against documentation to find coverage gaps</p>
         </div>
         <div class="page-header-actions">
+          <button class="btn btn-ghost btn-sm" onclick="exportGapCSV()" id="export-csv-btn" style="display:none;">📥 Export CSV</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportGapHTML()" id="export-html-btn" style="display:none;">📄 Export Report</button>
           <button class="btn btn-secondary" onclick="runClientGapAnalysis()" id="client-gap-btn">⚡ Quick scan</button>
           <button class="btn btn-primary" onclick="runGapAnalysis()" id="gap-btn">🤖 AI deep analysis</button>
         </div>
@@ -957,6 +1001,27 @@ Select a module from Training Modules, then ask away!</div>
             </div>
           </div>
           <div class="coverage-bar" id="gap-coverage-bar" style="margin-top: 8px;"></div>
+        </div>
+        <div id="gap-visuals" style="display: none; margin-bottom: 16px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div class="card">
+              <div class="card-header"><span>🗺️</span><h3>Coverage heatmap</h3><span class="text-xs text-muted ml-auto">Each cell = 1 doc topic</span></div>
+              <div class="card-body">
+                <div style="display: flex; gap: 12px; margin-bottom: 8px; font-size: 10px; color: var(--text-muted);">
+                  <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--success);"></span> Covered</span>
+                  <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:#f59e0b;"></span> Partial</span>
+                  <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--danger);opacity:0.7;"></span> Uncovered</span>
+                </div>
+                <div class="heatmap" id="gap-heatmap"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><span>📅</span><h3>Training freshness</h3><span class="text-xs text-muted ml-auto">By last modified date</span></div>
+              <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                <div class="timeline" id="gap-timeline"></div>
+              </div>
+            </div>
+          </div>
         </div>
         <div id="gap-results">
           <div class="empty-state">
@@ -1678,6 +1743,9 @@ function runClientGapAnalysis() {
     state.gapResults = { results, covered, partial, uncovered, total, coveragePct };
     renderGapSummary();
     renderGapResults(results);
+    renderGapHeatmap(results);
+    renderGapTimeline();
+    showExportButtons();
     renderDashboardStats();
     toast(`Gap analysis complete: ${coveragePct}% coverage`, 'success');
 
@@ -1723,6 +1791,156 @@ function renderGapSummary() {
     <div class="partial" style="width:${parPct}%;" title="Partial: ${g.partial}"></div>
     <div class="uncovered" style="width:${uncPct}%;" title="Uncovered: ${g.uncovered}"></div>
   `;
+}
+
+function renderGapHeatmap(results) {
+  const container = document.getElementById('gap-heatmap');
+  const visuals = document.getElementById('gap-visuals');
+  if (!results || results.length === 0) { visuals.style.display = 'none'; return; }
+  visuals.style.display = 'block';
+
+  container.innerHTML = results.map((r, i) => {
+    const title = r.docTopic.title.replace(/"/g, '&quot;');
+    const match = r.bestMatch ? r.bestMatch.title.replace(/"/g, '&quot;') : 'No match';
+    const tooltip = `${title}\n${r.coverage} (${Math.round(r.score * 100)}%)\nMatch: ${match}`;
+    return `<div class="tooltip-wrap"><div class="heatmap-cell ${r.coverage}" title="${tooltip}"></div><span class="tooltip-text">${title}</span></div>`;
+  }).join('');
+}
+
+function renderGapTimeline() {
+  const container = document.getElementById('gap-timeline');
+  if (state.modules.length === 0) return;
+
+  const now = Date.now();
+  const oldest = Math.min(...state.modules.map(m => m.last_modified ? new Date(m.last_modified).getTime() : now));
+  const range = now - oldest || 1;
+
+  const sorted = [...state.modules]
+    .filter(m => m.last_modified)
+    .sort((a, b) => new Date(a.last_modified) - new Date(b.last_modified))
+    .slice(0, 25);
+
+  container.innerHTML = sorted.map(m => {
+    const date = new Date(m.last_modified);
+    const age = now - date.getTime();
+    const ageMonths = Math.floor(age / (30 * 24 * 60 * 60 * 1000));
+    const pct = ((date.getTime() - oldest) / range * 100).toFixed(1);
+    const color = ageMonths <= 3 ? 'var(--success)' : ageMonths <= 12 ? '#f59e0b' : 'var(--danger)';
+    const dateStr = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    const label = ageMonths <= 3 ? 'Current' : ageMonths <= 12 ? `${ageMonths}mo old` : `${ageMonths}mo ⚠️`;
+
+    return `
+    <div class="timeline-row">
+      <div class="timeline-label" title="${m.title}">${m.title}</div>
+      <div class="timeline-bar-wrap">
+        <div class="timeline-bar" style="width:${Math.max(pct, 3)}%;background:${color};" title="${label}"></div>
+      </div>
+      <div class="timeline-date">${dateStr}</div>
+    </div>`;
+  }).join('');
+}
+
+function showExportButtons() {
+  document.getElementById('export-csv-btn').style.display = 'inline-flex';
+  document.getElementById('export-html-btn').style.display = 'inline-flex';
+}
+
+// ── EXPORT: CSV ──────────────────────────────────────────────────────────
+function exportGapCSV() {
+  const g = state.gapResults;
+  if (!g || !g.results) { toast('Run a gap analysis first', 'warning'); return; }
+
+  const rows = [
+    ['Doc Topic', 'Path', 'Coverage', 'Score %', 'Best Match Module', 'Module URL'].join(',')
+  ];
+
+  for (const r of g.results) {
+    const topic = `"${r.docTopic.title.replace(/"/g, '""')}"`;
+    const path = `"${r.docTopic.path.replace(/"/g, '""')}"`;
+    const coverage = r.coverage;
+    const score = Math.round(r.score * 100);
+    const match = r.bestMatch ? `"${r.bestMatch.title.replace(/"/g, '""')}"` : '';
+    const url = r.bestMatch?.url || '';
+    rows.push([topic, path, coverage, score, match, url].join(','));
+  }
+
+  const csv = rows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `gap-analysis-${state.productName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  toast('CSV exported', 'success');
+}
+
+// ── EXPORT: HTML REPORT ──────────────────────────────────────────────────
+function exportGapHTML() {
+  const g = state.gapResults;
+  if (!g || !g.results) { toast('Run a gap analysis first', 'warning'); return; }
+
+  const uncovered = g.results.filter(r => r.coverage === 'uncovered');
+  const partial = g.results.filter(r => r.coverage === 'partial');
+  const covered = g.results.filter(r => r.coverage === 'covered');
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Gap Analysis Report — ${state.productName}</title>
+<style>
+  body { font-family: Segoe UI, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; color: #1a1c2e; }
+  h1 { font-size: 22px; border-bottom: 2px solid #0078d4; padding-bottom: 8px; }
+  h2 { font-size: 16px; margin-top: 2rem; color: #333; }
+  .stats { display: flex; gap: 24px; margin: 1rem 0; }
+  .stat { text-align: center; }
+  .stat-val { font-size: 28px; font-weight: 700; }
+  .stat-label { font-size: 11px; color: #666; text-transform: uppercase; }
+  .bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin: 8px 0 24px; }
+  .bar .g { background: #107c10; } .bar .y { background: #f59e0b; } .bar .r { background: #a4262c; opacity: 0.7; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+  th { background: #f3f4f8; text-align: left; padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; color: #666; }
+  td { padding: 5px 10px; border-bottom: 1px solid #e1e4ec; }
+  .tag { display: inline-block; padding: 1px 8px; border-radius: 100px; font-size: 10px; font-weight: 600; }
+  .tag-r { background: #fde7e9; color: #a4262c; } .tag-y { background: #fff4ce; color: #835b00; } .tag-g { background: #dff6dd; color: #107c10; }
+  .footer { margin-top: 2rem; font-size: 11px; color: #999; border-top: 1px solid #e1e4ec; padding-top: 8px; }
+</style></head><body>
+<h1>📊 Gap Analysis Report — ${state.productName}</h1>
+<p>Generated ${new Date().toLocaleString()} · ${g.total} documentation topics analyzed against ${state.modules.length} training modules</p>
+
+<div class="stats">
+  <div class="stat"><div class="stat-val">${g.coveragePct}%</div><div class="stat-label">Coverage</div></div>
+  <div class="stat"><div class="stat-val" style="color:#107c10;">${g.covered}</div><div class="stat-label">Covered</div></div>
+  <div class="stat"><div class="stat-val" style="color:#f59e0b;">${g.partial}</div><div class="stat-label">Partial</div></div>
+  <div class="stat"><div class="stat-val" style="color:#a4262c;">${g.uncovered}</div><div class="stat-label">Uncovered</div></div>
+</div>
+
+<div class="bar">
+  <div class="g" style="width:${(g.covered / g.total * 100).toFixed(1)}%;"></div>
+  <div class="y" style="width:${(g.partial / g.total * 100).toFixed(1)}%;"></div>
+  <div class="r" style="width:${(g.uncovered / g.total * 100).toFixed(1)}%;"></div>
+</div>
+
+<h2>🚨 Not Covered (${uncovered.length})</h2>
+<table><tr><th>Documentation Topic</th><th>Path</th></tr>
+${uncovered.map(r => `<tr><td>${r.docTopic.title}</td><td style="font-size:11px;color:#666;">${r.docTopic.path}</td></tr>`).join('')}
+</table>
+
+<h2>⚠️ Partially Covered (${partial.length})</h2>
+<table><tr><th>Documentation Topic</th><th>Closest Training Match</th><th>Score</th></tr>
+${partial.map(r => `<tr><td>${r.docTopic.title}</td><td>${r.bestMatch?.title || '—'}</td><td>${Math.round(r.score * 100)}%</td></tr>`).join('')}
+</table>
+
+<h2>✅ Covered (${covered.length})</h2>
+<table><tr><th>Documentation Topic</th><th>Training Match</th><th>Score</th></tr>
+${covered.map(r => `<tr><td>${r.docTopic.title}</td><td>${r.bestMatch?.title || '—'}</td><td>${Math.round(r.score * 100)}%</td></tr>`).join('')}
+</table>
+
+<div class="footer">Generated by Microsoft Learn Content Gap Manager · ${state.modules.length} training modules · ${state.flatDocTopics.length} documentation topics</div>
+</body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `gap-report-${state.productName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.html`;
+  a.click();
+  toast('HTML report exported', 'success');
 }
 
 function renderGapResults(results) {
