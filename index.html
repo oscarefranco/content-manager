@@ -1145,6 +1145,7 @@ const PRODUCT_DOC_MAP = {
   'dynamics-customer-service': { path: '/en-us/dynamics365/customer-service/', name: 'Dynamics 365 Customer Service' },
   'dynamics-commerce': { path: '/en-us/dynamics365/commerce/', name: 'Dynamics 365 Commerce' },
   'dynamics-scm': { path: '/en-us/dynamics365/supply-chain/', name: 'Dynamics 365 Supply Chain' },
+  'dynamics-project-operations': { path: '/en-us/dynamics365/project-operations/', name: 'Dynamics 365 Project Operations' },
   'dynamics-field-service': { path: '/en-us/dynamics365/field-service/', name: 'Dynamics 365 Field Service' },
   'dynamics-business-central': { path: '/en-us/dynamics365/business-central/', name: 'Dynamics 365 Business Central' },
   'dynamics-human-resources': { path: '/en-us/dynamics365/human-resources/', name: 'Dynamics 365 Human Resources' },
@@ -1292,6 +1293,30 @@ async function fetchCatalogForProduct(productId) {
 }
 
 // ── API: DOCUMENTATION TOC ──────────────────────────────────────────────
+// CORS proxies used as fallback when direct fetch is blocked by browser
+const CORS_PROXIES = [
+  url => `https://api.codetabs.com/v1/proxy/?quest=${url}`,
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+];
+
+async function fetchWithCorsProxy(url) {
+  // Try direct fetch first
+  try {
+    const resp = await fetch(url);
+    if (resp.ok) return await resp.json();
+  } catch { /* CORS or network error — try proxies */ }
+
+  // Try each CORS proxy
+  for (const makeProxy of CORS_PROXIES) {
+    try {
+      const proxyUrl = makeProxy(url);
+      const resp = await fetch(proxyUrl);
+      if (resp.ok) return await resp.json();
+    } catch { /* try next proxy */ }
+  }
+  return null;
+}
+
 async function fetchDocToc(productId) {
   const cacheKey = `toc_${productId}`;
   const cached = getCached(cacheKey);
@@ -1301,11 +1326,8 @@ async function fetchDocToc(productId) {
   if (!mapping) return null;
 
   const url = `https://learn.microsoft.com${mapping.path}toc.json`;
-  const resp = await fetch(url);
-  if (!resp.ok) return null;
-
-  const data = await resp.json();
-  setCache(cacheKey, data);
+  const data = await fetchWithCorsProxy(url);
+  if (data) setCache(cacheKey, data);
   return data;
 }
 
@@ -1439,12 +1461,25 @@ async function onProductChange(productId) {
     state.modules = catalog.modules;
     state.learningPaths = catalog.learningPaths;
 
-    // Fetch documentation TOC
+    // Fetch documentation TOC (isolated so training still renders on failure)
     if (mapping) {
       toast(`Loading documentation for ${state.productName}…`, 'info');
-      const toc = await fetchDocToc(productId);
-      state.docTopics = toc;
-      state.flatDocTopics = flattenToc(toc);
+      try {
+        const toc = await fetchDocToc(productId);
+        if (toc) {
+          state.docTopics = toc;
+          state.flatDocTopics = flattenToc(toc);
+        } else {
+          state.docTopics = null;
+          state.flatDocTopics = [];
+          toast('Documentation TOC could not be loaded — training data still available', 'warning');
+        }
+      } catch (docErr) {
+        console.warn('Doc TOC fetch failed:', docErr);
+        state.docTopics = null;
+        state.flatDocTopics = [];
+        toast('Documentation fetch failed (CORS) — training data loaded successfully', 'warning');
+      }
     } else {
       state.docTopics = null;
       state.flatDocTopics = [];
