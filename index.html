@@ -666,7 +666,7 @@
     <option value="">— Select a product —</option>
   </select>
   <div class="topbar-right">
-    <span class="badge-model" id="model-badge">claude-sonnet-4</span>
+    <span class="badge-model" id="model-badge">gpt-4.1-mini</span>
     <button class="btn-settings" onclick="openSettings()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       Settings
@@ -1016,9 +1016,21 @@ Select a module from Training Modules, then ask away!</div>
     </div>
     <div class="modal-body">
       <div class="field">
-        <label>Anthropic API Key</label>
-        <input type="password" id="api-key-input" placeholder="sk-ant-…" autocomplete="off" />
-        <p class="field-hint">Stored in your browser's localStorage. Never sent anywhere except Anthropic's API.</p>
+        <label>GitHub Personal Access Token</label>
+        <input type="password" id="api-key-input" placeholder="ghp_…" autocomplete="off" />
+        <p class="field-hint">Generate at <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--ms-blue);">github.com/settings/tokens</a> — no special scopes needed. Stored in localStorage only.</p>
+      </div>
+      <div class="field">
+        <label>AI Model</label>
+        <select id="ai-model-select">
+          <option value="openai/gpt-4.1-mini">GPT-4.1 Mini (fast, 150 req/day)</option>
+          <option value="openai/gpt-4.1-nano">GPT-4.1 Nano (fastest, 150 req/day)</option>
+          <option value="openai/gpt-4.1">GPT-4.1 (powerful, 50 req/day)</option>
+          <option value="meta/llama-4-scout-17b-16e-instruct">Llama 4 Scout 17B (150 req/day)</option>
+          <option value="mistralai/mistral-small-2503">Mistral Small (150 req/day)</option>
+          <option value="deepseek/deepseek-r1">DeepSeek R1 (50 req/day)</option>
+        </select>
+        <p class="field-hint">Powered by <a href="https://github.com/marketplace/models" target="_blank" style="color:var(--ms-blue);">GitHub Models</a> — free with your GitHub account.</p>
       </div>
       <div class="field">
         <label>Content manager name</label>
@@ -1110,6 +1122,44 @@ let state = {
 let chatHistory = [];
 let apiKey = '';
 let isGenerating = false;
+
+// ── GITHUB MODELS API HELPER ─────────────────────────────────────────────
+function getAIConfig() {
+  return {
+    token: localStorage.getItem('gh_models_token') || '',
+    model: localStorage.getItem('gh_models_model') || 'openai/gpt-4.1-mini',
+  };
+}
+
+async function callAI(messages, { systemPrompt = '', maxTokens = 2000 } = {}) {
+  const { token, model } = getAIConfig();
+  if (!token) throw new Error('NO_TOKEN');
+
+  const body = {
+    model,
+    max_tokens: maxTokens,
+    messages: [],
+  };
+  if (systemPrompt) body.messages.push({ role: 'system', content: systemPrompt });
+  body.messages.push(...messages);
+
+  const resp = await fetch('https://models.github.ai/inference/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || `GitHub Models API error (${resp.status})`);
+  }
+
+  const data = await resp.json();
+  return data.choices?.[0]?.message?.content || '';
+}
 
 // ── CACHE LAYER ──────────────────────────────────────────────────────────
 function getCacheTTL() {
@@ -1223,7 +1273,7 @@ function flattenToc(toc, depth = 0, parentPath = '') {
 
 // ── INIT ──────────────────────────────────────────────────────────────────
 async function init() {
-  apiKey = localStorage.getItem('cs_api_key') || '';
+  apiKey = localStorage.getItem('gh_models_token') || '';
   loadSettings();
 
   try {
@@ -1730,8 +1780,8 @@ function renderGapResults(results) {
 
 // ── AI GAP ANALYSIS ──────────────────────────────────────────────────────
 async function runGapAnalysis() {
-  const key = localStorage.getItem('cs_api_key');
-  if (!key) { toast('Please add your Anthropic API key in Settings', 'warning'); openSettings(); return; }
+  const { token } = getAIConfig();
+  if (!token) { toast('Please add your GitHub token in Settings', 'warning'); openSettings(); return; }
   if (state.modules.length === 0) { toast('Load a product first', 'warning'); return; }
 
   const btn = document.getElementById('gap-btn');
@@ -1775,25 +1825,17 @@ Provide a thorough gap analysis in this exact JSON format (no markdown, just JSO
 }`;
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 3000, messages: [{ role: 'user', content: prompt }] })
-    });
-    const data = await resp.json();
-    if (data.content?.[0]?.text) {
-      try {
-        const clean = data.content[0].text.replace(/```json|```/g, '').trim();
-        const analysis = JSON.parse(clean);
-        renderAIGapResults(analysis);
-      } catch {
-        document.getElementById('gap-results').innerHTML = `<div class="card"><div class="card-body"><pre style="font-size:12px;white-space:pre-wrap;">${data.content[0].text}</pre></div></div>`;
-      }
-    } else if (data.error) {
-      toast(`API error: ${data.error.message}`, 'warning');
+    const reply = await callAI([{ role: 'user', content: prompt }], { maxTokens: 3000 });
+    try {
+      const clean = reply.replace(/```json|```/g, '').trim();
+      const analysis = JSON.parse(clean);
+      renderAIGapResults(analysis);
+    } catch {
+      document.getElementById('gap-results').innerHTML = `<div class="card"><div class="card-body"><pre style="font-size:12px;white-space:pre-wrap;">${reply}</pre></div></div>`;
     }
   } catch (e) {
-    toast('AI analysis failed — check API key', 'warning');
+    if (e.message === 'NO_TOKEN') { toast('Please add your GitHub token in Settings', 'warning'); openSettings(); }
+    else toast(`AI analysis failed: ${e.message}`, 'warning');
   }
 
   btn.disabled = false;
@@ -1888,8 +1930,8 @@ function populateCompareDropdown() {
 }
 
 async function runCompare() {
-  const key = localStorage.getItem('cs_api_key');
-  if (!key) { toast('Please add your API key in Settings', 'warning'); openSettings(); return; }
+  const { token } = getAIConfig();
+  if (!token) { toast('Please add your GitHub token in Settings', 'warning'); openSettings(); return; }
 
   const content = document.getElementById('compare-content').value.trim();
   if (!content) { toast('Please select a module or paste content', 'warning'); return; }
@@ -1931,25 +1973,17 @@ Respond ONLY in this JSON format:
 }`;
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] })
-    });
-    const data = await resp.json();
-    if (data.content?.[0]?.text) {
-      try {
-        const clean = data.content[0].text.replace(/```json|```/g, '').trim();
-        const result = JSON.parse(clean);
-        renderCompareResults(result);
-      } catch {
-        document.getElementById('compare-results').innerHTML = `<div class="card"><div class="card-body"><pre style="font-size:12px;white-space:pre-wrap;">${data.content[0].text}</pre></div></div>`;
-      }
-    } else if (data.error) {
-      toast(`API error: ${data.error.message}`, 'warning');
+    const reply = await callAI([{ role: 'user', content: prompt }]);
+    try {
+      const clean = reply.replace(/```json|```/g, '').trim();
+      const result = JSON.parse(clean);
+      renderCompareResults(result);
+    } catch {
+      document.getElementById('compare-results').innerHTML = `<div class="card"><div class="card-body"><pre style="font-size:12px;white-space:pre-wrap;">${reply}</pre></div></div>`;
     }
   } catch (e) {
-    toast('Comparison failed — check API key', 'warning');
+    if (e.message === 'NO_TOKEN') { toast('Please add your GitHub token in Settings', 'warning'); openSettings(); }
+    else toast(`Comparison failed: ${e.message}`, 'warning');
   }
   btn.disabled = false;
   btn.textContent = '⚖️ Compare now';
@@ -2083,8 +2117,8 @@ async function sendChat() {
   const userMsg = input.value.trim();
   if (!userMsg) return;
 
-  const key = localStorage.getItem('cs_api_key');
-  if (!key) { toast('Please add your Anthropic API key in Settings first', 'warning'); openSettings(); return; }
+  const { token } = getAIConfig();
+  if (!token) { toast('Please add your GitHub token in Settings first', 'warning'); openSettings(); return; }
 
   addChatMsg('user', userMsg);
   input.value = '';
@@ -2114,23 +2148,14 @@ Guidelines:
   showTyping();
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, system: systemPrompt, messages: chatHistory })
-    });
-    const data = await resp.json();
+    const reply = await callAI(chatHistory, { systemPrompt });
     hideTyping();
-    if (data.content?.[0]?.text) {
-      const reply = data.content[0].text;
-      chatHistory.push({ role: 'assistant', content: reply });
-      addChatMsg('ai', reply);
-    } else if (data.error) {
-      addChatMsg('ai', `⚠️ API error: ${data.error.message}`);
-    }
+    chatHistory.push({ role: 'assistant', content: reply });
+    addChatMsg('ai', reply);
   } catch (e) {
     hideTyping();
-    addChatMsg('ai', `⚠️ Connection error. Check your API key and network.`);
+    if (e.message === 'NO_TOKEN') addChatMsg('ai', '⚠️ Please add your GitHub token in Settings.');
+    else addChatMsg('ai', `⚠️ Error: ${e.message}`);
   }
 
   isGenerating = false;
@@ -2139,7 +2164,8 @@ Guidelines:
 
 // ── SETTINGS ─────────────────────────────────────────────────────────────
 function openSettings() {
-  document.getElementById('api-key-input').value = localStorage.getItem('cs_api_key') || '';
+  document.getElementById('api-key-input').value = localStorage.getItem('gh_models_token') || '';
+  document.getElementById('ai-model-select').value = localStorage.getItem('gh_models_model') || 'openai/gpt-4.1-mini';
   document.getElementById('manager-name').value = localStorage.getItem('cs_name') || '';
   document.getElementById('cache-hours').value = localStorage.getItem('cm_cache_hours') || '24';
   document.getElementById('settings-modal').classList.add('open');
@@ -2147,15 +2173,21 @@ function openSettings() {
 function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
 function saveSettings() {
   const key = document.getElementById('api-key-input').value.trim();
-  if (key) localStorage.setItem('cs_api_key', key);
+  if (key) localStorage.setItem('gh_models_token', key);
+  localStorage.setItem('gh_models_model', document.getElementById('ai-model-select').value);
   localStorage.setItem('cs_name', document.getElementById('manager-name').value.trim());
   localStorage.setItem('cm_cache_hours', document.getElementById('cache-hours').value);
+  // Update model badge
+  const model = document.getElementById('ai-model-select').value;
+  document.getElementById('model-badge').textContent = model.split('/').pop();
   closeSettings();
   toast('Settings saved', 'success');
 }
 function loadSettings() {
   const name = localStorage.getItem('cs_name');
   if (name) document.getElementById('topbar-title').textContent = `Content Gap Manager · ${name}`;
+  const model = localStorage.getItem('gh_models_model') || 'openai/gpt-4.1-mini';
+  document.getElementById('model-badge').textContent = model.split('/').pop();
 }
 
 // ── UTILS ────────────────────────────────────────────────────────────────
