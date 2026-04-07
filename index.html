@@ -1139,7 +1139,14 @@ Select a module from Training Modules, then ask away!</div>
 // ── PRODUCT-TO-DOCS MAPPING ─────────────────────────────────────────────
 // Maps Catalog API product IDs to their documentation TOC paths
 const PRODUCT_DOC_MAP = {
-  'microsoft-copilot-studio': { path: '/en-us/microsoft-copilot-studio/', name: 'Microsoft Copilot Studio' },
+  'microsoft-copilot-studio': {
+    path: '/en-us/microsoft-copilot-studio/',
+    name: 'Microsoft Copilot Studio',
+    // Copilot Studio modules are split across two catalog IDs; ms-copilot (parent) holds
+    // many core CS modules only identifiable by title keywords.
+    extraIds: ['ms-copilot'],
+    titleMatch: /copilot studio|power virtual agent/i,
+  },
   'dynamics-finance': { path: '/en-us/dynamics365/finance/', name: 'Dynamics 365 Finance' },
   'dynamics-sales': { path: '/en-us/dynamics365/sales/', name: 'Dynamics 365 Sales' },
   'dynamics-customer-service': { path: '/en-us/dynamics365/customer-service/', name: 'Dynamics 365 Customer Service' },
@@ -1271,7 +1278,7 @@ async function fetchProducts() {
 }
 
 async function fetchCatalogForProduct(productId) {
-  const cacheKey = `catalog_${productId}`;
+  const cacheKey = `catalog_v2_${productId}`;
   const cached = getCached(cacheKey);
   if (cached) return cached;
 
@@ -1279,13 +1286,26 @@ async function fetchCatalogForProduct(productId) {
   const resp = await fetch('https://learn.microsoft.com/api/catalog/?type=modules,learningPaths');
   const data = await resp.json();
 
-  // Filter by product
-  const modules = (data.modules || []).filter(m =>
-    m.products && m.products.some(p => p === productId || p.startsWith(productId))
-  );
-  const learningPaths = (data.learningPaths || []).filter(lp =>
-    lp.products && lp.products.some(p => p === productId || p.startsWith(productId))
-  );
+  const mapping = PRODUCT_DOC_MAP[productId];
+  const extraIds = mapping?.extraIds || [];
+  const titleMatch = mapping?.titleMatch || null;
+
+  // Match: exact product ID, prefix match, or extra IDs (with optional title filter)
+  function matchesProduct(item) {
+    if (!item.products) return false;
+    if (item.products.some(p => p === productId || p.startsWith(productId))) return true;
+    if (extraIds.length > 0) {
+      const hitsExtra = item.products.some(p => extraIds.includes(p));
+      if (hitsExtra && titleMatch) {
+        return titleMatch.test(item.title + ' ' + (item.summary || ''));
+      }
+      return hitsExtra;
+    }
+    return false;
+  }
+
+  const modules = (data.modules || []).filter(matchesProduct);
+  const learningPaths = (data.learningPaths || []).filter(matchesProduct);
 
   const result = { modules, learningPaths };
   setCache(cacheKey, result);
