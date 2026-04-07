@@ -652,13 +652,58 @@
     height: 14px;
     border-radius: 3px;
     cursor: pointer;
-    transition: transform 0.1s;
+    transition: transform 0.1s, box-shadow 0.1s;
     position: relative;
   }
   .heatmap-cell:hover { transform: scale(1.6); z-index: 2; }
+  .heatmap-cell.selected { box-shadow: 0 0 0 2px var(--text); transform: scale(1.5); z-index: 3; }
   .heatmap-cell.covered { background: var(--success); }
   .heatmap-cell.partial { background: #f59e0b; }
   .heatmap-cell.uncovered { background: var(--danger); opacity: 0.7; }
+  .heatmap-cell.uncovered.selected { opacity: 1; }
+
+  /* ── Gap detail panel ── */
+  .gap-detail-panel {
+    margin-top: 12px; padding: 14px 16px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+    font-size: 13px; animation: fadeIn 0.15s ease;
+  }
+  .gap-detail-panel .detail-header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  }
+  .gap-detail-panel .detail-header h4 { font-size: 14px; margin: 0; flex: 1; }
+  .gap-detail-panel .detail-close { cursor: pointer; font-size: 18px; color: var(--text-muted); background: none; border: none; padding: 0 4px; }
+  .gap-detail-panel .detail-close:hover { color: var(--text); }
+  .gap-detail-panel .detail-row { display: flex; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+  .gap-detail-panel .detail-row:last-child { border-bottom: none; }
+  .gap-detail-panel .detail-label { font-weight: 600; color: var(--text-muted); font-size: 11px; text-transform: uppercase; width: 110px; flex-shrink: 0; }
+  .gap-detail-panel .detail-value { flex: 1; }
+  .gap-detail-panel .score-bar { height: 8px; border-radius: 100px; background: var(--border); overflow: hidden; margin-top: 3px; }
+  .gap-detail-panel .score-fill { height: 100%; border-radius: 100px; }
+
+  /* ── Gap selectable list ── */
+  .gap-list { max-height: 340px; overflow-y: auto; }
+  .gap-list-filter { display: flex; gap: 6px; margin-bottom: 8px; }
+  .gap-list-filter button {
+    padding: 3px 10px; font-size: 10px; font-weight: 600; border-radius: 100px;
+    border: 1px solid var(--border); background: var(--bg); cursor: pointer;
+    transition: all 0.15s; color: var(--text-muted);
+  }
+  .gap-list-filter button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .gap-list-filter button:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
+  .gap-list-item {
+    display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+    border-radius: 6px; cursor: pointer; font-size: 12px;
+    transition: background 0.1s; border: 1px solid transparent;
+  }
+  .gap-list-item:hover { background: var(--bg-alt); }
+  .gap-list-item.selected { background: var(--bg-alt); border-color: var(--primary); }
+  .gap-list-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .gap-list-item .dot.covered { background: var(--success); }
+  .gap-list-item .dot.partial { background: #f59e0b; }
+  .gap-list-item .dot.uncovered { background: var(--danger); opacity: 0.7; }
+  .gap-list-item .item-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gap-list-item .item-score { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; width: 36px; text-align: right; }
 
   /* ── Timeline ── */
   .timeline { display: flex; flex-direction: column; gap: 2px; }
@@ -1005,7 +1050,7 @@ Select a module from Training Modules, then ask away!</div>
         <div id="gap-visuals" style="display: none; margin-bottom: 16px;">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
             <div class="card">
-              <div class="card-header"><span>🗺️</span><h3>Coverage heatmap</h3><span class="text-xs text-muted ml-auto">Each cell = 1 doc topic</span></div>
+              <div class="card-header"><span>🗺️</span><h3>Coverage heatmap</h3><span class="text-xs text-muted ml-auto">Click any cell for details</span></div>
               <div class="card-body">
                 <div style="display: flex; gap: 12px; margin-bottom: 8px; font-size: 10px; color: var(--text-muted);">
                   <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--success);"></span> Covered</span>
@@ -1013,11 +1058,26 @@ Select a module from Training Modules, then ask away!</div>
                   <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--danger);opacity:0.7;"></span> Uncovered</span>
                 </div>
                 <div class="heatmap" id="gap-heatmap"></div>
+                <div id="gap-detail-panel"></div>
               </div>
             </div>
             <div class="card">
+              <div class="card-header"><span>📋</span><h3>Topic list</h3><span class="text-xs text-muted ml-auto">Click to inspect</span></div>
+              <div class="card-body">
+                <div class="gap-list-filter" id="gap-list-filter">
+                  <button class="active" onclick="filterGapList('all')">All</button>
+                  <button onclick="filterGapList('uncovered')">🔴 Uncovered</button>
+                  <button onclick="filterGapList('partial')">🟡 Partial</button>
+                  <button onclick="filterGapList('covered')">🟢 Covered</button>
+                </div>
+                <div class="gap-list" id="gap-list"></div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top: 16px;">
+            <div class="card">
               <div class="card-header"><span>📅</span><h3>Training freshness</h3><span class="text-xs text-muted ml-auto">By last modified date</span></div>
-              <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+              <div class="card-body" style="max-height: 260px; overflow-y: auto;">
                 <div class="timeline" id="gap-timeline"></div>
               </div>
             </div>
@@ -1856,10 +1916,131 @@ function renderGapHeatmap(results) {
 
   container.innerHTML = results.map((r, i) => {
     const title = r.docTopic.title.replace(/"/g, '&quot;');
-    const match = r.bestMatch ? r.bestMatch.title.replace(/"/g, '&quot;') : 'No match';
-    const tooltip = `${title}\n${r.coverage} (${Math.round(r.score * 100)}%)\nMatch: ${match}`;
-    return `<div class="tooltip-wrap"><div class="heatmap-cell ${r.coverage}" title="${tooltip}"></div><span class="tooltip-text">${title}</span></div>`;
+    return `<div class="heatmap-cell ${r.coverage}" data-idx="${i}" onclick="selectGapItem(${i})" title="${title}"></div>`;
   }).join('');
+
+  // Also render the selectable list
+  renderGapList(results, 'all');
+}
+
+function renderGapList(results, filter) {
+  const container = document.getElementById('gap-list');
+  const filtered = filter === 'all' ? results : results.filter(r => r.coverage === filter);
+
+  container.innerHTML = filtered.map(r => {
+    const i = results.indexOf(r);
+    const score = Math.round(r.score * 100);
+    const title = r.docTopic.title.replace(/"/g, '&quot;');
+    return `<div class="gap-list-item" data-idx="${i}" onclick="selectGapItem(${i})" title="${title}">
+      <div class="dot ${r.coverage}"></div>
+      <div class="item-title">${r.docTopic.title}</div>
+      <div class="item-score">${score}%</div>
+    </div>`;
+  }).join('');
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;font-size:12px;">No topics in this category</div>';
+  }
+}
+
+function filterGapList(filter) {
+  const g = state.gapResults;
+  if (!g) return;
+
+  // Update active button
+  document.querySelectorAll('#gap-list-filter button').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.toLowerCase().includes(filter === 'all' ? 'all' : filter));
+  });
+
+  renderGapList(g.results, filter);
+}
+
+function selectGapItem(idx) {
+  const g = state.gapResults;
+  if (!g || !g.results[idx]) return;
+
+  const r = g.results[idx];
+  const panel = document.getElementById('gap-detail-panel');
+
+  // Highlight selected cell in heatmap
+  document.querySelectorAll('.heatmap-cell.selected').forEach(el => el.classList.remove('selected'));
+  const cell = document.querySelector(`.heatmap-cell[data-idx="${idx}"]`);
+  if (cell) cell.classList.add('selected');
+
+  // Highlight selected item in list
+  document.querySelectorAll('.gap-list-item.selected').forEach(el => el.classList.remove('selected'));
+  const listItem = document.querySelector(`.gap-list-item[data-idx="${idx}"]`);
+  if (listItem) { listItem.classList.add('selected'); listItem.scrollIntoView({ block: 'nearest' }); }
+
+  const score = Math.round(r.score * 100);
+  const statusIcon = r.coverage === 'covered' ? '✅' : r.coverage === 'partial' ? '⚠️' : '❌';
+  const statusLabel = r.coverage === 'covered' ? 'Covered' : r.coverage === 'partial' ? 'Partially Covered' : 'Not Covered';
+  const statusColor = r.coverage === 'covered' ? 'var(--success)' : r.coverage === 'partial' ? '#f59e0b' : 'var(--danger)';
+
+  // Build explanation
+  let explanation = '';
+  if (r.coverage === 'uncovered') {
+    explanation = `<strong>No matching training module found.</strong> The documentation topic "<em>${r.docTopic.title}</em>" does not have a corresponding training module. ` +
+      `This means learners cannot get guided instruction on this subject through Microsoft Learn training. ` +
+      `<strong>Recommendation:</strong> Create a new training module covering this documentation area, or expand an existing related module to include this content.`;
+  } else if (r.coverage === 'partial') {
+    explanation = `<strong>Weak match found.</strong> The closest training module is "<em>${r.bestMatch?.title || '—'}</em>" with a ${score}% keyword overlap. ` +
+      `This suggests the training touches on related concepts but does not fully cover the documentation topic "<em>${r.docTopic.title}</em>". ` +
+      `<strong>Recommendation:</strong> Review the matched module and add units or pages that specifically address the gaps in coverage for this topic.`;
+  } else {
+    explanation = `<strong>Good coverage.</strong> The training module "<em>${r.bestMatch?.title || '—'}</em>" matches this documentation topic with ${score}% keyword overlap. ` +
+      `The training content appears to adequately cover the subject matter documented in "<em>${r.docTopic.title}</em>". ` +
+      `<strong>Recommendation:</strong> Verify the training module's content is current with the latest documentation updates.`;
+  }
+
+  const docUrl = r.docTopic.href
+    ? `https://learn.microsoft.com${PRODUCT_DOC_MAP[state.selectedProduct]?.path || '/en-us/'}${r.docTopic.href}`
+    : null;
+
+  panel.innerHTML = `
+  <div class="gap-detail-panel">
+    <div class="detail-header">
+      <span style="font-size:20px;">${statusIcon}</span>
+      <h4>${r.docTopic.title}</h4>
+      <button class="detail-close" onclick="closeGapDetail()" title="Close">✕</button>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">Status</div>
+      <div class="detail-value"><span class="tag" style="background:${statusColor}20;color:${statusColor};">${statusLabel}</span></div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">Doc path</div>
+      <div class="detail-value" style="font-size:11px;color:var(--text-muted);">${r.docTopic.path}${docUrl ? ` · <a href="${docUrl}" target="_blank" style="color:var(--primary);">Open docs ↗</a>` : ''}</div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">Match score</div>
+      <div class="detail-value">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="score-bar" style="flex:1;"><div class="score-fill" style="width:${score}%;background:${statusColor};"></div></div>
+          <span style="font-weight:600;font-size:13px;">${score}%</span>
+        </div>
+      </div>
+    </div>
+    ${r.bestMatch ? `
+    <div class="detail-row">
+      <div class="detail-label">Best match</div>
+      <div class="detail-value">
+        <div><strong>${r.bestMatch.title}</strong></div>
+        ${r.bestMatch.duration_in_minutes ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">⏱️ ${r.bestMatch.duration_in_minutes} min${r.bestMatch.last_modified ? ` · Last updated: ${new Date(r.bestMatch.last_modified).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'})}` : ''}</div>` : ''}
+        ${r.bestMatch.url ? `<a href="${r.bestMatch.url}" target="_blank" style="font-size:11px;color:var(--primary);">Open training module ↗</a>` : ''}
+      </div>
+    </div>` : ''}
+    <div class="detail-row">
+      <div class="detail-label">Analysis</div>
+      <div class="detail-value" style="line-height:1.5;">${explanation}</div>
+    </div>
+  </div>`;
+}
+
+function closeGapDetail() {
+  document.getElementById('gap-detail-panel').innerHTML = '';
+  document.querySelectorAll('.heatmap-cell.selected').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.gap-list-item.selected').forEach(el => el.classList.remove('selected'));
 }
 
 function renderGapTimeline() {
