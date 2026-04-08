@@ -952,6 +952,7 @@ const CONCURRENCY_LIMIT = 8;
 
 let state = {
   trees: {},           // { 'learn-bizapps-pr': [...], 'learn-dynamics-pr': [...] }
+  repoBranches: {},    // { 'learn-bizapps-pr': 'main', 'learn-dynamics-pr': 'live' }
   discoveredProducts: [],  // [{ folder, name, repo, modules: [{path, ...}] }]
   selectedProduct: null,
   modules: [],         // Parsed module data for selected product
@@ -1078,10 +1079,20 @@ async function fetchRepoTree(owner, repo) {
   const cached = getCached(cacheKey);
   if (cached) return cached;
 
-  const url = `https://api.github.com/repos/${owner}/${repo}/git/trees/main?recursive=1`;
+  if (!getToken()) throw new Error(`GitHub token required — these repos are private. Add your token in Settings.`);
+
+  // Discover default branch first (repos may use main, master, or live)
+  const repoResp = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers: ghHeaders() });
+  if (!repoResp.ok) throw new Error(`Cannot access ${repo} (${repoResp.status}). Ensure your GitHub token has repo scope.`);
+  const repoInfo = await repoResp.json();
+  const branch = repoInfo.default_branch || 'main';
+  state.repoBranches[repo] = branch;
+
+  const url = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`;
   const resp = await fetch(url, { headers: ghHeaders() });
   if (!resp.ok) throw new Error(`GitHub API error ${resp.status} for ${repo}`);
   const data = await resp.json();
+  if (data.truncated) toast(`Warning: ${repo} tree was truncated — some modules may be missing`, 'warning');
   const tree = (data.tree || []).map(n => n.path);
   setCache(cacheKey, tree);
   return tree;
@@ -1171,7 +1182,8 @@ function parseModuleYaml(text, path, repo) {
   const parts = path.split('/');
   const moduleFolder = parts[parts.length - 2];
   const learnUrl = `https://learn.microsoft.com/en-us/training/modules/${moduleFolder}/`;
-  const ghUrl = `https://github.com/MicrosoftDocs/${repo}/tree/main/${path.replace(/\/index\.yml$/, '')}`;
+  const ghBranch = state.repoBranches[repo] || 'main';
+  const ghUrl = `https://github.com/MicrosoftDocs/${repo}/tree/${ghBranch}/${path.replace(/\/index\.yml$/, '')}`;
 
   return {
     title: title || moduleFolder,
@@ -1204,7 +1216,8 @@ async function fetchModuleData(product, onProgress) {
 
   const results = await asyncPool(CONCURRENCY_LIMIT, product.modules, async (mod) => {
     try {
-      const url = `https://raw.githubusercontent.com/${product.owner}/${product.repo}/main/${mod.path}`;
+      const branch = state.repoBranches[product.repo] || 'main';
+      const url = `https://raw.githubusercontent.com/${product.owner}/${product.repo}/${branch}/${mod.path}`;
       const resp = await fetch(url, { headers: getToken() ? { 'Authorization': `Bearer ${getToken()}` } : {} });
       if (!resp.ok) return null;
       const text = await resp.text();
@@ -1308,8 +1321,12 @@ async function init() {
       onProductChange(saved);
     }
   } catch (e) {
-    toast(`Failed to fetch repo trees: ${e.message}`, 'warning');
     console.error(e);
+    if (!getToken()) {
+      toast('GitHub token required — these repos are private. Click ⚙️ Settings to add your token.', 'warning');
+    } else {
+      toast(`Failed to fetch repo trees: ${e.message}`, 'warning');
+    }
   }
 }
 
