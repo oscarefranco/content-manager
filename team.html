@@ -1083,7 +1083,7 @@ async function fetchRepoTree(owner, repo) {
 
   // Discover default branch first (repos may use main, master, or live)
   const repoResp = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers: ghHeaders() });
-  if (!repoResp.ok) throw new Error(`Cannot access ${repo} (${repoResp.status}). Ensure your GitHub token has repo scope.`);
+  if (!repoResp.ok) throw new Error(`Cannot access ${repo} (${repoResp.status}). These are private Microsoft repos — you need a Classic PAT with "repo" scope AND SSO authorized for the MicrosoftDocs org. Go to github.com/settings/tokens, create a Classic token, then click "Configure SSO" → Authorize for MicrosoftDocs.`);
   const repoInfo = await repoResp.json();
   const branch = repoInfo.default_branch || 'main';
   state.repoBranches[repo] = branch;
