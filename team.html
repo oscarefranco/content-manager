@@ -1,0 +1,2287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Team Content Gap Manager — BizApps &amp; Dynamics</title>
+<link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary: #0078d4;
+  --primary-dark: #005a9e;
+  --primary-light: #deecf9;
+  --teal: #00b4d8;
+  --purple: #5c2d91;
+  --purple-light: #ede8f3;
+  --bg: #f3f4f8;
+  --surface: #ffffff;
+  --surface2: #f8f9fb;
+  --border: #e1e4ec;
+  --text: #1a1c2e;
+  --text-muted: #6b7280;
+  --text-light: #9ca3af;
+  --success: #107c10;
+  --success-bg: #dff6dd;
+  --warning: #f59e0b;
+  --warning-bg: #fff4ce;
+  --danger: #a4262c;
+  --danger-bg: #fde7e9;
+  --sidebar-bg: #1a1c2e;
+  --sidebar-text: #c8cad0;
+  --sidebar-active: rgba(0,120,212,0.2);
+  --radius: 10px;
+  --radius-lg: 16px;
+  --shadow: 0 1px 4px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.05);
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 50;
+  overflow-y: auto;
+}
+.sidebar-brand {
+  padding: 1.25rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.sidebar-brand svg { flex-shrink: 0; }
+.sidebar-brand-text { font-size: 13px; font-weight: 600; color: #fff; line-height: 1.3; }
+.sidebar-brand-text small { display: block; font-size: 10px; font-weight: 400; color: var(--sidebar-text); opacity: 0.7; }
+
+.sidebar-section { padding: 1rem 0.75rem 0.5rem; }
+.sidebar-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.35);
+  text-transform: uppercase;
+  padding: 0 0.5rem;
+  margin-bottom: 6px;
+}
+.sidebar-nav { list-style: none; }
+.sidebar-nav li { margin-bottom: 1px; }
+.sidebar-nav a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--sidebar-text);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.sidebar-nav a:hover { background: rgba(255,255,255,0.06); color: #fff; }
+.sidebar-nav a.active { background: var(--sidebar-active); color: #fff; font-weight: 500; }
+.sidebar-nav .nav-icon { font-size: 15px; width: 20px; text-align: center; }
+.sidebar-nav .nav-count {
+  margin-left: auto;
+  background: rgba(255,255,255,0.12);
+  border-radius: 100px;
+  padding: 1px 7px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.6);
+  font-family: 'JetBrains Mono', monospace;
+}
+.sidebar-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 0.5rem 0.75rem; }
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 1rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  font-size: 11px;
+}
+.sidebar-footer a { color: var(--sidebar-text); text-decoration: none; opacity: 0.6; display: flex; align-items: center; gap: 6px; }
+.sidebar-footer a:hover { opacity: 1; color: #fff; }
+
+.sidebar-product-select {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 11.5px;
+  color: #fff;
+  background: rgba(255,255,255,0.06);
+  outline: none;
+  cursor: pointer;
+  margin-top: 6px;
+}
+.sidebar-product-select option { background: var(--sidebar-bg); color: #fff; }
+.sidebar-product-select optgroup { font-weight: 600; font-size: 11px; color: #aaa; }
+
+/* ── Main content ── */
+.main {
+  flex: 1;
+  margin-left: 220px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Top bar ── */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+.topbar-title { font-size: 14px; font-weight: 600; }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.badge-model {
+  background: var(--purple-light);
+  color: var(--purple);
+  font-size: 10px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.badge-warn {
+  background: var(--warning-bg);
+  color: #92400e;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 100px;
+}
+.btn-settings {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px 12px;
+  font-size: 12px;
+  font-family: 'Segoe UI', sans-serif;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+.btn-settings:hover { background: var(--bg); }
+
+/* ── Views ── */
+.view { display: none; flex: 1; flex-direction: column; }
+.view.active { display: flex; }
+
+/* ── Page header ── */
+.page-header {
+  padding: 1.5rem 2rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.page-header-text h1 { font-size: 20px; font-weight: 600; }
+.page-header-text p { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+.page-header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-family: 'Segoe UI', sans-serif;
+  font-weight: 500;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.btn:disabled { opacity: 0.45; pointer-events: none; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+.btn-secondary:hover { background: var(--bg); }
+.btn-ghost { background: none; border: none; color: var(--text-muted); padding: 6px 10px; }
+.btn-ghost:hover { background: var(--bg); color: var(--text); }
+.btn-danger { background: var(--danger-bg); border: 1px solid #f5c6cb; color: var(--danger); }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+
+/* ── Page body ── */
+.page-body { padding: 1.5rem 2rem; flex: 1; overflow-y: auto; }
+
+/* ── Cards ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.card-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-header h3 { font-size: 14px; font-weight: 500; }
+.card-body { padding: 1.25rem; }
+
+/* ── Stat cards ── */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+}
+.stat-card-label { font-size: 11px; font-weight: 500; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+.stat-card-value { font-size: 28px; font-weight: 600; line-height: 1; font-family: 'JetBrains Mono', monospace; }
+.stat-card-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* ── Tags ── */
+.tag {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-weight: 500;
+  display: inline-block;
+}
+.tag-blue { background: var(--primary-light); color: var(--primary-dark); }
+.tag-green { background: var(--success-bg); color: var(--success); }
+.tag-yellow { background: var(--warning-bg); color: #92400e; }
+.tag-red { background: var(--danger-bg); color: var(--danger); }
+.tag-purple { background: var(--purple-light); color: var(--purple); }
+
+/* ── Module list ── */
+.module-list { display: flex; flex-direction: column; gap: 10px; }
+.module-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.module-item:hover { border-color: var(--primary); box-shadow: var(--shadow); }
+.module-item-header { display: flex; align-items: flex-start; gap: 12px; }
+.module-item-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--primary-light);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.module-item-meta { flex: 1; min-width: 0; }
+.module-item-meta h4 { font-size: 13.5px; font-weight: 500; }
+.module-item-meta p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.module-tags { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+.module-expand { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12.5px; line-height: 1.6; color: var(--text-muted); }
+.module-item.expanded .module-expand { display: block; }
+
+/* ── Coverage bar ── */
+.coverage-bar { display: flex; height: 8px; border-radius: 100px; overflow: hidden; background: var(--border); }
+.coverage-bar .covered { background: var(--success); }
+.coverage-bar .partial { background: var(--warning); }
+.coverage-bar .uncovered { background: var(--danger); }
+
+/* ── Heatmap ── */
+.heatmap { display: flex; flex-wrap: wrap; gap: 3px; padding: 8px 0; }
+.heatmap-cell {
+  width: 14px; height: 14px; border-radius: 3px; cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s; position: relative;
+}
+.heatmap-cell:hover { transform: scale(1.6); z-index: 2; }
+.heatmap-cell.selected { box-shadow: 0 0 0 2px var(--text); transform: scale(1.5); z-index: 3; }
+.heatmap-cell.covered { background: var(--success); }
+.heatmap-cell.partial { background: var(--warning); }
+.heatmap-cell.uncovered { background: var(--danger); opacity: 0.7; }
+.heatmap-cell.uncovered.selected { opacity: 1; }
+
+/* ── Gap detail panel ── */
+.gap-detail-panel {
+  margin-top: 12px; padding: 14px 16px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+  font-size: 13px; animation: fadeIn 0.15s ease;
+}
+.gap-detail-panel .detail-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.gap-detail-panel .detail-header h4 { font-size: 14px; margin: 0; flex: 1; }
+.gap-detail-panel .detail-close { cursor: pointer; font-size: 18px; color: var(--text-muted); background: none; border: none; padding: 0 4px; }
+.gap-detail-panel .detail-close:hover { color: var(--text); }
+.gap-detail-panel .detail-row { display: flex; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.gap-detail-panel .detail-row:last-child { border-bottom: none; }
+.gap-detail-panel .detail-label { font-weight: 600; color: var(--text-muted); font-size: 11px; text-transform: uppercase; width: 110px; flex-shrink: 0; }
+.gap-detail-panel .detail-value { flex: 1; }
+.gap-detail-panel .score-bar { height: 8px; border-radius: 100px; background: var(--border); overflow: hidden; margin-top: 3px; }
+.gap-detail-panel .score-fill { height: 100%; border-radius: 100px; }
+
+/* ── Gap selectable list ── */
+.gap-list { max-height: 340px; overflow-y: auto; }
+.gap-list-filter { display: flex; gap: 6px; margin-bottom: 8px; }
+.gap-list-filter button {
+  padding: 3px 10px; font-size: 10px; font-weight: 600; border-radius: 100px;
+  border: 1px solid var(--border); background: var(--bg); cursor: pointer;
+  transition: all 0.15s; color: var(--text-muted); font-family: 'Segoe UI', sans-serif;
+}
+.gap-list-filter button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.gap-list-filter button:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
+.gap-list-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+  border-radius: 6px; cursor: pointer; font-size: 12px;
+  transition: background 0.1s; border: 1px solid transparent;
+}
+.gap-list-item:hover { background: var(--bg); }
+.gap-list-item.selected { background: var(--primary-light); border-color: var(--primary); }
+.gap-list-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.gap-list-item .dot.covered { background: var(--success); }
+.gap-list-item .dot.partial { background: var(--warning); }
+.gap-list-item .dot.uncovered { background: var(--danger); opacity: 0.7; }
+.gap-list-item .item-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gap-list-item .item-score { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; width: 36px; text-align: right; }
+
+/* ── Timeline ── */
+.timeline { display: flex; flex-direction: column; gap: 2px; }
+.timeline-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 11px; }
+.timeline-bar-wrap { flex: 1; height: 14px; background: var(--border); border-radius: 100px; overflow: hidden; position: relative; }
+.timeline-bar { height: 100%; border-radius: 100px; min-width: 2px; }
+.timeline-label { width: 200px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-muted); }
+.timeline-date { width: 70px; flex-shrink: 0; text-align: right; color: var(--text-light); font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+
+/* ── Doc tree ── */
+.doc-tree { font-size: 12.5px; }
+.doc-tree-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 5px 8px; border-radius: 6px; transition: background 0.1s; cursor: pointer;
+}
+.doc-tree-item:hover { background: var(--bg); }
+.doc-tree-toggle { cursor: pointer; user-select: none; font-size: 11px; width: 16px; text-align: center; flex-shrink: 0; }
+
+/* ── Progress bar ── */
+.progress-bar-wrap { background: var(--border); border-radius: 100px; height: 6px; overflow: hidden; }
+.progress-bar-fill { height: 100%; border-radius: 100px; background: var(--primary); transition: width 0.4s ease; }
+.progress-text { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+/* ── Modal ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.35); z-index: 200;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface); border-radius: var(--radius-lg);
+  width: 480px; max-width: 95vw;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2); overflow: hidden;
+}
+.modal-header {
+  padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.modal-header h2 { font-size: 16px; font-weight: 600; flex: 1; }
+.modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 16px; }
+.modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+.field label { display: block; font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 5px; }
+.field input, .field select {
+  width: 100%; padding: 8px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-family: 'Segoe UI', sans-serif; font-size: 13px;
+  color: var(--text); background: var(--bg); outline: none;
+  transition: border-color 0.15s;
+}
+.field input:focus, .field select:focus { border-color: var(--primary); background: #fff; }
+.field-hint { font-size: 11px; color: var(--text-light); margin-top: 3px; }
+
+/* ── Toasts ── */
+.toast-container { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 10px 16px; font-size: 13px; display: flex; align-items: center; gap: 8px;
+  box-shadow: var(--shadow); animation: slideIn 0.2s ease; min-width: 220px; max-width: 420px;
+}
+.toast.success { border-left: 3px solid var(--success); }
+.toast.info { border-left: 3px solid var(--primary); }
+.toast.warning { border-left: 3px solid var(--warning); }
+
+/* ── Loading ── */
+.loading-spinner {
+  display: inline-block; width: 16px; height: 16px;
+  border: 2px solid var(--border); border-top: 2px solid var(--primary);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-overlay {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 3rem; color: var(--text-muted); font-size: 13px;
+}
+
+/* ── Gap grid / cards ── */
+.gap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.gap-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.gap-card-header { padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); }
+.gap-card-header h4 { font-size: 13px; font-weight: 500; flex: 1; }
+.gap-card-body { padding: 12px 16px; }
+.gap-item { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.gap-item:last-child { border-bottom: none; }
+.gap-item-icon { flex-shrink: 0; margin-top: 1px; }
+.gap-item-text { color: var(--text-muted); line-height: 1.5; }
+.gap-item-text strong { color: var(--text); font-weight: 500; }
+
+/* ── Animations ── */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+/* ── Utility ── */
+.flex { display: flex; }
+.items-center { align-items: center; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.ml-auto { margin-left: auto; }
+.text-sm { font-size: 13px; }
+.text-xs { font-size: 11px; }
+.text-muted { color: var(--text-muted); }
+.mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 12px; }
+.empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+.empty-state-icon { font-size: 36px; margin-bottom: 8px; }
+.empty-state p { font-size: 13px; }
+
+/* ── Insights ── */
+.commit-item {
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; gap: 10px; font-size: 12.5px;
+}
+.commit-item:last-child { border-bottom: none; }
+.commit-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--primary-light); display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.commit-meta { flex: 1; min-width: 0; }
+.commit-msg { font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.commit-info { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .sidebar { width: 60px; }
+  .sidebar-brand-text, .sidebar-label, .sidebar-nav a span:not(.nav-icon),
+  .sidebar-nav .nav-count, .sidebar-footer, .sidebar-product-select { display: none; }
+  .sidebar-nav a { justify-content: center; padding: 10px; }
+  .main { margin-left: 60px; }
+}
+</style>
+</head>
+<body>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <rect width="11" height="11" x="1" y="1" fill="#f35325"/>
+      <rect width="11" height="11" x="13" y="1" fill="#81bc06"/>
+      <rect width="11" height="11" x="1" y="13" fill="#05a6f0"/>
+      <rect width="11" height="11" x="13" y="13" fill="#ffba08"/>
+    </svg>
+    <div class="sidebar-brand-text">
+      Microsoft Learn
+      <small>BizApps &amp; Dynamics</small>
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <p class="sidebar-label">Product</p>
+    <select class="sidebar-product-select" id="product-select" onchange="onProductChange(this.value)">
+      <option value="">— Select a product —</option>
+    </select>
+  </div>
+
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-section">
+    <p class="sidebar-label">Overview</p>
+    <ul class="sidebar-nav">
+      <li><a class="active" onclick="switchView('dashboard')" data-view="dashboard">
+        <span class="nav-icon">📊</span> Dashboard
+      </a></li>
+    </ul>
+  </div>
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-section">
+    <p class="sidebar-label">Content</p>
+    <ul class="sidebar-nav">
+      <li><a onclick="switchView('modules')" data-view="modules">
+        <span class="nav-icon">📚</span> Training Modules
+        <span class="nav-count" id="count-modules">0</span>
+      </a></li>
+      <li><a onclick="switchView('docs')" data-view="docs">
+        <span class="nav-icon">📖</span> Documentation
+        <span class="nav-count" id="count-docs">0</span>
+      </a></li>
+    </ul>
+  </div>
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-section">
+    <p class="sidebar-label">Analysis</p>
+    <ul class="sidebar-nav">
+      <li><a onclick="switchView('gap-analysis')" data-view="gap-analysis">
+        <span class="nav-icon">🔍</span> Gap Analysis
+      </a></li>
+      <li><a onclick="switchView('insights')" data-view="insights">
+        <span class="nav-icon">🔗</span> GitHub Insights
+      </a></li>
+    </ul>
+  </div>
+  <div class="sidebar-footer">
+    <a href="index.html" title="Archive version (Catalog API)">← Archive version</a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <span class="topbar-title" id="topbar-title">Team Content Gap Manager</span>
+    <div class="topbar-right">
+      <span class="badge-warn" id="auth-badge" style="display:none;">⚠ Unauthenticated (60 req/hr)</span>
+      <span class="badge-model" id="model-badge">gpt-4.1-mini</span>
+      <button class="btn-settings" onclick="openSettings()">⚙ Settings</button>
+    </div>
+  </header>
+
+  <!-- DASHBOARD VIEW -->
+  <section class="view active" id="view-dashboard">
+    <div class="page-header">
+      <div class="page-header-text">
+        <h1>Dashboard</h1>
+        <p id="dashboard-subtitle">Select a product above to begin analyzing content</p>
+      </div>
+      <div class="page-header-actions">
+        <button class="btn btn-secondary" onclick="refreshData()">🔄 Refresh</button>
+      </div>
+    </div>
+    <div class="page-body" id="dashboard-body">
+      <div class="stat-grid" id="stat-grid">
+        <div class="stat-card">
+          <div class="stat-card-label">BizApps Repo Modules</div>
+          <div class="stat-card-value" id="stat-bizapps">—</div>
+          <div class="stat-card-sub">learn-bizapps-pr</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Dynamics Repo Modules</div>
+          <div class="stat-card-value" id="stat-dynamics" style="color:var(--primary);">—</div>
+          <div class="stat-card-sub">learn-dynamics-pr</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Products Discovered</div>
+          <div class="stat-card-value" id="stat-products" style="color:var(--purple);">—</div>
+          <div class="stat-card-sub">Across both repos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Selected Product</div>
+          <div class="stat-card-value" id="stat-selected" style="font-size:16px;">—</div>
+          <div class="stat-card-sub" id="stat-selected-sub">Select a product</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+        <div class="card">
+          <div class="card-header">
+            <span>📦</span>
+            <h3>Source Repos</h3>
+          </div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+            <a href="https://github.com/MicrosoftDocs/learn-bizapps-pr" target="_blank" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);padding:8px 12px;border:1px solid var(--border);border-radius:8px;transition:border-color 0.15s;">
+              <span style="font-size:20px;">📘</span>
+              <div>
+                <div style="font-size:13px;font-weight:500;">learn-bizapps-pr</div>
+                <div style="font-size:11px;color:var(--text-muted);">Power Platform / Copilot Studio training</div>
+              </div>
+            </a>
+            <a href="https://github.com/MicrosoftDocs/learn-dynamics-pr" target="_blank" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);padding:8px 12px;border:1px solid var(--border);border-radius:8px;transition:border-color 0.15s;">
+              <span style="font-size:20px;">📗</span>
+              <div>
+                <div style="font-size:13px;font-weight:500;">learn-dynamics-pr</div>
+                <div style="font-size:11px;color:var(--text-muted);">Dynamics 365 training</div>
+              </div>
+            </a>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span>📊</span>
+            <h3>Product Quick Stats</h3>
+            <span class="tag tag-blue ml-auto" id="quick-stats-product"></span>
+          </div>
+          <div class="card-body" id="quick-stats-body">
+            <div class="empty-state" style="padding:1.5rem;"><p>Select a product to see stats</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span>⚠️</span>
+          <h3>Health Check — Oldest Modules</h3>
+          <span class="text-xs text-muted ml-auto">Sorted by ms.date ascending</span>
+        </div>
+        <div class="card-body" style="padding:0; max-height:420px; overflow-y:auto;">
+          <div id="health-list">
+            <div class="empty-state" style="padding:2rem;"><p>Select a product to load modules</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODULES VIEW -->
+  <section class="view" id="view-modules">
+    <div class="page-header">
+      <div class="page-header-text">
+        <h1>Training Modules</h1>
+        <p id="modules-subtitle">Select a product to view modules from GitHub</p>
+      </div>
+      <div class="page-header-actions">
+        <input type="text" id="module-search" placeholder="Search modules…" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Segoe UI',sans-serif;outline:none;width:200px;background:var(--bg);" oninput="filterModules(this.value)" />
+        <select id="module-sort" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:'Segoe UI',sans-serif;background:var(--bg);" onchange="sortModules(this.value)">
+          <option value="title">Sort: Title</option>
+          <option value="date">Sort: Date (newest)</option>
+          <option value="units">Sort: Unit count</option>
+        </select>
+      </div>
+    </div>
+    <div class="page-body">
+      <div id="module-progress" style="display:none;margin-bottom:16px;">
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" id="module-progress-bar" style="width:0%;"></div></div>
+        <div class="progress-text" id="module-progress-text">Loading modules…</div>
+      </div>
+      <div class="module-list" id="module-list">
+        <div class="empty-state"><div class="empty-state-icon">📚</div><p>Select a product to load training modules</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DOCUMENTATION VIEW -->
+  <section class="view" id="view-docs">
+    <div class="page-header">
+      <div class="page-header-text">
+        <h1>Documentation</h1>
+        <p id="docs-subtitle">Documentation TOC for the selected product</p>
+      </div>
+      <div class="page-header-actions">
+        <input type="text" placeholder="Search topics…" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Segoe UI',sans-serif;outline:none;width:200px;background:var(--bg);" oninput="filterDocs(this.value)" />
+        <span class="text-xs text-muted" id="doc-topic-total"></span>
+      </div>
+    </div>
+    <div class="page-body">
+      <div id="doc-tree-container">
+        <div class="empty-state"><div class="empty-state-icon">📖</div><p>Select a product to load documentation topics</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAP ANALYSIS VIEW -->
+  <section class="view" id="view-gap-analysis">
+    <div class="page-header">
+      <div class="page-header-text">
+        <h1>Gap Analysis</h1>
+        <p>Compare training content against documentation to find coverage gaps</p>
+      </div>
+      <div class="page-header-actions">
+        <button class="btn btn-ghost btn-sm" onclick="exportGapCSV()" id="export-csv-btn" style="display:none;">📥 CSV</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportGapHTML()" id="export-html-btn" style="display:none;">📄 Report</button>
+        <button class="btn btn-secondary" onclick="runClientGapAnalysis()" id="client-gap-btn">⚡ Quick scan</button>
+        <button class="btn btn-primary" onclick="runAIGapAnalysis()" id="ai-gap-btn">🤖 AI deep analysis</button>
+      </div>
+    </div>
+    <div class="page-body">
+      <div id="gap-summary" style="margin-bottom:16px;display:none;">
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-card-label">Doc Topics</div>
+            <div class="stat-card-value" id="gap-total-docs">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Covered</div>
+            <div class="stat-card-value" style="color:var(--success);" id="gap-covered">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Partial</div>
+            <div class="stat-card-value" style="color:var(--warning);" id="gap-partial">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Uncovered</div>
+            <div class="stat-card-value" style="color:var(--danger);" id="gap-uncovered">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Coverage</div>
+            <div class="stat-card-value" id="gap-pct" style="color:var(--primary);">0%</div>
+          </div>
+        </div>
+        <div class="coverage-bar" id="gap-coverage-bar" style="margin-top:8px;"></div>
+      </div>
+      <div id="gap-visuals" style="display:none;margin-bottom:16px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="card">
+            <div class="card-header"><span>🗺️</span><h3>Coverage heatmap</h3><span class="text-xs text-muted ml-auto">Click cell for details</span></div>
+            <div class="card-body">
+              <div style="display:flex;gap:12px;margin-bottom:8px;font-size:10px;color:var(--text-muted);">
+                <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--success);"></span> Covered</span>
+                <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--warning);"></span> Partial</span>
+                <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--danger);opacity:0.7;"></span> Uncovered</span>
+              </div>
+              <div class="heatmap" id="gap-heatmap"></div>
+              <div id="gap-detail-panel"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span>📋</span><h3>Topic list</h3><span class="text-xs text-muted ml-auto">Click to inspect</span></div>
+            <div class="card-body">
+              <div class="gap-list-filter" id="gap-list-filter">
+                <button class="active" onclick="filterGapList('all')">All</button>
+                <button onclick="filterGapList('uncovered')">🔴 Uncovered</button>
+                <button onclick="filterGapList('partial')">🟡 Partial</button>
+                <button onclick="filterGapList('covered')">🟢 Covered</button>
+              </div>
+              <div class="gap-list" id="gap-list"></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:16px;">
+          <div class="card">
+            <div class="card-header"><span>📅</span><h3>Training freshness</h3><span class="text-xs text-muted ml-auto">By ms.date</span></div>
+            <div class="card-body" style="max-height:260px;overflow-y:auto;">
+              <div class="timeline" id="gap-timeline"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="gap-results">
+        <div class="empty-state">
+          <div class="empty-state-icon">🔍</div>
+          <p>Load a product first, then click Quick scan or AI deep analysis.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GITHUB INSIGHTS VIEW -->
+  <section class="view" id="view-insights">
+    <div class="page-header">
+      <div class="page-header-text">
+        <h1>GitHub Insights</h1>
+        <p>Recent activity and contributor data from both repos</p>
+      </div>
+      <div class="page-header-actions">
+        <button class="btn btn-secondary" onclick="loadInsights()">🔄 Refresh</button>
+      </div>
+    </div>
+    <div class="page-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div class="card">
+          <div class="card-header"><span>📘</span><h3>Recent Commits — learn-bizapps-pr</h3></div>
+          <div class="card-body" style="max-height:400px;overflow-y:auto;" id="commits-bizapps">
+            <div class="loading-overlay"><div class="loading-spinner"></div> Loading…</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>📗</span><h3>Recent Commits — learn-dynamics-pr</h3></div>
+          <div class="card-body" style="max-height:400px;overflow-y:auto;" id="commits-dynamics">
+            <div class="loading-overlay"><div class="loading-spinner"></div> Loading…</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div class="card">
+          <div class="card-header"><span>👥</span><h3>Modules by Author</h3></div>
+          <div class="card-body" style="max-height:400px;overflow-y:auto;" id="modules-by-author">
+            <div class="empty-state" style="padding:1rem;"><p>Load a product first</p></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>🔄</span><h3>Update Cycle Distribution</h3></div>
+          <div class="card-body" id="update-cycle-dist">
+            <div class="empty-state" style="padding:1rem;"><p>Load a product first</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div><!-- /main -->
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>⚙️ Settings</h2>
+      <button class="btn btn-ghost" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>GitHub Personal Access Token</label>
+        <input type="password" id="api-key-input" placeholder="ghp_… or github_pat_…" autocomplete="off" />
+        <p class="field-hint">Used for GitHub API auth &amp; GitHub Models AI. Generate at <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--primary);">github.com/settings/tokens</a>. Stored in localStorage as <code>gh_models_token</code>.</p>
+      </div>
+      <div class="field">
+        <label>AI Model</label>
+        <select id="ai-model-select">
+          <option value="openai/gpt-4.1-mini">GPT-4.1 Mini (fast, 150 req/day)</option>
+          <option value="openai/gpt-4.1-nano">GPT-4.1 Nano (fastest, 150 req/day)</option>
+          <option value="openai/gpt-4.1">GPT-4.1 (powerful, 50 req/day)</option>
+          <option value="meta/llama-4-scout-17b-16e-instruct">Llama 4 Scout 17B (150 req/day)</option>
+          <option value="mistralai/mistral-small-2503">Mistral Small (150 req/day)</option>
+          <option value="deepseek/deepseek-r1">DeepSeek R1 (50 req/day)</option>
+        </select>
+        <p class="field-hint">Powered by <a href="https://github.com/marketplace/models" target="_blank" style="color:var(--primary);">GitHub Models</a>.</p>
+      </div>
+      <div class="field">
+        <label>Cache TTL</label>
+        <select id="cache-ttl-select">
+          <option value="1">1 hour</option>
+          <option value="4" selected>4 hours</option>
+          <option value="12">12 hours</option>
+          <option value="24">24 hours</option>
+          <option value="72">72 hours</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Display Name</label>
+        <input type="text" id="display-name-input" placeholder="e.g. Jane Smith" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" onclick="clearAllCache()">🗑 Clear cache</button>
+      <div style="flex:1;"></div>
+      <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+<script>
+// ══════════════════════════════════════════════════════════════════════════
+// CONFIGURATION
+// ══════════════════════════════════════════════════════════════════════════
+
+const REPOS = [
+  { owner: 'MicrosoftDocs', repo: 'learn-bizapps-pr', label: 'Power Platform / Copilot Studio' },
+  { owner: 'MicrosoftDocs', repo: 'learn-dynamics-pr', label: 'Dynamics 365' },
+];
+
+const FOLDER_PRODUCT_MAP = {
+  // learn-bizapps-pr
+  'power-virtual-agents': { name: 'Microsoft Copilot Studio', service: 'copilot-studio', repo: 'learn-bizapps-pr' },
+  'flow': { name: 'Power Automate', service: 'power-automate', repo: 'learn-bizapps-pr' },
+  'powerapps': { name: 'Power Apps', service: 'power-apps', repo: 'learn-bizapps-pr' },
+  'power-bi': { name: 'Power BI', service: 'power-bi', repo: 'learn-bizapps-pr' },
+  'ai-builder': { name: 'AI Builder', service: 'ai-builder', repo: 'learn-bizapps-pr' },
+  'healthcare': { name: 'Healthcare', service: 'healthcare', repo: 'learn-bizapps-pr' },
+  'industry-solutions': { name: 'Industry Solutions', service: 'industry-solutions', repo: 'learn-bizapps-pr' },
+  // learn-dynamics-pr
+  'dyn365-finance': { name: 'Dynamics 365 Finance', service: 'dynamics-finance', repo: 'learn-dynamics-pr' },
+  'dyn365-supply-chain-management': { name: 'Dynamics 365 Supply Chain Management', service: 'dynamics-scm', repo: 'learn-dynamics-pr' },
+  'dyn365-commerce': { name: 'Dynamics 365 Commerce', service: 'dynamics-commerce', repo: 'learn-dynamics-pr' },
+  'dyn365-sales': { name: 'Dynamics 365 Sales', service: 'dynamics-sales', repo: 'learn-dynamics-pr' },
+  'dyn365-customer-service': { name: 'Dynamics 365 Customer Service', service: 'dynamics-customer-service', repo: 'learn-dynamics-pr' },
+  'dyn365-field-service': { name: 'Dynamics 365 Field Service', service: 'dynamics-field-service', repo: 'learn-dynamics-pr' },
+  'dyn365-business-central': { name: 'Dynamics 365 Business Central', service: 'dynamics-business-central', repo: 'learn-dynamics-pr' },
+  'dyn365-human-resources': { name: 'Dynamics 365 Human Resources', service: 'dynamics-human-resources', repo: 'learn-dynamics-pr' },
+  'dyn365-project-operations': { name: 'Dynamics 365 Project Operations', service: 'dynamics-project-operations', repo: 'learn-dynamics-pr' },
+  'dyn365-finance-operations': { name: 'Dynamics 365 Finance & Operations', service: 'dynamics-finance-operations', repo: 'learn-dynamics-pr' },
+  'dyn365-customer-insights-data': { name: 'Customer Insights - Data', service: 'dynamics-ci-data', repo: 'learn-dynamics-pr' },
+  'dyn365-customer-insights-journeys': { name: 'Customer Insights - Journeys', service: 'dynamics-ci-journeys', repo: 'learn-dynamics-pr' },
+  'dyn365-contact-center': { name: 'Dynamics 365 Contact Center', service: 'dynamics-contact-center', repo: 'learn-dynamics-pr' },
+  'dyn365-fraud-protection': { name: 'Dynamics 365 Fraud Protection', service: 'dynamics-fraud-protection', repo: 'learn-dynamics-pr' },
+  'dyn365-intelligent-order-management': { name: 'Intelligent Order Management', service: 'dynamics-iom', repo: 'learn-dynamics-pr' },
+  'dyn365-fast-track': { name: 'Dynamics 365 Fast Track', service: 'dynamics-fast-track', repo: 'learn-dynamics-pr' },
+  'copilot-for-finance': { name: 'Copilot for Finance', service: 'copilot-finance', repo: 'learn-dynamics-pr' },
+  'copilot-for-sales': { name: 'Copilot for Sales', service: 'copilot-sales', repo: 'learn-dynamics-pr' },
+  'copilot-for-service': { name: 'Copilot for Service', service: 'copilot-service', repo: 'learn-dynamics-pr' },
+  'power-platform': { name: 'Power Platform', service: 'power-platform', repo: 'learn-dynamics-pr' },
+  'nuance': { name: 'Nuance', service: 'nuance', repo: 'learn-dynamics-pr' },
+};
+
+const PRODUCT_DOC_TOC = {
+  'Microsoft Copilot Studio': '/en-us/microsoft-copilot-studio/toc.json',
+  'Power Apps': '/en-us/power-apps/toc.json',
+  'Power Automate': '/en-us/power-automate/toc.json',
+  'Power BI': '/en-us/power-bi/toc.json',
+  'AI Builder': '/en-us/ai-builder/toc.json',
+  'Dynamics 365 Finance': '/en-us/dynamics365/finance/toc.json',
+  'Dynamics 365 Supply Chain Management': '/en-us/dynamics365/supply-chain/toc.json',
+  'Dynamics 365 Sales': '/en-us/dynamics365/sales/toc.json',
+  'Dynamics 365 Customer Service': '/en-us/dynamics365/customer-service/toc.json',
+  'Dynamics 365 Commerce': '/en-us/dynamics365/commerce/toc.json',
+  'Dynamics 365 Field Service': '/en-us/dynamics365/field-service/toc.json',
+  'Dynamics 365 Business Central': '/en-us/dynamics365/business-central/toc.json',
+  'Dynamics 365 Human Resources': '/en-us/dynamics365/human-resources/toc.json',
+  'Dynamics 365 Project Operations': '/en-us/dynamics365/project-operations/toc.json',
+  'Dynamics 365 Contact Center': '/en-us/dynamics365/contact-center/toc.json',
+};
+
+const CORS_PROXIES = [
+  url => `https://api.codetabs.com/v1/proxy/?quest=${url}`,
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+];
+
+const CONCURRENCY_LIMIT = 8;
+
+// ══════════════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════════════
+
+let state = {
+  trees: {},           // { 'learn-bizapps-pr': [...], 'learn-dynamics-pr': [...] }
+  discoveredProducts: [],  // [{ folder, name, repo, modules: [{path, ...}] }]
+  selectedProduct: null,
+  modules: [],         // Parsed module data for selected product
+  docTopics: null,
+  flatDocTopics: [],
+  gapResults: null,
+};
+
+// ══════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════════════════
+
+function getToken() {
+  return localStorage.getItem('gh_models_token') || '';
+}
+
+function getAIConfig() {
+  return {
+    token: getToken(),
+    model: localStorage.getItem('gh_models_model') || 'openai/gpt-4.1-mini',
+  };
+}
+
+function ghHeaders() {
+  const h = { 'Accept': 'application/vnd.github.v3+json' };
+  const t = getToken();
+  if (t) h['Authorization'] = `Bearer ${t}`;
+  return h;
+}
+
+function getCacheTTL() {
+  return (parseInt(localStorage.getItem('team_cache_ttl') || '4')) * 60 * 60 * 1000;
+}
+
+function getCached(key) {
+  try {
+    const raw = localStorage.getItem(`team_${key}`);
+    if (!raw) return null;
+    const item = JSON.parse(raw);
+    if (Date.now() - item.ts < getCacheTTL()) return item.data;
+    localStorage.removeItem(`team_${key}`);
+  } catch {}
+  return null;
+}
+
+function setCache(key, data) {
+  try {
+    localStorage.setItem(`team_${key}`, JSON.stringify({ ts: Date.now(), data }));
+  } catch {
+    Object.keys(localStorage).filter(k => k.startsWith('team_')).forEach(k => localStorage.removeItem(k));
+  }
+}
+
+function clearAllCache() {
+  Object.keys(localStorage).filter(k => k.startsWith('team_')).forEach(k => localStorage.removeItem(k));
+  toast('Cache cleared', 'info');
+}
+
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  const icon = type === 'success' ? '✓' : type === 'warning' ? '⚠' : 'ℹ';
+  t.innerHTML = `<span>${icon}</span> <span style="flex:1;">${msg}</span>`;
+  container.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
+function showLoading(el) {
+  if (typeof el === 'string') el = document.getElementById(el);
+  if (el) el.innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div> Loading…</div>';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Run async tasks with concurrency limit
+async function asyncPool(limit, items, fn) {
+  const results = [];
+  const executing = new Set();
+  for (const [i, item] of items.entries()) {
+    const p = Promise.resolve().then(() => fn(item, i));
+    results.push(p);
+    executing.add(p);
+    const clean = () => executing.delete(p);
+    p.then(clean, clean);
+    if (executing.size >= limit) await Promise.race(executing);
+  }
+  return Promise.all(results);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// AI HELPER
+// ══════════════════════════════════════════════════════════════════════════
+
+async function callAI(messages, opts = {}) {
+  const { token, model } = getAIConfig();
+  if (!token) throw new Error('NO_TOKEN');
+  const resp = await fetch('https://models.github.ai/inference/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: model,
+      messages: messages,
+      max_tokens: opts.maxTokens || 2000,
+      temperature: opts.temperature || 0.3,
+    }),
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || `AI API error: ${resp.status}`);
+  }
+  const data = await resp.json();
+  return data.choices[0].message.content;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// GITHUB TREES API — FETCH & PARSE
+// ══════════════════════════════════════════════════════════════════════════
+
+async function fetchRepoTree(owner, repo) {
+  const cacheKey = `trees_${repo}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  const url = `https://api.github.com/repos/${owner}/${repo}/git/trees/main?recursive=1`;
+  const resp = await fetch(url, { headers: ghHeaders() });
+  if (!resp.ok) throw new Error(`GitHub API error ${resp.status} for ${repo}`);
+  const data = await resp.json();
+  const tree = (data.tree || []).map(n => n.path);
+  setCache(cacheKey, tree);
+  return tree;
+}
+
+function discoverProducts(trees) {
+  const products = [];
+  const indexPattern = /^([^/]+)\/([^/]+)\/index\.yml$/;
+
+  for (const [repo, paths] of Object.entries(trees)) {
+    const folderModules = {};
+    for (const p of paths) {
+      // Match paths like folder/module-name/index.yml
+      // Exclude paths/ and achievements/
+      if (p.includes('/index.yml') && !p.startsWith('paths/') && !p.includes('achievements/')) {
+        const parts = p.split('/');
+        // We want: topFolder/moduleName/index.yml (3 parts)
+        // or topFolder/subFolder/moduleName/index.yml (4+ parts)
+        if (parts.length >= 3 && parts[parts.length - 1] === 'index.yml') {
+          const topFolder = parts[0];
+          if (!folderModules[topFolder]) folderModules[topFolder] = [];
+          folderModules[topFolder].push({
+            path: p,
+            moduleFolder: parts[parts.length - 2],
+            fullPath: p,
+          });
+        }
+      }
+    }
+
+    for (const [folder, modules] of Object.entries(folderModules)) {
+      const mapping = FOLDER_PRODUCT_MAP[folder];
+      if (mapping && mapping.repo === repo) {
+        products.push({
+          folder,
+          name: mapping.name,
+          service: mapping.service,
+          repo,
+          owner: 'MicrosoftDocs',
+          modules,
+        });
+      }
+    }
+  }
+
+  return products.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// MODULE DATA FETCHING — YAML PARSING
+// ══════════════════════════════════════════════════════════════════════════
+
+function parseModuleYaml(text, path, repo) {
+  const get = (pattern) => {
+    const m = text.match(pattern);
+    return m ? m[1].trim() : '';
+  };
+
+  const getList = (key) => {
+    const pattern = new RegExp(`^${key}:\\s*\\n((?:\\s+-\\s+.+\\n?)*)`, 'm');
+    const m = text.match(pattern);
+    if (!m) return [];
+    return m[1].split('\n').map(l => l.replace(/^\s*-\s*/, '').trim()).filter(Boolean);
+  };
+
+  const title = get(/^title:\s*(.+)$/m);
+  const msDate = get(/^ms\.date:\s*(.+)$/m);
+  const msService = get(/^ms\.service:\s*(.+)$/m);
+  const updateCycle = get(/^ms\.update-cycle:\s*(.+)$/m);
+  const author = get(/^author:\s*(.+)$/m);
+  const msAuthor = get(/^ms\.author:\s*(.+)$/m);
+  const uid = get(/^uid:\s*(.+)$/m);
+
+  // Summary: multiline block scalar
+  let summary = '';
+  const sumMatch = text.match(/^summary:\s*\|\s*\n([\s\S]*?)(?=\n[a-zA-Z])/m);
+  if (sumMatch) {
+    summary = sumMatch[1].replace(/^\s{2}/gm, '').trim();
+  } else {
+    summary = get(/^summary:\s*(.+)$/m);
+  }
+
+  const products = getList('products');
+  const units = getList('units');
+  const levels = getList('levels');
+
+  const parts = path.split('/');
+  const moduleFolder = parts[parts.length - 2];
+  const learnUrl = `https://learn.microsoft.com/en-us/training/modules/${moduleFolder}/`;
+  const ghUrl = `https://github.com/MicrosoftDocs/${repo}/tree/main/${path.replace(/\/index\.yml$/, '')}`;
+
+  return {
+    title: title || moduleFolder,
+    msDate,
+    msService,
+    updateCycle,
+    author,
+    msAuthor,
+    uid,
+    summary,
+    products,
+    units,
+    unitCount: units.length,
+    levels,
+    path,
+    repo,
+    moduleFolder,
+    learnUrl,
+    ghUrl,
+  };
+}
+
+async function fetchModuleData(product, onProgress) {
+  const cacheKey = `modules_${product.folder}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  let loaded = 0;
+  const total = product.modules.length;
+
+  const results = await asyncPool(CONCURRENCY_LIMIT, product.modules, async (mod) => {
+    try {
+      const url = `https://raw.githubusercontent.com/${product.owner}/${product.repo}/main/${mod.path}`;
+      const resp = await fetch(url, { headers: getToken() ? { 'Authorization': `Bearer ${getToken()}` } : {} });
+      if (!resp.ok) return null;
+      const text = await resp.text();
+      loaded++;
+      if (onProgress) onProgress(loaded, total);
+      return parseModuleYaml(text, mod.path, product.repo);
+    } catch {
+      loaded++;
+      if (onProgress) onProgress(loaded, total);
+      return null;
+    }
+  });
+
+  const modules = results.filter(Boolean);
+  setCache(cacheKey, modules);
+  return modules;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// DOCUMENTATION TOC
+// ══════════════════════════════════════════════════════════════════════════
+
+async function fetchWithCorsProxy(url) {
+  try {
+    const resp = await fetch(url);
+    if (resp.ok) return await resp.json();
+  } catch {}
+  for (const makeProxy of CORS_PROXIES) {
+    try {
+      const proxyUrl = makeProxy(url);
+      const resp = await fetch(proxyUrl);
+      if (resp.ok) return await resp.json();
+    } catch {}
+  }
+  return null;
+}
+
+async function fetchDocToc(productName) {
+  const cacheKey = `toc_${productName.replace(/\s+/g, '_')}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  const tocPath = PRODUCT_DOC_TOC[productName];
+  if (!tocPath) return null;
+
+  const url = `https://learn.microsoft.com${tocPath}`;
+  const data = await fetchWithCorsProxy(url);
+  if (data) setCache(cacheKey, data);
+  return data;
+}
+
+function flattenToc(toc, depth = 0, parentPath = '') {
+  if (!toc) return [];
+  const items = toc.items || toc.children || toc;
+  if (!Array.isArray(items)) return [];
+  let result = [];
+  for (const item of items) {
+    const title = item.toc_title || item.title || '';
+    if (!title) continue;
+    const path = parentPath ? `${parentPath} > ${title}` : title;
+    result.push({
+      title, path, depth,
+      href: item.href || '',
+      hasChildren: !!(item.children && item.children.length > 0),
+    });
+    if (item.children) {
+      result = result.concat(flattenToc({ items: item.children }, depth + 1, path));
+    }
+  }
+  return result;
+}
+// ══════════════════════════════════════════════════════════════════════════
+// INIT & PRODUCT SELECTION
+// ══════════════════════════════════════════════════════════════════════════
+
+async function init() {
+  loadSettings();
+  updateAuthBadge();
+
+  try {
+    toast('Fetching repository trees…', 'info');
+    const [bizTree, dynTree] = await Promise.all([
+      fetchRepoTree('MicrosoftDocs', 'learn-bizapps-pr'),
+      fetchRepoTree('MicrosoftDocs', 'learn-dynamics-pr'),
+    ]);
+
+    state.trees = {
+      'learn-bizapps-pr': bizTree,
+      'learn-dynamics-pr': dynTree,
+    };
+
+    state.discoveredProducts = discoverProducts(state.trees);
+    renderProductSelector();
+    renderDashboardTreeStats();
+    toast(`Discovered ${state.discoveredProducts.length} products across both repos`, 'success');
+
+    // Restore last selected product
+    const saved = localStorage.getItem('team_selected_product');
+    if (saved) {
+      document.getElementById('product-select').value = saved;
+      onProductChange(saved);
+    }
+  } catch (e) {
+    toast(`Failed to fetch repo trees: ${e.message}`, 'warning');
+    console.error(e);
+  }
+}
+
+function updateAuthBadge() {
+  const badge = document.getElementById('auth-badge');
+  badge.style.display = getToken() ? 'none' : 'inline';
+}
+
+function renderProductSelector() {
+  const select = document.getElementById('product-select');
+  while (select.options.length > 1) select.remove(1);
+
+  const byRepo = {};
+  for (const p of state.discoveredProducts) {
+    if (!byRepo[p.repo]) byRepo[p.repo] = [];
+    byRepo[p.repo].push(p);
+  }
+
+  for (const r of REPOS) {
+    const products = byRepo[r.repo] || [];
+    if (products.length === 0) continue;
+    const grp = document.createElement('optgroup');
+    grp.label = `${r.repo} — ${r.label}`;
+    for (const p of products) {
+      const opt = document.createElement('option');
+      opt.value = p.folder;
+      opt.textContent = `${p.name} (${p.modules.length} modules)`;
+      grp.appendChild(opt);
+    }
+    select.appendChild(grp);
+  }
+}
+
+function renderDashboardTreeStats() {
+  const bizCount = state.discoveredProducts.filter(p => p.repo === 'learn-bizapps-pr').reduce((s, p) => s + p.modules.length, 0);
+  const dynCount = state.discoveredProducts.filter(p => p.repo === 'learn-dynamics-pr').reduce((s, p) => s + p.modules.length, 0);
+  document.getElementById('stat-bizapps').textContent = bizCount;
+  document.getElementById('stat-dynamics').textContent = dynCount;
+  document.getElementById('stat-products').textContent = state.discoveredProducts.length;
+}
+
+async function onProductChange(folder) {
+  if (!folder) return;
+  const product = state.discoveredProducts.find(p => p.folder === folder);
+  if (!product) { toast('Product not found', 'warning'); return; }
+
+  state.selectedProduct = product;
+  localStorage.setItem('team_selected_product', folder);
+
+  document.getElementById('topbar-title').textContent = `${product.name} — Team Content Gap Manager`;
+  document.getElementById('dashboard-subtitle').textContent = `Content analysis for ${product.name}`;
+  document.getElementById('modules-subtitle').textContent = `Training modules for ${product.name} from ${product.repo}`;
+  document.getElementById('docs-subtitle').textContent = `Documentation TOC for ${product.name}`;
+  document.getElementById('stat-selected').textContent = product.name;
+  document.getElementById('stat-selected').style.fontSize = product.name.length > 20 ? '13px' : '16px';
+  document.getElementById('stat-selected-sub').textContent = `${product.modules.length} modules in ${product.repo}`;
+
+  // Show progress and fetch modules
+  showLoading('health-list');
+  showLoading('module-list');
+  const progressEl = document.getElementById('module-progress');
+  const progressBar = document.getElementById('module-progress-bar');
+  const progressText = document.getElementById('module-progress-text');
+  progressEl.style.display = 'block';
+
+  toast(`Loading ${product.modules.length} modules for ${product.name}…`, 'info');
+
+  try {
+    const modules = await fetchModuleData(product, (loaded, total) => {
+      const pct = Math.round(loaded / total * 100);
+      progressBar.style.width = pct + '%';
+      progressText.textContent = `Loading ${total} modules… ${loaded}/${total}`;
+    });
+
+    state.modules = modules;
+    progressEl.style.display = 'none';
+
+    // Load doc TOC
+    state.docTopics = null;
+    state.flatDocTopics = [];
+    if (PRODUCT_DOC_TOC[product.name]) {
+      toast(`Loading documentation TOC for ${product.name}…`, 'info');
+      try {
+        const toc = await fetchDocToc(product.name);
+        if (toc) {
+          state.docTopics = toc;
+          state.flatDocTopics = flattenToc(toc);
+        } else {
+          toast('Documentation TOC could not be loaded', 'warning');
+        }
+      } catch (e) {
+        toast('Documentation TOC fetch failed (CORS)', 'warning');
+      }
+    }
+
+    state.gapResults = null;
+    renderAll();
+    toast(`Loaded ${modules.length} modules, ${state.flatDocTopics.length} doc topics`, 'success');
+  } catch (e) {
+    progressEl.style.display = 'none';
+    toast(`Error: ${e.message}`, 'warning');
+  }
+}
+
+async function refreshData() {
+  clearAllCache();
+  state.trees = {};
+  state.discoveredProducts = [];
+  await init();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// RENDER ALL
+// ══════════════════════════════════════════════════════════════════════════
+
+function renderAll() {
+  renderQuickStats();
+  renderHealthList();
+  renderModuleList(state.modules);
+  renderDocTree();
+  renderModulesByAuthor();
+  renderUpdateCycles();
+  document.getElementById('count-modules').textContent = state.modules.length;
+  document.getElementById('count-docs').textContent = state.flatDocTopics.length;
+  // Reset gap UI
+  document.getElementById('gap-summary').style.display = 'none';
+  document.getElementById('gap-visuals').style.display = 'none';
+  document.getElementById('gap-results').innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><p>Click Quick scan or AI deep analysis to compare training vs docs.</p></div>';
+  document.getElementById('export-csv-btn').style.display = 'none';
+  document.getElementById('export-html-btn').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════════════════════
+
+function renderQuickStats() {
+  const body = document.getElementById('quick-stats-body');
+  const badge = document.getElementById('quick-stats-product');
+  if (!state.selectedProduct || state.modules.length === 0) {
+    body.innerHTML = '<div class="empty-state" style="padding:1.5rem;"><p>Select a product to see stats</p></div>';
+    badge.textContent = '';
+    return;
+  }
+
+  badge.textContent = state.selectedProduct.name;
+  const mods = state.modules;
+  const dates = mods.filter(m => m.msDate).map(m => new Date(m.msDate));
+  const now = Date.now();
+  const avgAge = dates.length > 0 ? Math.round(dates.reduce((s, d) => s + (now - d.getTime()), 0) / dates.length / (30*24*60*60*1000)) : 0;
+  const oldest = dates.length > 0 ? new Date(Math.min(...dates.map(d => d.getTime()))) : null;
+  const totalUnits = mods.reduce((s, m) => s + m.unitCount, 0);
+
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Modules</div><div style="font-size:22px;font-weight:600;font-family:'JetBrains Mono',monospace;">${mods.length}</div></div>
+      <div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Total Units</div><div style="font-size:22px;font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--primary);">${totalUnits}</div></div>
+      <div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Avg Age</div><div style="font-size:22px;font-weight:600;font-family:'JetBrains Mono',monospace;color:${avgAge <= 6 ? 'var(--success)' : avgAge <= 12 ? 'var(--warning)' : 'var(--danger)'};">${avgAge}mo</div></div>
+      <div><div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em;">Oldest Module</div><div style="font-size:13px;font-weight:500;margin-top:4px;">${oldest ? oldest.toLocaleDateString('en-US',{month:'short',year:'numeric'}) : '—'}</div></div>
+    </div>
+    ${state.flatDocTopics.length > 0 ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted);">📖 ${state.flatDocTopics.length} documentation topics available for gap analysis</div>` : ''}
+  `;
+}
+
+function renderHealthList() {
+  const list = document.getElementById('health-list');
+  if (state.modules.length === 0) {
+    list.innerHTML = '<div class="empty-state" style="padding:2rem;"><p>No modules loaded</p></div>';
+    return;
+  }
+
+  // Sort by date ascending = oldest first
+  const sorted = [...state.modules]
+    .filter(m => m.msDate)
+    .sort((a, b) => new Date(a.msDate) - new Date(b.msDate))
+    .slice(0, 10);
+
+  const now = Date.now();
+  list.innerHTML = sorted.map(m => {
+    const date = new Date(m.msDate);
+    const ageMonths = Math.floor((now - date.getTime()) / (30*24*60*60*1000));
+    const color = ageMonths <= 3 ? 'var(--success)' : ageMonths <= 12 ? 'var(--warning)' : 'var(--danger)';
+    const tagClass = ageMonths <= 3 ? 'tag-green' : ageMonths <= 12 ? 'tag-yellow' : 'tag-red';
+    const dateStr = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    const label = ageMonths <= 3 ? 'Current' : `${ageMonths}mo old`;
+
+    return `
+    <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+      <span style="font-size:14px;">📄</span>
+      <div style="flex:1;min-width:0;">
+        <p style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(m.title)}">${escHtml(m.title)}</p>
+        <p style="font-size:10px;color:var(--text-muted);margin-top:2px;">${m.author || '?'} · ${m.unitCount} units · ${dateStr}</p>
+      </div>
+      <span class="tag ${tagClass}">${label}</span>
+    </div>`;
+  }).join('');
+
+  if (sorted.length === 0) {
+    list.innerHTML = '<div class="empty-state" style="padding:2rem;"><p>No modules with dates found</p></div>';
+  }
+}
+// ══════════════════════════════════════════════════════════════════════════
+// MODULE LIST (Modules view)
+// ══════════════════════════════════════════════════════════════════════════
+
+let currentModuleList = [];
+
+function renderModuleList(modules) {
+  currentModuleList = modules;
+  const list = document.getElementById('module-list');
+  if (!modules || modules.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📚</div><p>No training modules found</p></div>';
+    return;
+  }
+
+  list.innerHTML = modules.map((m, i) => {
+    const now = Date.now();
+    const date = m.msDate ? new Date(m.msDate) : null;
+    const ageMonths = date ? Math.floor((now - date.getTime()) / (30*24*60*60*1000)) : 99;
+    const tagClass = ageMonths <= 3 ? 'tag-green' : ageMonths <= 12 ? 'tag-yellow' : 'tag-red';
+    const dateStr = date ? date.toLocaleDateString('en-US', { month:'short', year:'numeric' }) : 'Unknown';
+
+    return `
+    <div class="module-item" onclick="toggleModuleExpand(this)" data-idx="${i}">
+      <div class="module-item-header">
+        <div class="module-item-icon">📄</div>
+        <div class="module-item-meta">
+          <h4>${escHtml(m.title)}</h4>
+          <p>${m.unitCount} units · ${m.author || '?'} · Updated ${dateStr}  <span class="tag ${tagClass}">${dateStr}</span></p>
+          <div class="module-tags">
+            ${m.products.slice(0, 3).map(p => `<span class="tag tag-blue">${escHtml(p)}</span>`).join('')}
+            ${m.msService ? `<span class="tag tag-purple">${escHtml(m.msService)}</span>` : ''}
+            ${m.levels.map(l => `<span class="tag tag-green">${escHtml(l)}</span>`).join('')}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+          <a href="${m.learnUrl}" target="_blank" class="btn btn-secondary btn-sm" onclick="event.stopPropagation();">Learn ↗</a>
+          <a href="${m.ghUrl}" target="_blank" class="btn btn-ghost btn-sm" onclick="event.stopPropagation();" style="font-size:11px;">GitHub ↗</a>
+        </div>
+      </div>
+      <div class="module-expand">
+        ${m.summary ? `<p style="margin-bottom:8px;"><strong>Summary:</strong> ${escHtml(m.summary)}</p>` : ''}
+        <p><strong>UID:</strong> <code style="font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg);padding:2px 6px;border-radius:4px;">${escHtml(m.uid)}</code></p>
+        <p><strong>Author:</strong> ${escHtml(m.author)} (ms.author: ${escHtml(m.msAuthor)})</p>
+        <p><strong>ms.service:</strong> ${escHtml(m.msService)} · <strong>ms.update-cycle:</strong> ${escHtml(m.updateCycle || 'not set')}</p>
+        ${m.units.length > 0 ? `<p style="margin-top:8px;"><strong>Units (${m.unitCount}):</strong></p><ol style="margin-left:1.5rem;font-size:11.5px;color:var(--text-muted);">${m.units.map(u => `<li>${escHtml(u)}</li>`).join('')}</ol>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleModuleExpand(el) {
+  el.classList.toggle('expanded');
+}
+
+function filterModules(q) {
+  if (!q) { renderModuleList(state.modules); return; }
+  const filtered = state.modules.filter(m =>
+    m.title.toLowerCase().includes(q.toLowerCase()) ||
+    m.summary.toLowerCase().includes(q.toLowerCase()) ||
+    m.author.toLowerCase().includes(q.toLowerCase())
+  );
+  renderModuleList(filtered);
+}
+
+function sortModules(by) {
+  const sorted = [...state.modules];
+  switch (by) {
+    case 'title': sorted.sort((a, b) => a.title.localeCompare(b.title)); break;
+    case 'date': sorted.sort((a, b) => new Date(b.msDate || 0) - new Date(a.msDate || 0)); break;
+    case 'units': sorted.sort((a, b) => b.unitCount - a.unitCount); break;
+  }
+  renderModuleList(sorted);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// DOCUMENTATION TREE
+// ══════════════════════════════════════════════════════════════════════════
+
+function renderDocTree() {
+  const container = document.getElementById('doc-tree-container');
+  if (state.flatDocTopics.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📖</div><p>No documentation loaded. Select a product with documentation mapping.</p></div>';
+    document.getElementById('doc-topic-total').textContent = '';
+    return;
+  }
+
+  document.getElementById('doc-topic-total').textContent = `${state.flatDocTopics.length} topics`;
+
+  const maxDepth = 3;
+  const visible = state.flatDocTopics.filter(d => d.depth <= maxDepth);
+
+  const productName = state.selectedProduct?.name || '';
+  const tocPath = PRODUCT_DOC_TOC[productName] || '';
+  const basePath = tocPath.replace(/toc\.json$/, '');
+
+  container.innerHTML = `<div class="doc-tree">${visible.map(d => {
+    const indent = d.depth * 16;
+    const icon = d.hasChildren ? '📁' : '📄';
+    const weight = d.depth === 0 ? 'font-weight:600;' : d.depth === 1 ? 'font-weight:500;' : '';
+    let docUrl = '';
+    if (d.href && !d.href.startsWith('http') && d.href !== './') {
+      docUrl = `https://learn.microsoft.com${basePath}${d.href}`;
+    } else if (d.href && d.href.startsWith('http')) {
+      docUrl = d.href;
+    }
+    const linkHtml = docUrl ? `<a href="${docUrl}" target="_blank" style="color:var(--primary);font-size:10px;text-decoration:none;flex-shrink:0;">open ↗</a>` : '';
+
+    return `<div class="doc-tree-item" style="padding-left:${indent}px;">
+      <span style="font-size:13px;">${icon}</span>
+      <span style="flex:1;${weight}">${escHtml(d.title)}</span>
+      ${linkHtml}
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function filterDocs(q) {
+  const container = document.getElementById('doc-tree-container');
+  if (!q) { renderDocTree(); return; }
+  const filtered = state.flatDocTopics.filter(d => d.title.toLowerCase().includes(q.toLowerCase()));
+  container.innerHTML = `<div class="doc-tree">${filtered.map(d => `
+    <div class="doc-tree-item">
+      <span style="font-size:13px;">${d.hasChildren ? '📁' : '📄'}</span>
+      <span style="flex:1;">${escHtml(d.title)}</span>
+      <span class="text-xs text-muted">${escHtml(d.path)}</span>
+    </div>
+  `).join('')}</div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// GAP ANALYSIS — CLIENT SIDE (KEYWORD)
+// ══════════════════════════════════════════════════════════════════════════
+
+function extractKeywords(text) {
+  const stopWords = new Set(['the','a','an','and','or','but','in','on','at','to','for','of','with','by','from','is','are','was','were','be','been','being','have','has','had','do','does','did','will','would','could','should','may','might','can','this','that','these','those','i','you','he','she','it','we','they','what','which','who','when','where','why','how','all','each','every','both','few','more','most','other','some','such','no','not','only','own','same','so','than','too','very','your','about','up','out','use','using','get','set','new','overview','introduction']);
+  return [...new Set(
+    text.toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, ' ')
+      .split(/[\s-]+/)
+      .filter(w => w.length > 2 && !stopWords.has(w))
+  )];
+}
+
+function keywordOverlap(a, b) {
+  if (a.length === 0 || b.length === 0) return 0;
+  const setB = new Set(b);
+  const matches = a.filter(w => setB.has(w) || b.some(bw => bw.includes(w) || w.includes(bw)));
+  return matches.length / Math.max(a.length, 1);
+}
+
+function runClientGapAnalysis() {
+  if (state.modules.length === 0 || state.flatDocTopics.length === 0) {
+    toast('Load a product with both training and documentation first', 'warning');
+    return;
+  }
+
+  const btn = document.getElementById('client-gap-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Scanning…';
+
+  setTimeout(() => {
+    const moduleKeywords = state.modules.map(m => ({
+      ...m,
+      keywords: extractKeywords(m.title + ' ' + m.summary)
+    }));
+
+    const results = state.flatDocTopics
+      .filter(d => d.depth >= 1 && d.title.length > 3)
+      .map(doc => {
+        const docKeywords = extractKeywords(doc.title);
+        let bestMatch = null;
+        let bestScore = 0;
+        for (const mod of moduleKeywords) {
+          const score = keywordOverlap(docKeywords, mod.keywords);
+          if (score > bestScore) { bestScore = score; bestMatch = mod; }
+        }
+        return {
+          docTopic: doc,
+          bestMatch: bestScore >= 0.3 ? bestMatch : null,
+          score: bestScore,
+          coverage: bestScore >= 0.5 ? 'covered' : bestScore >= 0.2 ? 'partial' : 'uncovered',
+        };
+      });
+
+    const covered = results.filter(r => r.coverage === 'covered').length;
+    const partial = results.filter(r => r.coverage === 'partial').length;
+    const uncovered = results.filter(r => r.coverage === 'uncovered').length;
+    const total = results.length;
+    const coveragePct = total > 0 ? Math.round((covered + partial * 0.5) / total * 100) : 0;
+
+    state.gapResults = { results, covered, partial, uncovered, total, coveragePct };
+    renderGapSummary();
+    renderGapHeatmap(results);
+    renderGapTimeline();
+    renderGapResultCards(results);
+    document.getElementById('export-csv-btn').style.display = 'inline-flex';
+    document.getElementById('export-html-btn').style.display = 'inline-flex';
+    toast(`Gap analysis complete: ${coveragePct}% coverage`, 'success');
+
+    btn.disabled = false;
+    btn.textContent = '⚡ Quick scan';
+  }, 100);
+}
+
+function renderGapSummary() {
+  const g = state.gapResults;
+  if (!g) return;
+  const summary = document.getElementById('gap-summary');
+  summary.style.display = 'block';
+  document.getElementById('gap-total-docs').textContent = g.total;
+  document.getElementById('gap-covered').textContent = g.covered;
+  document.getElementById('gap-partial').textContent = g.partial;
+  document.getElementById('gap-uncovered').textContent = g.uncovered;
+  document.getElementById('gap-pct').textContent = g.coveragePct + '%';
+  document.getElementById('gap-pct').style.color = g.coveragePct >= 70 ? 'var(--success)' : g.coveragePct >= 40 ? 'var(--warning)' : 'var(--danger)';
+
+  const bar = document.getElementById('gap-coverage-bar');
+  bar.innerHTML = `
+    <div class="covered" style="width:${(g.covered/g.total*100).toFixed(1)}%;" title="Covered: ${g.covered}"></div>
+    <div class="partial" style="width:${(g.partial/g.total*100).toFixed(1)}%;" title="Partial: ${g.partial}"></div>
+    <div class="uncovered" style="width:${(g.uncovered/g.total*100).toFixed(1)}%;" title="Uncovered: ${g.uncovered}"></div>
+  `;
+}
+
+function renderGapHeatmap(results) {
+  const container = document.getElementById('gap-heatmap');
+  const visuals = document.getElementById('gap-visuals');
+  if (!results || results.length === 0) { visuals.style.display = 'none'; return; }
+  visuals.style.display = 'block';
+
+  container.innerHTML = results.map((r, i) => {
+    const title = escHtml(r.docTopic.title);
+    return `<div class="heatmap-cell ${r.coverage}" data-idx="${i}" onclick="selectGapItem(${i})" title="${title}"></div>`;
+  }).join('');
+
+  renderGapListUI(results, 'all');
+}
+
+function renderGapListUI(results, filter) {
+  const container = document.getElementById('gap-list');
+  const filtered = filter === 'all' ? results : results.filter(r => r.coverage === filter);
+  container.innerHTML = filtered.map(r => {
+    const i = state.gapResults.results.indexOf(r);
+    const score = Math.round(r.score * 100);
+    return `<div class="gap-list-item" data-idx="${i}" onclick="selectGapItem(${i})">
+      <div class="dot ${r.coverage}"></div>
+      <div class="item-title">${escHtml(r.docTopic.title)}</div>
+      <div class="item-score">${score}%</div>
+    </div>`;
+  }).join('');
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;font-size:12px;">No topics in this category</div>';
+  }
+}
+
+function filterGapList(filter) {
+  if (!state.gapResults) return;
+  document.querySelectorAll('#gap-list-filter button').forEach(btn => {
+    const text = btn.textContent.toLowerCase();
+    btn.classList.toggle('active', text.includes(filter === 'all' ? 'all' : filter));
+  });
+  renderGapListUI(state.gapResults.results, filter);
+}
+
+function selectGapItem(idx) {
+  const g = state.gapResults;
+  if (!g || !g.results[idx]) return;
+  const r = g.results[idx];
+  const panel = document.getElementById('gap-detail-panel');
+
+  document.querySelectorAll('.heatmap-cell.selected').forEach(el => el.classList.remove('selected'));
+  const cell = document.querySelector(`.heatmap-cell[data-idx="${idx}"]`);
+  if (cell) cell.classList.add('selected');
+
+  document.querySelectorAll('.gap-list-item.selected').forEach(el => el.classList.remove('selected'));
+  const listItem = document.querySelector(`.gap-list-item[data-idx="${idx}"]`);
+  if (listItem) { listItem.classList.add('selected'); listItem.scrollIntoView({ block: 'nearest' }); }
+
+  const score = Math.round(r.score * 100);
+  const statusIcon = r.coverage === 'covered' ? '✅' : r.coverage === 'partial' ? '⚠️' : '❌';
+  const statusLabel = r.coverage === 'covered' ? 'Covered' : r.coverage === 'partial' ? 'Partially Covered' : 'Not Covered';
+  const statusColor = r.coverage === 'covered' ? 'var(--success)' : r.coverage === 'partial' ? 'var(--warning)' : 'var(--danger)';
+
+  let explanation = '';
+  if (r.coverage === 'uncovered') {
+    explanation = `<strong>No matching training module found.</strong> Consider creating a new module covering "${escHtml(r.docTopic.title)}".`;
+  } else if (r.coverage === 'partial') {
+    explanation = `<strong>Weak match:</strong> "${escHtml(r.bestMatch?.title || '—')}" (${score}% overlap). Consider expanding coverage.`;
+  } else {
+    explanation = `<strong>Good coverage:</strong> "${escHtml(r.bestMatch?.title || '—')}" matches with ${score}% overlap. Verify content freshness.`;
+  }
+
+  panel.innerHTML = `
+  <div class="gap-detail-panel">
+    <div class="detail-header">
+      <span style="font-size:20px;">${statusIcon}</span>
+      <h4>${escHtml(r.docTopic.title)}</h4>
+      <button class="detail-close" onclick="closeGapDetail()">✕</button>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">Status</div>
+      <div class="detail-value"><span class="tag" style="background:${statusColor}20;color:${statusColor};">${statusLabel}</span></div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">Doc path</div>
+      <div class="detail-value" style="font-size:11px;color:var(--text-muted);">${escHtml(r.docTopic.path)}</div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">Match score</div>
+      <div class="detail-value">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="score-bar" style="flex:1;"><div class="score-fill" style="width:${score}%;background:${statusColor};"></div></div>
+          <span style="font-weight:600;font-size:13px;">${score}%</span>
+        </div>
+      </div>
+    </div>
+    ${r.bestMatch ? `
+    <div class="detail-row">
+      <div class="detail-label">Best match</div>
+      <div class="detail-value">
+        <div><strong>${escHtml(r.bestMatch.title)}</strong></div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+          ${r.bestMatch.author ? `👤 ${escHtml(r.bestMatch.author)}` : ''} · 📅 ${r.bestMatch.msDate || '?'} · 📦 ${r.bestMatch.unitCount} units
+        </div>
+        <a href="${r.bestMatch.ghUrl}" target="_blank" style="font-size:11px;color:var(--primary);">GitHub source ↗</a>
+        · <a href="${r.bestMatch.learnUrl}" target="_blank" style="font-size:11px;color:var(--primary);">learn.microsoft.com ↗</a>
+      </div>
+    </div>` : ''}
+    <div class="detail-row">
+      <div class="detail-label">Analysis</div>
+      <div class="detail-value" style="line-height:1.5;">${explanation}</div>
+    </div>
+  </div>`;
+}
+
+function closeGapDetail() {
+  document.getElementById('gap-detail-panel').innerHTML = '';
+  document.querySelectorAll('.heatmap-cell.selected').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.gap-list-item.selected').forEach(el => el.classList.remove('selected'));
+}
+
+function renderGapTimeline() {
+  const container = document.getElementById('gap-timeline');
+  if (state.modules.length === 0) return;
+  const now = Date.now();
+  const withDates = state.modules.filter(m => m.msDate);
+  if (withDates.length === 0) { container.innerHTML = '<p class="text-xs text-muted">No modules with dates</p>'; return; }
+
+  const oldest = Math.min(...withDates.map(m => new Date(m.msDate).getTime()));
+  const range = now - oldest || 1;
+
+  const sorted = [...withDates].sort((a, b) => new Date(a.msDate) - new Date(b.msDate)).slice(0, 25);
+  container.innerHTML = sorted.map(m => {
+    const date = new Date(m.msDate);
+    const ageMonths = Math.floor((now - date.getTime()) / (30*24*60*60*1000));
+    const pct = ((date.getTime() - oldest) / range * 100).toFixed(1);
+    const color = ageMonths <= 3 ? 'var(--success)' : ageMonths <= 12 ? 'var(--warning)' : 'var(--danger)';
+    const dateStr = date.toLocaleDateString('en-US', { month:'short', year:'numeric' });
+
+    return `<div class="timeline-row">
+      <div class="timeline-label" title="${escHtml(m.title)}">${escHtml(m.title)}</div>
+      <div class="timeline-bar-wrap"><div class="timeline-bar" style="width:${Math.max(pct,3)}%;background:${color};"></div></div>
+      <div class="timeline-date">${dateStr}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderGapResultCards(results) {
+  const container = document.getElementById('gap-results');
+  const uncovered = results.filter(r => r.coverage === 'uncovered');
+  const partial = results.filter(r => r.coverage === 'partial');
+  const covered = results.filter(r => r.coverage === 'covered');
+
+  container.innerHTML = `
+  <div class="gap-grid">
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">🚨</span><h4>Not covered</h4><span class="tag tag-red">${uncovered.length}</span></div>
+      <div class="gap-card-body" style="max-height:400px;overflow-y:auto;">
+        ${uncovered.slice(0, 30).map(r => `<div class="gap-item"><div class="gap-item-icon">❌</div><div class="gap-item-text"><strong>${escHtml(r.docTopic.title)}</strong><br><span style="font-size:10px;color:var(--text-light);">${escHtml(r.docTopic.path)}</span></div></div>`).join('')}
+        ${uncovered.length > 30 ? `<p class="text-xs text-muted" style="padding:8px 0;">+ ${uncovered.length - 30} more</p>` : ''}
+        ${uncovered.length === 0 ? '<p class="text-xs text-muted" style="padding:8px;">All topics have some coverage!</p>' : ''}
+      </div>
+    </div>
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">⚠️</span><h4>Partially covered</h4><span class="tag tag-yellow">${partial.length}</span></div>
+      <div class="gap-card-body" style="max-height:400px;overflow-y:auto;">
+        ${partial.slice(0, 30).map(r => `<div class="gap-item"><div class="gap-item-icon">🔶</div><div class="gap-item-text"><strong>${escHtml(r.docTopic.title)}</strong>${r.bestMatch ? `<br><span style="font-size:10px;color:var(--primary);">Closest: ${escHtml(r.bestMatch.title)}</span>` : ''}</div></div>`).join('')}
+      </div>
+    </div>
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">✅</span><h4>Covered</h4><span class="tag tag-green">${covered.length}</span></div>
+      <div class="gap-card-body" style="max-height:400px;overflow-y:auto;">
+        ${covered.slice(0, 30).map(r => `<div class="gap-item"><div class="gap-item-icon">✅</div><div class="gap-item-text"><strong>${escHtml(r.docTopic.title)}</strong>${r.bestMatch ? `<br><span style="font-size:10px;color:var(--success);">Match: ${escHtml(r.bestMatch.title)} (${Math.round(r.score*100)}%)</span>` : ''}</div></div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+// ══════════════════════════════════════════════════════════════════════════
+// AI GAP ANALYSIS
+// ══════════════════════════════════════════════════════════════════════════
+
+async function runAIGapAnalysis() {
+  const { token } = getAIConfig();
+  if (!token) { toast('Add your GitHub token in Settings first', 'warning'); openSettings(); return; }
+  if (state.modules.length === 0) { toast('Load a product first', 'warning'); return; }
+  if (state.flatDocTopics.length === 0) { toast('No documentation topics loaded — run Quick scan instead', 'warning'); return; }
+
+  const btn = document.getElementById('ai-gap-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Analyzing…';
+
+  const moduleSummary = state.modules.slice(0, 50).map(m =>
+    `- "${m.title}" (${m.unitCount} units, author: ${m.author}, ms.date: ${m.msDate || 'unknown'})`
+  ).join('\n');
+
+  const docSummary = state.flatDocTopics.filter(d => d.depth <= 2).slice(0, 80).map(d =>
+    `${'  '.repeat(d.depth)}- ${d.title}`
+  ).join('\n');
+
+  const prompt = `You are a content audit specialist for Microsoft Learn. Analyze the training modules and documentation for "${state.selectedProduct.name}" and provide a gap analysis.
+
+TRAINING MODULES (${state.modules.length} total, showing top 50):
+${moduleSummary}
+
+DOCUMENTATION TABLE OF CONTENTS (${state.flatDocTopics.length} topics, showing top 80):
+${docSummary}
+
+Provide JSON only (no markdown):
+{
+  "coverage_score": 65,
+  "summary": "Brief overall assessment",
+  "missing_from_training": [
+    { "doc_topic": "Topic name", "priority": "high|medium|low", "reason": "Why" }
+  ],
+  "outdated_training": [
+    { "module": "Module title", "issue": "Issue", "recommendation": "Fix" }
+  ],
+  "recommended_new_modules": [
+    { "title": "Title", "covers": "Topics", "priority": "high|medium|low" }
+  ],
+  "strengths": ["Well covered areas"],
+  "quick_wins": [
+    { "action": "What to do", "impact": "Expected benefit" }
+  ]
+}`;
+
+  try {
+    const reply = await callAI([{ role: 'user', content: prompt }], { maxTokens: 3000 });
+    try {
+      const clean = reply.replace(/```json|```/g, '').trim();
+      const analysis = JSON.parse(clean);
+      renderAIGapResults(analysis);
+    } catch {
+      document.getElementById('gap-results').innerHTML = `<div class="card"><div class="card-body"><pre style="font-size:12px;white-space:pre-wrap;">${escHtml(reply)}</pre></div></div>`;
+    }
+  } catch (e) {
+    if (e.message === 'NO_TOKEN') { toast('Add your GitHub token in Settings', 'warning'); openSettings(); }
+    else toast(`AI analysis failed: ${e.message}`, 'warning');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🤖 AI deep analysis';
+}
+
+function renderAIGapResults(data) {
+  const container = document.getElementById('gap-results');
+  const scoreColor = data.coverage_score >= 70 ? 'var(--success)' : data.coverage_score >= 40 ? 'var(--warning)' : 'var(--danger)';
+
+  container.innerHTML = `
+  <div style="margin-bottom:16px;">
+    <div class="card">
+      <div class="card-header"><span>📊</span><h3>AI Analysis Summary</h3><span style="margin-left:auto;font-size:20px;font-weight:600;color:${scoreColor};">${data.coverage_score}%</span></div>
+      <div class="card-body">
+        <p style="font-size:13.5px;">${escHtml(data.summary)}</p>
+        ${data.strengths?.length ? `<div style="margin-top:10px;">${data.strengths.map(s => `<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--success);margin-right:12px;">✓ ${escHtml(s)}</span>`).join('')}</div>` : ''}
+      </div>
+    </div>
+  </div>
+  <div class="gap-grid">
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">🚨</span><h4>Missing from training</h4><span class="tag tag-red">${data.missing_from_training?.length || 0}</span></div>
+      <div class="gap-card-body" style="max-height:400px;overflow-y:auto;">
+        ${(data.missing_from_training || []).map(t => `<div class="gap-item"><span class="tag tag-${t.priority==='high'?'red':t.priority==='medium'?'yellow':'blue'}" style="flex-shrink:0;">${t.priority}</span><div class="gap-item-text"><strong>${escHtml(t.doc_topic)}</strong><br>${escHtml(t.reason)}</div></div>`).join('')}
+      </div>
+    </div>
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">🔄</span><h4>Outdated training</h4><span class="tag tag-yellow">${data.outdated_training?.length || 0}</span></div>
+      <div class="gap-card-body" style="max-height:400px;overflow-y:auto;">
+        ${(data.outdated_training || []).map(m => `<div class="gap-item"><div class="gap-item-icon">📄</div><div class="gap-item-text"><strong>${escHtml(m.module)}</strong><br>${escHtml(m.issue)}<br><em style="color:var(--primary);">→ ${escHtml(m.recommendation)}</em></div></div>`).join('')}
+      </div>
+    </div>
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">✨</span><h4>Recommended new modules</h4><span class="tag tag-purple">${data.recommended_new_modules?.length || 0}</span></div>
+      <div class="gap-card-body" style="max-height:400px;overflow-y:auto;">
+        ${(data.recommended_new_modules || []).map(m => `<div class="gap-item"><span class="tag tag-${m.priority==='high'?'red':m.priority==='medium'?'yellow':'blue'}" style="flex-shrink:0;">${m.priority}</span><div class="gap-item-text"><strong>${escHtml(m.title)}</strong><br>${escHtml(m.covers)}</div></div>`).join('')}
+      </div>
+    </div>
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">⚡</span><h4>Quick wins</h4><span class="tag tag-green">${data.quick_wins?.length || 0}</span></div>
+      <div class="gap-card-body" style="max-height:400px;overflow-y:auto;">
+        ${(data.quick_wins || []).map(q => `<div class="gap-item"><div class="gap-item-icon">✓</div><div class="gap-item-text"><strong>${escHtml(q.action)}</strong><br>${escHtml(q.impact)}</div></div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+  toast('AI gap analysis complete', 'success');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// EXPORTS
+// ══════════════════════════════════════════════════════════════════════════
+
+function exportGapCSV() {
+  const g = state.gapResults;
+  if (!g) { toast('Run gap analysis first', 'warning'); return; }
+  const rows = [['Doc Topic','Path','Coverage','Score %','Best Match','Module URL','Author','ms.date'].join(',')];
+  for (const r of g.results) {
+    rows.push([
+      `"${(r.docTopic.title||'').replace(/"/g,'""')}"`,
+      `"${(r.docTopic.path||'').replace(/"/g,'""')}"`,
+      r.coverage,
+      Math.round(r.score * 100),
+      r.bestMatch ? `"${r.bestMatch.title.replace(/"/g,'""')}"` : '',
+      r.bestMatch ? r.bestMatch.learnUrl : '',
+      r.bestMatch ? r.bestMatch.author : '',
+      r.bestMatch ? r.bestMatch.msDate : '',
+    ].join(','));
+  }
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `gap-analysis-${(state.selectedProduct?.name||'product').replace(/\s+/g,'-').toLowerCase()}-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('CSV exported', 'success');
+}
+
+function exportGapHTML() {
+  const g = state.gapResults;
+  if (!g) { toast('Run gap analysis first', 'warning'); return; }
+  const name = state.selectedProduct?.name || 'Product';
+  const uncovered = g.results.filter(r => r.coverage === 'uncovered');
+  const partial = g.results.filter(r => r.coverage === 'partial');
+  const covered = g.results.filter(r => r.coverage === 'covered');
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Gap Analysis Report — ${escHtml(name)}</title>
+<style>
+  body { font-family: Segoe UI, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; color: #1a1c2e; }
+  h1 { font-size: 22px; border-bottom: 2px solid #0078d4; padding-bottom: 8px; }
+  h2 { font-size: 16px; margin-top: 2rem; color: #333; }
+  .stats { display: flex; gap: 24px; margin: 1rem 0; }
+  .stat { text-align: center; }
+  .stat-val { font-size: 28px; font-weight: 700; }
+  .stat-label { font-size: 11px; color: #666; text-transform: uppercase; }
+  .bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin: 8px 0 24px; }
+  .bar .g { background: #107c10; } .bar .y { background: #f59e0b; } .bar .r { background: #a4262c; opacity: 0.7; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+  th { background: #f3f4f8; text-align: left; padding: 6px 10px; font-weight: 600; font-size: 11px; text-transform: uppercase; color: #666; }
+  td { padding: 5px 10px; border-bottom: 1px solid #e1e4ec; }
+  .footer { margin-top: 2rem; font-size: 11px; color: #999; border-top: 1px solid #e1e4ec; padding-top: 8px; }
+</style></head><body>
+<h1>📊 Gap Analysis Report — ${escHtml(name)}</h1>
+<p>Generated ${new Date().toLocaleString()} · ${g.total} doc topics analyzed against ${state.modules.length} training modules<br>Source: ${state.selectedProduct?.repo || ''}</p>
+<div class="stats">
+  <div class="stat"><div class="stat-val">${g.coveragePct}%</div><div class="stat-label">Coverage</div></div>
+  <div class="stat"><div class="stat-val" style="color:#107c10;">${g.covered}</div><div class="stat-label">Covered</div></div>
+  <div class="stat"><div class="stat-val" style="color:#f59e0b;">${g.partial}</div><div class="stat-label">Partial</div></div>
+  <div class="stat"><div class="stat-val" style="color:#a4262c;">${g.uncovered}</div><div class="stat-label">Uncovered</div></div>
+</div>
+<div class="bar">
+  <div class="g" style="width:${(g.covered/g.total*100).toFixed(1)}%;"></div>
+  <div class="y" style="width:${(g.partial/g.total*100).toFixed(1)}%;"></div>
+  <div class="r" style="width:${(g.uncovered/g.total*100).toFixed(1)}%;"></div>
+</div>
+<h2>🚨 Not Covered (${uncovered.length})</h2>
+<table><tr><th>Documentation Topic</th><th>Path</th></tr>
+${uncovered.map(r => `<tr><td>${escHtml(r.docTopic.title)}</td><td style="font-size:11px;color:#666;">${escHtml(r.docTopic.path)}</td></tr>`).join('')}
+</table>
+<h2>⚠️ Partially Covered (${partial.length})</h2>
+<table><tr><th>Documentation Topic</th><th>Closest Training</th><th>Score</th></tr>
+${partial.map(r => `<tr><td>${escHtml(r.docTopic.title)}</td><td>${escHtml(r.bestMatch?.title||'—')}</td><td>${Math.round(r.score*100)}%</td></tr>`).join('')}
+</table>
+<h2>✅ Covered (${covered.length})</h2>
+<table><tr><th>Documentation Topic</th><th>Training Match</th><th>Score</th></tr>
+${covered.map(r => `<tr><td>${escHtml(r.docTopic.title)}</td><td>${escHtml(r.bestMatch?.title||'—')}</td><td>${Math.round(r.score*100)}%</td></tr>`).join('')}
+</table>
+<div class="footer">Generated by Team Content Gap Manager — BizApps &amp; Dynamics</div>
+</body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `gap-report-${(name).replace(/\s+/g,'-').toLowerCase()}-${new Date().toISOString().slice(0,10)}.html`;
+  a.click();
+  toast('HTML report exported', 'success');
+}
+// ══════════════════════════════════════════════════════════════════════════
+// GITHUB INSIGHTS VIEW
+// ══════════════════════════════════════════════════════════════════════════
+
+async function loadInsights() {
+  const containers = ['commits-bizapps', 'commits-dynamics'];
+  containers.forEach(id => showLoading(id));
+
+  const fetchCommits = async (owner, repo, containerId) => {
+    try {
+      const url = `https://api.github.com/repos/${owner}/${repo}/commits?per_page=10`;
+      const resp = await fetch(url, { headers: ghHeaders() });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const commits = await resp.json();
+      const container = document.getElementById(containerId);
+      container.innerHTML = commits.map(c => {
+        const msg = (c.commit?.message || '').split('\n')[0];
+        const author = c.commit?.author?.name || c.author?.login || '?';
+        const date = c.commit?.author?.date ? new Date(c.commit.author.date).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '?';
+        const avatar = c.author?.avatar_url ? `<img src="${c.author.avatar_url}" width="28" height="28" style="border-radius:50%;">` : '<div class="commit-avatar">👤</div>';
+        const sha = (c.sha || '').substring(0, 7);
+        const commitUrl = c.html_url || '#';
+        return `<div class="commit-item">
+          ${avatar}
+          <div class="commit-meta">
+            <div class="commit-msg" title="${escHtml(msg)}">${escHtml(msg)}</div>
+            <div class="commit-info">${escHtml(author)} · ${date} · <a href="${commitUrl}" target="_blank" style="color:var(--primary);text-decoration:none;font-family:'JetBrains Mono',monospace;">${sha}</a></div>
+          </div>
+        </div>`;
+      }).join('');
+    } catch (e) {
+      document.getElementById(containerId).innerHTML = `<div class="empty-state" style="padding:1rem;"><p>Failed to load: ${escHtml(e.message)}</p></div>`;
+    }
+  };
+
+  await Promise.all([
+    fetchCommits('MicrosoftDocs', 'learn-bizapps-pr', 'commits-bizapps'),
+    fetchCommits('MicrosoftDocs', 'learn-dynamics-pr', 'commits-dynamics'),
+  ]);
+}
+
+function renderModulesByAuthor() {
+  const container = document.getElementById('modules-by-author');
+  if (state.modules.length === 0) {
+    container.innerHTML = '<div class="empty-state" style="padding:1rem;"><p>Load a product first</p></div>';
+    return;
+  }
+
+  const byAuthor = {};
+  for (const m of state.modules) {
+    const author = m.author || m.msAuthor || 'Unknown';
+    if (!byAuthor[author]) byAuthor[author] = [];
+    byAuthor[author].push(m);
+  }
+
+  const sorted = Object.entries(byAuthor).sort((a, b) => b[1].length - a[1].length);
+
+  container.innerHTML = sorted.map(([author, mods]) => {
+    const pct = Math.round(mods.length / state.modules.length * 100);
+    return `<div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+      <div class="commit-avatar" style="font-size:10px;width:28px;height:28px;">👤</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:500;">${escHtml(author)}</div>
+        <div style="font-size:11px;color:var(--text-muted);">${mods.length} module${mods.length>1?'s':''} (${pct}%)</div>
+      </div>
+      <div style="width:80px;">
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%;"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderUpdateCycles() {
+  const container = document.getElementById('update-cycle-dist');
+  if (state.modules.length === 0) {
+    container.innerHTML = '<div class="empty-state" style="padding:1rem;"><p>Load a product first</p></div>';
+    return;
+  }
+
+  const cycles = {};
+  for (const m of state.modules) {
+    const cycle = m.updateCycle || 'Not set';
+    cycles[cycle] = (cycles[cycle] || 0) + 1;
+  }
+
+  const sorted = Object.entries(cycles).sort((a, b) => b[1] - a[1]);
+  const total = state.modules.length;
+
+  container.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      ${sorted.map(([cycle, count]) => {
+        const pct = Math.round(count / total * 100);
+        const color = cycle.includes('90') ? 'var(--success)' : cycle.includes('180') ? 'var(--warning)' : 'var(--primary)';
+        return `<div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:120px;font-size:12px;font-weight:500;">${escHtml(cycle)}</div>
+          <div style="flex:1;">
+            <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%;background:${color};"></div></div>
+          </div>
+          <div style="width:60px;text-align:right;font-size:12px;font-family:'JetBrains Mono',monospace;">${count} <span style="color:var(--text-light);font-size:10px;">(${pct}%)</span></div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);">
+      Total: ${total} modules across ${sorted.length} update cycle categories
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════════════════════════
+
+function switchView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
+  const view = document.getElementById('view-' + name);
+  if (view) view.classList.add('active');
+  const navItem = document.querySelector(`[data-view="${name}"]`);
+  if (navItem) navItem.classList.add('active');
+
+  // Lazy load insights on first visit
+  if (name === 'insights') {
+    const cont = document.getElementById('commits-bizapps');
+    if (cont && cont.querySelector('.loading-overlay')) {
+      loadInsights();
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════════════════════════════════════
+
+function openSettings() {
+  document.getElementById('api-key-input').value = getToken();
+  document.getElementById('ai-model-select').value = localStorage.getItem('gh_models_model') || 'openai/gpt-4.1-mini';
+  document.getElementById('cache-ttl-select').value = localStorage.getItem('team_cache_ttl') || '4';
+  document.getElementById('display-name-input').value = localStorage.getItem('team_display_name') || '';
+  document.getElementById('settings-modal').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settings-modal').classList.remove('open');
+}
+
+function saveSettings() {
+  const token = document.getElementById('api-key-input').value.trim();
+  if (token) localStorage.setItem('gh_models_token', token);
+  else localStorage.removeItem('gh_models_token');
+
+  localStorage.setItem('gh_models_model', document.getElementById('ai-model-select').value);
+  localStorage.setItem('team_cache_ttl', document.getElementById('cache-ttl-select').value);
+
+  const name = document.getElementById('display-name-input').value.trim();
+  if (name) localStorage.setItem('team_display_name', name);
+  else localStorage.removeItem('team_display_name');
+
+  updateAuthBadge();
+  loadSettings();
+  closeSettings();
+  toast('Settings saved', 'success');
+}
+
+function loadSettings() {
+  const model = localStorage.getItem('gh_models_model') || 'openai/gpt-4.1-mini';
+  document.getElementById('model-badge').textContent = model.split('/').pop();
+  const name = localStorage.getItem('team_display_name');
+  if (name) {
+    document.getElementById('topbar-title').textContent = `Team Content Gap Manager · ${name}`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════════════════════════════════════
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
