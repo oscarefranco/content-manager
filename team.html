@@ -890,35 +890,35 @@ const REPOS = [
 
 const FOLDER_PRODUCT_MAP = {
   // learn-bizapps-pr
-  'power-virtual-agents': { name: 'Microsoft Copilot Studio', service: 'copilot-studio', repo: 'learn-bizapps-pr' },
-  'flow': { name: 'Power Automate', service: 'power-automate', repo: 'learn-bizapps-pr' },
-  'powerapps': { name: 'Power Apps', service: 'power-apps', repo: 'learn-bizapps-pr' },
-  'power-bi': { name: 'Power BI', service: 'power-bi', repo: 'learn-bizapps-pr' },
-  'ai-builder': { name: 'AI Builder', service: 'ai-builder', repo: 'learn-bizapps-pr' },
-  'healthcare': { name: 'Healthcare', service: 'healthcare', repo: 'learn-bizapps-pr' },
-  'industry-solutions': { name: 'Industry Solutions', service: 'industry-solutions', repo: 'learn-bizapps-pr' },
+  'power-virtual-agents': { name: 'Microsoft Copilot Studio', service: 'copilot-studio', repo: 'learn-bizapps-pr', catalogId: 'microsoft-copilot-studio', extraCatalogIds: ['ms-copilot'], titleMatch: /copilot studio|power virtual agent/i },
+  'flow': { name: 'Power Automate', service: 'power-automate', repo: 'learn-bizapps-pr', catalogId: 'power-automate' },
+  'powerapps': { name: 'Power Apps', service: 'power-apps', repo: 'learn-bizapps-pr', catalogId: 'power-apps' },
+  'power-bi': { name: 'Power BI', service: 'power-bi', repo: 'learn-bizapps-pr', catalogId: 'power-bi' },
+  'ai-builder': { name: 'AI Builder', service: 'ai-builder', repo: 'learn-bizapps-pr', catalogId: 'ai-builder' },
+  'healthcare': { name: 'Healthcare', service: 'healthcare', repo: 'learn-bizapps-pr', catalogId: 'industry-healthcare' },
+  'industry-solutions': { name: 'Industry Solutions', service: 'industry-solutions', repo: 'learn-bizapps-pr', catalogId: 'industry-solutions' },
   // learn-dynamics-pr
-  'dyn365-finance': { name: 'Dynamics 365 Finance', service: 'dynamics-finance', repo: 'learn-dynamics-pr' },
-  'dyn365-supply-chain-management': { name: 'Dynamics 365 Supply Chain Management', service: 'dynamics-scm', repo: 'learn-dynamics-pr' },
-  'dyn365-commerce': { name: 'Dynamics 365 Commerce', service: 'dynamics-commerce', repo: 'learn-dynamics-pr' },
-  'dyn365-sales': { name: 'Dynamics 365 Sales', service: 'dynamics-sales', repo: 'learn-dynamics-pr' },
-  'dyn365-customer-service': { name: 'Dynamics 365 Customer Service', service: 'dynamics-customer-service', repo: 'learn-dynamics-pr' },
-  'dyn365-field-service': { name: 'Dynamics 365 Field Service', service: 'dynamics-field-service', repo: 'learn-dynamics-pr' },
-  'dyn365-business-central': { name: 'Dynamics 365 Business Central', service: 'dynamics-business-central', repo: 'learn-dynamics-pr' },
-  'dyn365-human-resources': { name: 'Dynamics 365 Human Resources', service: 'dynamics-human-resources', repo: 'learn-dynamics-pr' },
-  'dyn365-project-operations': { name: 'Dynamics 365 Project Operations', service: 'dynamics-project-operations', repo: 'learn-dynamics-pr' },
-  'dyn365-finance-operations': { name: 'Dynamics 365 Finance & Operations', service: 'dynamics-finance-operations', repo: 'learn-dynamics-pr' },
-  'dyn365-customer-insights-data': { name: 'Customer Insights - Data', service: 'dynamics-ci-data', repo: 'learn-dynamics-pr' },
-  'dyn365-customer-insights-journeys': { name: 'Customer Insights - Journeys', service: 'dynamics-ci-journeys', repo: 'learn-dynamics-pr' },
-  'dyn365-contact-center': { name: 'Dynamics 365 Contact Center', service: 'dynamics-contact-center', repo: 'learn-dynamics-pr' },
-  'dyn365-fraud-protection': { name: 'Dynamics 365 Fraud Protection', service: 'dynamics-fraud-protection', repo: 'learn-dynamics-pr' },
-  'dyn365-intelligent-order-management': { name: 'Intelligent Order Management', service: 'dynamics-iom', repo: 'learn-dynamics-pr' },
-  'dyn365-fast-track': { name: 'Dynamics 365 Fast Track', service: 'dynamics-fast-track', repo: 'learn-dynamics-pr' },
-  'copilot-for-finance': { name: 'Copilot for Finance', service: 'copilot-finance', repo: 'learn-dynamics-pr' },
-  'copilot-for-sales': { name: 'Copilot for Sales', service: 'copilot-sales', repo: 'learn-dynamics-pr' },
-  'copilot-for-service': { name: 'Copilot for Service', service: 'copilot-service', repo: 'learn-dynamics-pr' },
-  'power-platform': { name: 'Power Platform', service: 'power-platform', repo: 'learn-dynamics-pr' },
-  'nuance': { name: 'Nuance', service: 'nuance', repo: 'learn-dynamics-pr' },
+  'dyn365-finance': { name: 'Dynamics 365 Finance', service: 'dynamics-finance', repo: 'learn-dynamics-pr', catalogId: 'dynamics-finance' },
+  'dyn365-supply-chain-management': { name: 'Dynamics 365 Supply Chain Management', service: 'dynamics-scm', repo: 'learn-dynamics-pr', catalogId: 'dynamics-scm' },
+  'dyn365-commerce': { name: 'Dynamics 365 Commerce', service: 'dynamics-commerce', repo: 'learn-dynamics-pr', catalogId: 'dynamics-commerce' },
+  'dyn365-sales': { name: 'Dynamics 365 Sales', service: 'dynamics-sales', repo: 'learn-dynamics-pr', catalogId: 'dynamics-sales' },
+  'dyn365-customer-service': { name: 'Dynamics 365 Customer Service', service: 'dynamics-customer-service', repo: 'learn-dynamics-pr', catalogId: 'dynamics-customer-service' },
+  'dyn365-field-service': { name: 'Dynamics 365 Field Service', service: 'dynamics-field-service', repo: 'learn-dynamics-pr', catalogId: 'dynamics-field-service' },
+  'dyn365-business-central': { name: 'Dynamics 365 Business Central', service: 'dynamics-business-central', repo: 'learn-dynamics-pr', catalogId: 'dynamics-business-central' },
+  'dyn365-human-resources': { name: 'Dynamics 365 Human Resources', service: 'dynamics-human-resources', repo: 'learn-dynamics-pr', catalogId: 'dynamics-human-resources' },
+  'dyn365-project-operations': { name: 'Dynamics 365 Project Operations', service: 'dynamics-project-operations', repo: 'learn-dynamics-pr', catalogId: 'dynamics-project-operations' },
+  'dyn365-finance-operations': { name: 'Dynamics 365 Finance & Operations', service: 'dynamics-finance-operations', repo: 'learn-dynamics-pr', catalogId: 'dynamics-finance' },
+  'dyn365-customer-insights-data': { name: 'Customer Insights - Data', service: 'dynamics-ci-data', repo: 'learn-dynamics-pr', catalogId: 'customer-insights-data' },
+  'dyn365-customer-insights-journeys': { name: 'Customer Insights - Journeys', service: 'dynamics-ci-journeys', repo: 'learn-dynamics-pr', catalogId: 'customer-insights-journeys' },
+  'dyn365-contact-center': { name: 'Dynamics 365 Contact Center', service: 'dynamics-contact-center', repo: 'learn-dynamics-pr', catalogId: 'dynamics-contact-center' },
+  'dyn365-fraud-protection': { name: 'Dynamics 365 Fraud Protection', service: 'dynamics-fraud-protection', repo: 'learn-dynamics-pr', catalogId: 'dynamics-fraud-protection' },
+  'dyn365-intelligent-order-management': { name: 'Intelligent Order Management', service: 'dynamics-iom', repo: 'learn-dynamics-pr', catalogId: 'dynamics-iom' },
+  'dyn365-fast-track': { name: 'Dynamics 365 Fast Track', service: 'dynamics-fast-track', repo: 'learn-dynamics-pr', catalogId: 'dynamics-365' },
+  'copilot-for-finance': { name: 'Copilot for Finance', service: 'copilot-finance', repo: 'learn-dynamics-pr', catalogId: 'dynamics-finance' },
+  'copilot-for-sales': { name: 'Copilot for Sales', service: 'copilot-sales', repo: 'learn-dynamics-pr', catalogId: 'dynamics-sales' },
+  'copilot-for-service': { name: 'Copilot for Service', service: 'copilot-service', repo: 'learn-dynamics-pr', catalogId: 'dynamics-customer-service' },
+  'power-platform': { name: 'Power Platform', service: 'power-platform', repo: 'learn-dynamics-pr', catalogId: 'power-platform' },
+  'nuance': { name: 'Nuance', service: 'nuance', repo: 'learn-dynamics-pr', catalogId: 'nuance' },
 };
 
 const PRODUCT_DOC_TOC = {
@@ -1071,8 +1071,89 @@ async function callAI(messages, opts = {}) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// GITHUB TREES API — FETCH & PARSE
+// DATA SOURCE MODE — GitHub Trees (rich) or Catalog API (public fallback)
 // ══════════════════════════════════════════════════════════════════════════
+
+let dataSourceMode = 'catalog'; // 'github' or 'catalog'
+
+// ── CATALOG API FALLBACK ─────────────────────────────────────────────────
+
+async function fetchCatalog() {
+  const cacheKey = 'catalog_full';
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  const resp = await fetch('https://learn.microsoft.com/api/catalog/?type=modules,learningPaths');
+  if (!resp.ok) throw new Error('Catalog API error ' + resp.status);
+  const data = await resp.json();
+  setCache(cacheKey, data);
+  return data;
+}
+
+function buildProductsFromCatalog(catalog) {
+  const products = [];
+
+  for (const [folder, mapping] of Object.entries(FOLDER_PRODUCT_MAP)) {
+    const catalogId = mapping.catalogId;
+    if (!catalogId) continue;
+
+    const extraIds = mapping.extraCatalogIds || [];
+    const titleMatch = mapping.titleMatch || null;
+
+    function matchesProduct(item) {
+      if (!item.products) return false;
+      if (item.products.some(p => p === catalogId || p.startsWith(catalogId))) return true;
+      if (extraIds.length > 0) {
+        const hitsExtra = item.products.some(p => extraIds.includes(p));
+        if (hitsExtra && titleMatch) return titleMatch.test(item.title + ' ' + (item.summary || ''));
+        return hitsExtra;
+      }
+      return false;
+    }
+
+    const modules = (catalog.modules || []).filter(matchesProduct);
+    if (modules.length === 0) continue;
+
+    // Convert catalog modules to our module format
+    const parsedModules = modules.map(m => ({
+      title: m.title || '',
+      msDate: m.last_modified ? new Date(m.last_modified).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '',
+      msService: mapping.service,
+      updateCycle: '',
+      author: '',
+      msAuthor: '',
+      uid: m.uid || '',
+      summary: m.summary || '',
+      products: m.products || [],
+      units: m.units || [],
+      unitCount: (m.units || []).length,
+      levels: m.levels || [],
+      path: '',
+      repo: mapping.repo,
+      moduleFolder: m.uid ? m.uid.split('.').pop() : '',
+      learnUrl: m.url || '',
+      ghUrl: '',
+      // Catalog-specific fields
+      duration: m.duration_in_minutes || 0,
+      lastModified: m.last_modified || '',
+      iconUrl: m.icon_url || '',
+    }));
+
+    products.push({
+      folder,
+      name: mapping.name,
+      service: mapping.service,
+      repo: mapping.repo,
+      owner: 'MicrosoftDocs',
+      modules: parsedModules,
+      _catalogModules: parsedModules, // Pre-parsed, no need to fetch YAML
+    });
+  }
+
+  return products.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// ── GITHUB TREES API (rich mode — requires SSO auth) ─────────────────────
 
 async function fetchRepoTree(owner, repo) {
   const cacheKey = `trees_${repo}`;
@@ -1297,36 +1378,72 @@ async function init() {
   loadSettings();
   updateAuthBadge();
 
-  try {
-    toast('Fetching repository trees…', 'info');
-    const [bizTree, dynTree] = await Promise.all([
-      fetchRepoTree('MicrosoftDocs', 'learn-bizapps-pr'),
-      fetchRepoTree('MicrosoftDocs', 'learn-dynamics-pr'),
-    ]);
+  // Try GitHub Trees API first (rich data), fall back to public Catalog API
+  let useGitHub = false;
 
-    state.trees = {
-      'learn-bizapps-pr': bizTree,
-      'learn-dynamics-pr': dynTree,
-    };
+  if (getToken()) {
+    try {
+      toast('Trying GitHub repo access…', 'info');
+      const [bizTree, dynTree] = await Promise.allSettled([
+        fetchRepoTree('MicrosoftDocs', 'learn-bizapps-pr'),
+        fetchRepoTree('MicrosoftDocs', 'learn-dynamics-pr'),
+      ]);
 
-    state.discoveredProducts = discoverProducts(state.trees);
-    renderProductSelector();
-    renderDashboardTreeStats();
-    toast(`Discovered ${state.discoveredProducts.length} products across both repos`, 'success');
+      const trees = {};
+      if (bizTree.status === 'fulfilled') trees['learn-bizapps-pr'] = bizTree.value;
+      else console.warn('learn-bizapps-pr:', bizTree.reason?.message);
+      if (dynTree.status === 'fulfilled') trees['learn-dynamics-pr'] = dynTree.value;
+      else console.warn('learn-dynamics-pr:', dynTree.reason?.message);
 
-    // Restore last selected product
-    const saved = localStorage.getItem('team_selected_product');
-    if (saved) {
-      document.getElementById('product-select').value = saved;
-      onProductChange(saved);
+      if (Object.keys(trees).length > 0) {
+        state.trees = trees;
+        state.discoveredProducts = discoverProducts(trees);
+        dataSourceMode = 'github';
+        useGitHub = true;
+        const repoNames = Object.keys(trees).join(' + ');
+        toast(`GitHub mode: ${state.discoveredProducts.length} products from ${repoNames}`, 'success');
+        if (bizTree.status === 'rejected') toast('⚠️ learn-bizapps-pr not accessible — using Catalog API for those products', 'warning');
+        if (dynTree.status === 'rejected') toast('⚠️ learn-dynamics-pr not accessible — using Catalog API for those products', 'warning');
+      }
+    } catch (e) {
+      console.warn('GitHub mode failed:', e);
     }
-  } catch (e) {
-    console.error(e);
-    if (!getToken()) {
-      toast('GitHub token required — these repos are private. Click ⚙️ Settings to add your token.', 'warning');
-    } else {
-      toast(`Failed to fetch repo trees: ${e.message}`, 'warning');
+  }
+
+  // Fallback (or supplement) with public Catalog API
+  if (!useGitHub || state.discoveredProducts.length < 5) {
+    try {
+      toast('Loading from Microsoft Learn Catalog API…', 'info');
+      const catalog = await fetchCatalog();
+      const catalogProducts = buildProductsFromCatalog(catalog);
+      dataSourceMode = useGitHub ? 'hybrid' : 'catalog';
+
+      if (useGitHub) {
+        // Merge: add catalog products not already from GitHub
+        const existingFolders = new Set(state.discoveredProducts.map(p => p.folder));
+        for (const cp of catalogProducts) {
+          if (!existingFolders.has(cp.folder)) state.discoveredProducts.push(cp);
+        }
+        state.discoveredProducts.sort((a, b) => a.name.localeCompare(b.name));
+      } else {
+        state.discoveredProducts = catalogProducts;
+      }
+
+      const label = dataSourceMode === 'catalog' ? 'Catalog API' : 'hybrid (GitHub + Catalog)';
+      toast(`${label}: ${state.discoveredProducts.length} products loaded`, 'success');
+    } catch (e) {
+      toast(`Catalog API error: ${e.message}`, 'warning');
+      console.error(e);
     }
+  }
+
+  renderProductSelector();
+  renderDashboardTreeStats();
+
+  const saved = localStorage.getItem('team_selected_product');
+  if (saved) {
+    document.getElementById('product-select').value = saved;
+    onProductChange(saved);
   }
 }
 
@@ -1382,7 +1499,8 @@ async function onProductChange(folder) {
   document.getElementById('docs-subtitle').textContent = `Documentation TOC for ${product.name}`;
   document.getElementById('stat-selected').textContent = product.name;
   document.getElementById('stat-selected').style.fontSize = product.name.length > 20 ? '13px' : '16px';
-  document.getElementById('stat-selected-sub').textContent = `${product.modules.length} modules in ${product.repo}`;
+  const sourceLabel = dataSourceMode === 'github' ? product.repo : 'Catalog API';
+  document.getElementById('stat-selected-sub').textContent = `${product.modules.length} modules via ${sourceLabel}`;
 
   // Show progress and fetch modules
   showLoading('health-list');
@@ -1395,11 +1513,20 @@ async function onProductChange(folder) {
   toast(`Loading ${product.modules.length} modules for ${product.name}…`, 'info');
 
   try {
-    const modules = await fetchModuleData(product, (loaded, total) => {
-      const pct = Math.round(loaded / total * 100);
-      progressBar.style.width = pct + '%';
-      progressText.textContent = `Loading ${total} modules… ${loaded}/${total}`;
-    });
+    let modules;
+    if (dataSourceMode === 'catalog' && product._catalogModules) {
+      // Catalog mode: modules already parsed
+      modules = product._catalogModules;
+      progressBar.style.width = '100%';
+      progressText.textContent = `Loaded ${modules.length} modules from Catalog API`;
+    } else {
+      // GitHub mode: fetch individual index.yml files
+      modules = await fetchModuleData(product, (loaded, total) => {
+        const pct = Math.round(loaded / total * 100);
+        progressBar.style.width = pct + '%';
+        progressText.textContent = `Loading ${total} modules… ${loaded}/${total}`;
+      });
+    }
 
     state.modules = modules;
     progressEl.style.display = 'none';
