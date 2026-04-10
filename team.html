@@ -470,6 +470,64 @@ body {
 .empty-state-icon { font-size: 36px; margin-bottom: 8px; }
 .empty-state p { font-size: 13px; }
 
+/* ── Content Editor ── */
+.editor-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; min-height: 60vh; }
+@media (max-width: 1100px) { .editor-layout { grid-template-columns: 1fr; } }
+
+.editor-tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+.editor-tab {
+  padding: 6px 14px; font-size: 12px; font-weight: 500; border-radius: 100px;
+  border: 1px solid var(--border); background: var(--bg); cursor: pointer;
+  transition: all 0.15s; color: var(--text-muted); font-family: 'Segoe UI', sans-serif;
+}
+.editor-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.editor-tab:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
+.editor-tab .tab-count { font-size: 10px; margin-left: 4px; opacity: 0.8; }
+
+.suggestion-list { display: flex; flex-direction: column; gap: 10px; max-height: 70vh; overflow-y: auto; padding-right: 4px; }
+
+.suggestion-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 16px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
+}
+.suggestion-card:hover { border-color: var(--primary); box-shadow: var(--shadow); }
+.suggestion-card.selected { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-light); }
+.suggestion-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.suggestion-card-header h4 { font-size: 13px; font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.suggestion-card > p { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.suggestion-meta { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+.generate-btn {
+  margin-left: auto; padding: 4px 12px; font-size: 11px; font-weight: 500;
+  border-radius: 6px; border: 1px solid var(--primary); background: var(--primary-light);
+  color: var(--primary-dark); cursor: pointer; transition: all 0.15s;
+  font-family: 'Segoe UI', sans-serif; white-space: nowrap;
+}
+.generate-btn:hover { background: var(--primary); color: #fff; }
+
+.draft-panel {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  display: flex; flex-direction: column; max-height: 80vh; position: sticky; top: 70px;
+}
+.draft-panel-header {
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+}
+.draft-panel-header h3 { font-size: 14px; font-weight: 500; flex: 1; }
+.draft-panel-body { padding: 16px; overflow-y: auto; flex: 1; }
+.draft-panel-footer { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; }
+
+.draft-content { font-size: 13px; line-height: 1.7; color: var(--text); }
+.draft-content h2 { font-size: 16px; font-weight: 600; margin: 18px 0 8px; color: var(--primary-dark); border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+.draft-content h3 { font-size: 14px; font-weight: 600; margin: 14px 0 6px; }
+.draft-content pre {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 16px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px;
+  overflow-x: auto; white-space: pre-wrap; margin: 8px 0;
+}
+.draft-content ul, .draft-content ol { margin-left: 1.5rem; margin-bottom: 8px; }
+.draft-content li { margin-bottom: 4px; }
+.draft-content strong { color: var(--text); }
+
 /* ── Insights ── */
 .commit-item {
   padding: 10px 0; border-bottom: 1px solid var(--border);
@@ -543,6 +601,10 @@ body {
     <ul class="sidebar-nav">
       <li><a onclick="switchView('gap-analysis')" data-view="gap-analysis">
         <span class="nav-icon">🔍</span> Gap Analysis
+      </a></li>
+      <li><a onclick="switchView('editor')" data-view="editor">
+        <span class="nav-icon">✏️</span> Content Editor
+        <span class="nav-count" id="count-suggestions">0</span>
       </a></li>
       <li><a onclick="switchView('insights')" data-view="insights">
         <span class="nav-icon">🔗</span> GitHub Insights
@@ -778,6 +840,62 @@ body {
         <div class="empty-state">
           <div class="empty-state-icon">🔍</div>
           <p>Load a product first, then click Quick scan or AI deep analysis.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTENT EDITOR VIEW -->
+  <section class="view" id="view-editor">
+    <div class="page-header">
+      <div class="page-header-text">
+        <h1>✏️ Content Editor</h1>
+        <p id="editor-subtitle">AI-powered content suggestions, drafts, and update planning</p>
+      </div>
+      <div class="page-header-actions">
+        <button class="btn btn-secondary" id="refresh-suggestions-btn" onclick="buildEditorSuggestions()">🔄 Refresh</button>
+        <button class="btn btn-primary" id="generate-plan-btn" onclick="generateContentPlan()">📋 Content Plan</button>
+        <button class="btn btn-secondary" id="export-plan-btn" onclick="exportContentPlan()" style="display:none;">⬇ Export Plan</button>
+      </div>
+    </div>
+    <div class="page-body">
+      <div id="editor-empty" class="empty-state">
+        <div class="empty-state-icon">✏️</div>
+        <p>Run a gap analysis first (Gap Analysis → Quick scan), then come here for content suggestions.<br>
+        Or select a product and click <strong>Refresh</strong> above.</p>
+      </div>
+      <div id="editor-content" style="display:none;">
+        <div class="editor-tabs" id="editor-tabs">
+          <button class="editor-tab active" onclick="switchEditorTab('new')">📝 New Content <span class="tab-count" id="tab-count-new">0</span></button>
+          <button class="editor-tab" onclick="switchEditorTab('update')">🔄 Updates Needed <span class="tab-count" id="tab-count-update">0</span></button>
+          <button class="editor-tab" onclick="switchEditorTab('outdated')">⏰ Outdated <span class="tab-count" id="tab-count-outdated">0</span></button>
+        </div>
+        <div class="editor-layout">
+          <div>
+            <div class="suggestion-list" id="suggestion-list"></div>
+          </div>
+          <div>
+            <div class="draft-panel" id="draft-panel">
+              <div class="draft-panel-header">
+                <span>📄</span>
+                <h3 id="draft-panel-title">Draft Preview</h3>
+                <button class="btn btn-ghost btn-sm" onclick="copyDraft()" id="copy-draft-btn" style="display:none;">📋 Copy</button>
+              </div>
+              <div class="draft-panel-body" id="draft-panel-body">
+                <div class="empty-state" style="padding:2rem;">
+                  <div class="empty-state-icon">✨</div>
+                  <p>Select a suggestion and click <strong>Generate Draft</strong> to see AI-generated content here.</p>
+                </div>
+              </div>
+              <div class="draft-panel-footer" id="draft-panel-footer" style="display:none;">
+                <button class="btn btn-secondary btn-sm" onclick="exportDraft('yaml')">⬇ YAML</button>
+                <button class="btn btn-secondary btn-sm" onclick="exportDraft('md')">⬇ Markdown</button>
+                <button class="btn btn-secondary btn-sm" onclick="exportDraft('json')">⬇ JSON</button>
+                <div style="flex:1;"></div>
+                <button class="btn btn-primary btn-sm" onclick="regenerateDraft()">🔄 Regenerate</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2358,6 +2476,568 @@ function renderUpdateCycles() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// CONTENT EDITOR — AI-Powered Suggestions & Draft Generation
+// ══════════════════════════════════════════════════════════════════════════
+
+let editorState = {
+  suggestions: [],
+  activeTab: 'new',
+  selectedIdx: -1,
+  currentDraft: null,
+  contentPlan: null,
+};
+
+function buildEditorSuggestions() {
+  if (!state.selectedProduct) { toast('Select a product first', 'warning'); return; }
+  if (state.modules.length === 0) { toast('Load modules first', 'warning'); return; }
+
+  // Auto-run gap analysis if not done
+  if (!state.gapResults && state.flatDocTopics.length > 0) {
+    runClientGapAnalysis();
+  }
+
+  const suggestions = [];
+  const now = Date.now();
+
+  // 1. New content from uncovered topics
+  if (state.gapResults) {
+    const uncovered = state.gapResults.results.filter(r => r.coverage === 'uncovered');
+
+    // Group uncovered topics by their top-level parent
+    const groups = {};
+    for (const r of uncovered) {
+      const parentKey = r.docTopic.path.split(' > ')[0] || r.docTopic.title;
+      if (!groups[parentKey]) groups[parentKey] = [];
+      groups[parentKey].push(r);
+    }
+
+    for (const [parent, items] of Object.entries(groups)) {
+      const priority = items.length >= 5 ? 'high' : items.length >= 2 ? 'medium' : 'low';
+      suggestions.push({
+        type: 'new',
+        category: parent,
+        topics: items.map(i => i.docTopic),
+        topicCount: items.length,
+        priority,
+        title: items.length === 1 ? items[0].docTopic.title : `${parent} (${items.length} topics)`,
+        reason: items.length === 1
+          ? `No training module covers "${items[0].docTopic.title}" from the documentation.`
+          : `${items.length} documentation topics under "${parent}" have no matching training content.`,
+        suggestedPlacement: `${state.selectedProduct.folder}/`,
+      });
+    }
+
+    // 2. Update suggestions from partial coverage
+    const partial = state.gapResults.results.filter(r => r.coverage === 'partial' && r.bestMatch);
+    for (const r of partial) {
+      suggestions.push({
+        type: 'update',
+        docTopic: r.docTopic,
+        module: r.bestMatch,
+        score: r.score,
+        priority: r.score < 0.25 ? 'high' : 'medium',
+        title: r.bestMatch.title,
+        reason: `Partially covers "${r.docTopic.title}" (${Math.round(r.score * 100)}% match). Content expansion recommended.`,
+      });
+    }
+  }
+
+  // 3. Outdated modules (>12 months)
+  for (const m of state.modules) {
+    if (!m.msDate) continue;
+    const ageMonths = Math.floor((now - new Date(m.msDate).getTime()) / (30 * 24 * 60 * 60 * 1000));
+    if (ageMonths > 12) {
+      suggestions.push({
+        type: 'outdated',
+        module: m,
+        ageMonths,
+        priority: ageMonths > 24 ? 'high' : ageMonths > 18 ? 'medium' : 'low',
+        title: m.title,
+        reason: `Last updated ${ageMonths} months ago (${m.msDate}). May contain outdated information or reference deprecated features.`,
+      });
+    }
+  }
+
+  const priorityOrder = { high: 0, medium: 1, low: 2 };
+  suggestions.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+
+  editorState.suggestions = suggestions;
+  editorState.selectedIdx = -1;
+  editorState.currentDraft = null;
+
+  document.getElementById('count-suggestions').textContent = suggestions.length;
+  renderEditorView();
+  toast(`${suggestions.length} content suggestions generated`, 'success');
+}
+
+function renderEditorView() {
+  const s = editorState.suggestions;
+  if (s.length === 0) {
+    document.getElementById('editor-empty').style.display = '';
+    document.getElementById('editor-content').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('editor-empty').style.display = 'none';
+  document.getElementById('editor-content').style.display = '';
+
+  document.getElementById('tab-count-new').textContent = s.filter(x => x.type === 'new').length;
+  document.getElementById('tab-count-update').textContent = s.filter(x => x.type === 'update').length;
+  document.getElementById('tab-count-outdated').textContent = s.filter(x => x.type === 'outdated').length;
+
+  renderSuggestionList();
+}
+
+function switchEditorTab(tab) {
+  editorState.activeTab = tab;
+  document.querySelectorAll('.editor-tab').forEach(t => {
+    const key = tab === 'new' ? 'new content' : tab === 'update' ? 'updates' : 'outdated';
+    t.classList.toggle('active', t.textContent.toLowerCase().includes(key));
+  });
+  renderSuggestionList();
+}
+
+function renderSuggestionList() {
+  const list = document.getElementById('suggestion-list');
+  const filtered = editorState.suggestions.filter(s => s.type === editorState.activeTab);
+
+  if (filtered.length === 0) {
+    const msgs = {
+      'new': 'No uncovered documentation topics found — great coverage! 🎉',
+      'update': 'No partially-matched modules to expand.',
+      'outdated': 'No outdated modules found — content is fresh! ✅',
+    };
+    list.innerHTML = `<div class="empty-state" style="padding:2rem;"><p>${msgs[editorState.activeTab]}</p></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map((s) => {
+    const globalIdx = editorState.suggestions.indexOf(s);
+    const isSelected = globalIdx === editorState.selectedIdx;
+    const priorityColor = s.priority === 'high' ? 'tag-red' : s.priority === 'medium' ? 'tag-yellow' : 'tag-blue';
+    const typeIcon = s.type === 'new' ? '📝' : s.type === 'update' ? '🔄' : '⏰';
+
+    let metaHtml = '';
+    if (s.type === 'new' && s.topicCount > 1) {
+      metaHtml = `<span class="tag tag-purple">${s.topicCount} topics</span>`;
+    }
+    if (s.type === 'update' && s.score !== undefined) {
+      metaHtml = `<span class="tag tag-blue">${Math.round(s.score * 100)}% match</span>`;
+    }
+    if (s.type === 'outdated') {
+      metaHtml = `<span class="tag tag-red">${s.ageMonths}mo old</span>`;
+    }
+
+    return `<div class="suggestion-card ${isSelected ? 'selected' : ''}" onclick="selectSuggestion(${globalIdx})">
+      <div class="suggestion-card-header">
+        <span>${typeIcon}</span>
+        <h4 title="${escHtml(s.title)}">${escHtml(s.title)}</h4>
+        <span class="tag ${priorityColor}">${s.priority}</span>
+      </div>
+      <p>${escHtml(s.reason)}</p>
+      <div class="suggestion-meta">
+        ${metaHtml}
+        <button class="generate-btn" onclick="event.stopPropagation(); selectSuggestion(${globalIdx}); generateDraft(${globalIdx});">✨ Generate Draft</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectSuggestion(idx) {
+  editorState.selectedIdx = idx;
+  renderSuggestionList();
+}
+
+async function generateDraft(idx) {
+  const s = editorState.suggestions[idx];
+  if (!s) return;
+
+  const { token } = getAIConfig();
+  if (!token) { toast('Add your GitHub token in Settings first', 'warning'); openSettings(); return; }
+
+  editorState.selectedIdx = idx;
+  renderSuggestionList();
+
+  const panelBody = document.getElementById('draft-panel-body');
+  const panelTitle = document.getElementById('draft-panel-title');
+  const footer = document.getElementById('draft-panel-footer');
+  const copyBtn = document.getElementById('copy-draft-btn');
+
+  panelTitle.textContent = s.type === 'new' ? 'New Module Draft' : s.type === 'update' ? 'Update Recommendations' : 'Refresh Plan';
+  panelBody.innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div> Generating content with AI…</div>';
+  footer.style.display = 'none';
+  copyBtn.style.display = 'none';
+
+  try {
+    let prompt;
+
+    if (s.type === 'new') {
+      const topicList = (s.topics || [s.docTopic]).map(t => `- ${t.title} (path: ${t.path})`).join('\n');
+      prompt = `You are a Microsoft Learn training content architect. Create a complete training module draft for ${state.selectedProduct.name}.
+
+DOCUMENTATION TOPICS TO COVER:
+${topicList}
+
+EXISTING TRAINING MODULES (avoid duplication):
+${state.modules.slice(0, 30).map(m => `- "${m.title}"`).join('\n')}
+
+REPOSITORY: MicrosoftDocs/${state.selectedProduct.repo}
+FOLDER: ${state.selectedProduct.folder}
+
+Generate a complete training module. Use markdown formatting:
+
+## Module Title
+(Clear, action-oriented title)
+
+## Summary
+(2-3 sentence description of what learners will accomplish)
+
+## Learning Objectives
+(3-5 bullet points starting with verbs: "Describe…", "Configure…", "Implement…")
+
+## Prerequisites
+(What learners should know beforehand)
+
+## Suggested Units
+(4-7 units, each with:)
+### Unit N: Title
+- **Type**: learn / exercise / knowledge-check
+- **Duration**: X minutes
+- **Content outline**: What this unit covers and key points to include
+
+## Suggested Placement
+- **Repository path**: ${state.selectedProduct.folder}/[suggested-folder-name]/index.yml
+- **Reason**: Why this location makes sense in the existing module structure
+
+## index.yml Draft
+\`\`\`yaml
+### YAMLTitle: [module title]
+summary: |
+  [2-3 sentence summary]
+description: |
+  [Longer description]
+ms.date: ${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
+ms.service: ${state.selectedProduct.service || ''}
+author: [author-github-handle]
+ms.author: [ms-alias]
+ms.topic: module
+uid: learn-bizapps.${s.suggestedPlacement ? s.suggestedPlacement.replace(/\//g, '.').replace(/\.+$/, '') : 'new-module'}
+products:
+  - ${state.selectedProduct.service || 'power-platform'}
+units:
+  - [list each unit uid]
+\`\`\`
+
+Be specific, practical, and aligned with existing ${state.selectedProduct.name} content style.`;
+
+    } else if (s.type === 'update') {
+      prompt = `You are a Microsoft Learn training content specialist. Analyze this module and suggest specific content updates.
+
+MODULE: "${s.module.title}"
+- UID: ${s.module.uid || 'unknown'}
+- Author: ${s.module.author || 'unknown'}
+- Last updated: ${s.module.msDate || 'unknown'}
+- Units: ${s.module.unitCount}
+- Summary: ${s.module.summary || 'N/A'}
+- Learn URL: ${s.module.learnUrl || ''}
+
+DOCUMENTATION TOPIC IT SHOULD BETTER COVER: "${s.docTopic.title}"
+- Doc path: ${s.docTopic.path}
+- Current match score: ${Math.round(s.score * 100)}%
+
+Provide specific recommendations in markdown:
+
+## Analysis
+- What's missing or weak in the current training vs documentation
+- Why the match score is low
+
+## Recommended Changes
+
+### Content to Add
+(Specific sections, paragraphs, or concepts to add. Write actual draft content that could be used.)
+
+### Existing Content to Update
+(What sections need rewriting and why)
+
+### New Units to Add
+(If applicable — describe with content outlines)
+
+### Updated Learning Objectives
+(Revised objectives reflecting better coverage)
+
+## Updated Summary
+(Rewritten summary covering "${s.docTopic.title}")
+
+## Priority Actions
+1. (Most important change first)
+2. …
+
+Provide actual content that could be copy-pasted into the module.`;
+
+    } else {
+      prompt = `You are a Microsoft Learn training content specialist. This module is outdated and needs a refresh.
+
+MODULE: "${s.module.title}"
+- UID: ${s.module.uid || 'unknown'}
+- Author: ${s.module.author || 'unknown'}
+- Last updated: ${s.module.msDate} (${s.ageMonths} months ago)
+- Units: ${s.module.unitCount}
+- Summary: ${s.module.summary || 'N/A'}
+- ms.service: ${s.module.msService || ''}
+- Product: ${state.selectedProduct.name}
+- Learn URL: ${s.module.learnUrl || ''}
+
+CURRENT DOCUMENTATION TOPICS (what's current today):
+${state.flatDocTopics.filter(d => d.depth <= 1).slice(0, 40).map(d => `- ${d.title}`).join('\n')}
+
+Provide a refresh plan in markdown:
+
+## Staleness Assessment
+- What's likely outdated after ${s.ageMonths} months
+- ${state.selectedProduct.name} features/UI changes since then
+
+## Recommended Updates
+
+### Content Sections to Rewrite
+(Identify specific areas. Provide updated content where possible.)
+
+### New Content to Add
+(Topics from current docs that should be incorporated)
+
+### Content to Remove or Deprecate
+(Features/procedures that may have been deprecated)
+
+### Updated Metadata
+\`\`\`yaml
+ms.date: ${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
+ms.service: ${s.module.msService || state.selectedProduct.service || ''}
+\`\`\`
+
+## Step-by-Step Refresh Plan
+1. (Ordered list of concrete actions)
+
+Be practical and specific to ${state.selectedProduct.name}.`;
+    }
+
+    const reply = await callAI([{ role: 'user', content: prompt }], { maxTokens: 4000, temperature: 0.4 });
+
+    editorState.currentDraft = {
+      suggestion: s,
+      content: reply,
+      generatedAt: new Date().toISOString(),
+    };
+
+    renderDraftPreview(reply);
+    footer.style.display = 'flex';
+    copyBtn.style.display = 'inline-flex';
+    toast('Draft generated', 'success');
+
+  } catch (e) {
+    if (e.message === 'NO_TOKEN') { toast('Add your GitHub token in Settings', 'warning'); openSettings(); }
+    else {
+      panelBody.innerHTML = `<div class="empty-state" style="padding:2rem;"><p style="color:var(--danger);">❌ Generation failed: ${escHtml(e.message)}</p></div>`;
+      toast('Draft generation failed', 'warning');
+    }
+  }
+}
+
+function renderDraftPreview(markdown) {
+  const panel = document.getElementById('draft-panel-body');
+  let html = escHtml(markdown);
+  // Convert markdown to simple HTML
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => `<pre><code>${code.trim()}</code></pre>`);
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  html = html.replace(/`([^`]+)`/g, '<code style="background:var(--bg);padding:1px 5px;border-radius:3px;font-size:12px;">$1</code>');
+  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/^(\d+)\. (.+)$/gm, '<li>$2</li>');
+  html = html.replace(/((?:<li>.*<\/li>\s*)+)/g, '<ul>$1</ul>');
+  html = html.replace(/\n\n/g, '</p><p>');
+  html = html.replace(/\n/g, '<br>');
+  html = `<p>${html}</p>`;
+  // Clean up nesting issues
+  html = html.replace(/<p><\/p>/g, '');
+  html = html.replace(/<p>(<h[23]>)/g, '$1');
+  html = html.replace(/(<\/h[23]>)<\/p>/g, '$1');
+  html = html.replace(/<p>(<pre>)/g, '$1');
+  html = html.replace(/(<\/pre>)<\/p>/g, '$1');
+  html = html.replace(/<p>(<ul>)/g, '$1');
+  html = html.replace(/(<\/ul>)<\/p>/g, '$1');
+
+  panel.innerHTML = `<div class="draft-content">${html}</div>`;
+}
+
+function regenerateDraft() {
+  if (editorState.selectedIdx >= 0) generateDraft(editorState.selectedIdx);
+}
+
+function copyDraft() {
+  if (!editorState.currentDraft) return;
+  navigator.clipboard.writeText(editorState.currentDraft.content).then(() => {
+    toast('Draft copied to clipboard', 'success');
+  }).catch(() => {
+    // Fallback: select text
+    const range = document.createRange();
+    range.selectNodeContents(document.getElementById('draft-panel-body'));
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    toast('Text selected — use Ctrl+C to copy', 'info');
+  });
+}
+
+function exportDraft(format) {
+  if (!editorState.currentDraft) return;
+  const s = editorState.currentDraft.suggestion;
+  const content = editorState.currentDraft.content;
+  const name = (s.title || 'draft').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+
+  let blob, ext;
+  if (format === 'yaml') {
+    const yamlMatch = content.match(/```ya?ml\n([\s\S]*?)```/);
+    const yamlContent = yamlMatch ? yamlMatch[1] : content;
+    blob = new Blob([yamlContent], { type: 'text/yaml' });
+    ext = 'yml';
+  } else if (format === 'md') {
+    blob = new Blob([content], { type: 'text/markdown' });
+    ext = 'md';
+  } else {
+    blob = new Blob([JSON.stringify(editorState.currentDraft, null, 2)], { type: 'application/json' });
+    ext = 'json';
+  }
+
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${name}-${new Date().toISOString().slice(0, 10)}.${ext}`;
+  a.click();
+  toast(`Exported as .${ext}`, 'success');
+}
+
+async function generateContentPlan() {
+  const { token } = getAIConfig();
+  if (!token) { toast('Add your GitHub token in Settings first', 'warning'); openSettings(); return; }
+
+  if (editorState.suggestions.length === 0) {
+    buildEditorSuggestions();
+    if (editorState.suggestions.length === 0) {
+      toast('No suggestions — load a product and run gap analysis first', 'warning');
+      return;
+    }
+  }
+
+  const btn = document.getElementById('generate-plan-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating…';
+
+  const panelBody = document.getElementById('draft-panel-body');
+  panelBody.innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div> Generating content plan…</div>';
+
+  const newCount = editorState.suggestions.filter(s => s.type === 'new').length;
+  const updateCount = editorState.suggestions.filter(s => s.type === 'update').length;
+  const outdatedCount = editorState.suggestions.filter(s => s.type === 'outdated').length;
+
+  const topItems = editorState.suggestions.slice(0, 25).map(s => {
+    if (s.type === 'new') return `[NEW - ${s.priority}] ${s.title}: ${s.reason}`;
+    if (s.type === 'update') return `[EXPAND - ${s.priority}] ${s.title}: ${s.reason}`;
+    return `[REFRESH - ${s.priority}] ${s.title}: ${s.reason}`;
+  }).join('\n');
+
+  const prompt = `You are a content planning specialist for Microsoft Learn. Create a prioritized content plan for ${state.selectedProduct.name}.
+
+PRODUCT: ${state.selectedProduct.name}
+REPOSITORY: MicrosoftDocs/${state.selectedProduct.repo}
+TOTAL TRAINING MODULES: ${state.modules.length}
+DOCUMENTATION TOPICS: ${state.flatDocTopics.length}
+${state.gapResults ? `COVERAGE SCORE: ${state.gapResults.coveragePct}%` : ''}
+
+CONTENT GAPS:
+- ${newCount} doc topics need new training content
+- ${updateCount} modules need content expansion
+- ${outdatedCount} modules are outdated (>12 months)
+
+ITEMS (top 25 by priority):
+${topItems}
+
+Create a content plan in markdown:
+
+## Executive Summary
+(Brief assessment + key numbers)
+
+## Priority Matrix
+
+### 🔴 Immediate (This Sprint)
+(Top 3-5 actions with specific deliverables)
+
+### 🟡 Short-term (Next 30 Days)
+(Next 5-8 items with estimated effort)
+
+### 🟢 Long-term (Next Quarter)
+(Remaining items grouped by theme)
+
+## New Modules Roadmap
+(For each: title, what it covers, estimated effort, suggested placement in repo)
+
+## Module Refresh Schedule
+(Prioritized list of outdated modules with key areas to update)
+
+## Resource Estimates
+- New content creation: estimated scope
+- Content updates: estimated scope
+- Reviews/QA: estimated scope
+
+## Success Metrics
+(How to measure improvement)
+
+Be actionable. This plan will be shared with the content team.`;
+
+  try {
+    const reply = await callAI([{ role: 'user', content: prompt }], { maxTokens: 4000, temperature: 0.3 });
+
+    editorState.contentPlan = {
+      content: reply,
+      generatedAt: new Date().toISOString(),
+      product: state.selectedProduct.name,
+    };
+
+    editorState.currentDraft = {
+      suggestion: { title: `Content Plan - ${state.selectedProduct.name}`, type: 'plan' },
+      content: reply,
+      generatedAt: new Date().toISOString(),
+    };
+
+    document.getElementById('draft-panel-title').textContent = `📋 Content Plan — ${state.selectedProduct.name}`;
+    renderDraftPreview(reply);
+    document.getElementById('draft-panel-footer').style.display = 'flex';
+    document.getElementById('copy-draft-btn').style.display = 'inline-flex';
+    document.getElementById('export-plan-btn').style.display = 'inline-flex';
+
+    toast('Content plan generated!', 'success');
+  } catch (e) {
+    if (e.message === 'NO_TOKEN') { toast('Add GitHub token in Settings', 'warning'); openSettings(); }
+    else {
+      panelBody.innerHTML = `<div class="empty-state" style="padding:2rem;"><p style="color:var(--danger);">❌ Failed: ${escHtml(e.message)}</p></div>`;
+      toast('Plan generation failed', 'warning');
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = '📋 Content Plan';
+}
+
+function exportContentPlan() {
+  if (!editorState.contentPlan) { toast('Generate a content plan first', 'warning'); return; }
+  const name = (state.selectedProduct?.name || 'product').replace(/\s+/g, '-').toLowerCase();
+  const blob = new Blob([editorState.contentPlan.content], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `content-plan-${name}-${new Date().toISOString().slice(0, 10)}.md`;
+  a.click();
+  toast('Content plan exported', 'success');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════════════════════════════════════════════
 
@@ -2375,6 +3055,11 @@ function switchView(name) {
     if (cont && cont.querySelector('.loading-overlay')) {
       loadInsights();
     }
+  }
+
+  // Auto-build editor suggestions on first visit
+  if (name === 'editor' && editorState.suggestions.length === 0 && state.modules.length > 0) {
+    buildEditorSuggestions();
   }
 }
 
