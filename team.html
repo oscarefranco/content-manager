@@ -563,6 +563,27 @@ body {
 .mgap-gap-box.no-gaps { background: var(--success-bg); border-color: #c3e6cb; }
 .mgap-gap-box h4 { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
 .mgap-gap-box ul { font-size: 12px; margin-left: 1rem; line-height: 1.8; }
+.mgap-gap-box li { display: flex; align-items: center; gap: 6px; }
+.mgap-gap-box li > span:first-child { flex: 1; min-width: 0; }
+
+.mgap-edit-btn {
+  flex-shrink: 0; padding: 2px 8px; font-size: 10px; font-weight: 500;
+  border-radius: 4px; border: 1px solid var(--border); background: var(--bg);
+  cursor: pointer; transition: all 0.15s; color: var(--text-muted);
+  font-family: 'Segoe UI', sans-serif; white-space: nowrap; opacity: 0;
+}
+.mgap-topic-row:hover .mgap-edit-btn,
+.mgap-gap-box li:hover .mgap-edit-btn { opacity: 1; }
+.mgap-edit-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.mgap-fix-all-btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin-top: 10px; padding: 8px 16px; font-size: 12px; font-weight: 600;
+  border-radius: 8px; border: none; background: var(--primary); color: #fff;
+  cursor: pointer; transition: all 0.15s; width: 100%;
+  font-family: 'Segoe UI', sans-serif;
+}
+.mgap-fix-all-btn:hover { background: var(--primary-dark); box-shadow: var(--shadow); }
 
 /* ── Perspective toggle ── */
 .gap-perspective-bar {
@@ -2730,9 +2751,14 @@ function selectModuleGap(idx) {
     return topics.map(r => {
       const icon = r.coverage === 'covered' ? '✅' : r.coverage === 'partial' ? '⚠️' : '❌';
       const rel = Math.round(r.moduleRelevance * 100);
+      const canFix = r.coverage === 'uncovered' || r.coverage === 'partial';
+      const fixBtn = canFix
+        ? `<button class="mgap-edit-btn" onclick="event.stopPropagation(); navigateToEditorForGap('${escHtml(r.docTopic.title.replace(/'/g, "\\\'"))}', '${r.coverage}');" title="Open in Content Editor">✏️ Fix</button>`
+        : '';
       return `<div class="mgap-topic-row ${showBg ? 'strong' : ''}">
         <span>${icon}</span>
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(r.docTopic.path)}">${escHtml(r.docTopic.title)}</span>
+        ${fixBtn}
         <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text-muted);flex-shrink:0;">${rel}%</span>
       </div>`;
     }).join('');
@@ -2752,6 +2778,7 @@ function selectModuleGap(idx) {
       <div style="display:flex;gap:8px;margin-top:8px;">
         ${mod.learnUrl ? `<a href="${mod.learnUrl}" target="_blank" class="btn btn-secondary btn-sm">Learn ↗</a>` : ''}
         ${mod.ghUrl ? `<a href="${mod.ghUrl}" target="_blank" class="btn btn-ghost btn-sm">GitHub ↗</a>` : ''}
+        ${d.hasGaps ? `<button class="btn btn-primary btn-sm" onclick="navigateToEditorForModule(${idx})" style="margin-left:auto;">✏️ Fix Gaps in Editor</button>` : ''}
       </div>
     </div>
 
@@ -2809,10 +2836,16 @@ function selectModuleGap(idx) {
       <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">These documentation topics are relevant to this module but have no training coverage:</p>
       <ul>
         ${uncoveredGaps.slice(0, 10).map(r =>
-          `<li><strong>${escHtml(r.docTopic.title)}</strong> <span style="font-size:10px;color:var(--text-muted);">(${Math.round(r.moduleRelevance * 100)}% relevance)</span></li>`
+          `<li>
+            <span><strong>${escHtml(r.docTopic.title)}</strong> <span style="font-size:10px;color:var(--text-muted);">(${Math.round(r.moduleRelevance * 100)}% relevance)</span></span>
+            <button class="mgap-edit-btn" style="opacity:1;" onclick="event.stopPropagation(); navigateToEditorForGap('${escHtml(r.docTopic.title.replace(/'/g, "\\\\'"))}', 'uncovered');" title="Create content in Editor">✏️ Fix</button>
+          </li>`
         ).join('')}
         ${uncoveredGaps.length > 10 ? `<li style="color:var(--text-muted);">+ ${uncoveredGaps.length - 10} more</li>` : ''}
       </ul>
+      <button class="mgap-fix-all-btn" onclick="navigateToEditorForModule(${idx})">
+        🛠️ Fix All ${uncoveredGaps.length} Gaps in Content Editor
+      </button>
     </div>` : !d.hasGaps && d.relatedTopics.length > 0 ? `
     <div class="mgap-gap-box no-gaps">
       <p style="font-size:12px;color:var(--success);font-weight:500;">✅ Good coverage — no major content gaps detected for related documentation topics.</p>
@@ -2836,6 +2869,130 @@ function filterModuleGapStatus(status) {
     );
   });
   renderModuleGapList();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// GAP → EDITOR NAVIGATION
+// ══════════════════════════════════════════════════════════════════════════
+
+function navigateToEditorForGap(topicTitle, coverageType) {
+  // Ensure suggestions exist
+  if (editorState.suggestions.length === 0) {
+    buildEditorSuggestions();
+  }
+
+  // Switch to editor view
+  switchView('editor');
+
+  const targetTab = coverageType === 'uncovered' ? 'new' : coverageType === 'partial' ? 'update' : 'outdated';
+  const titleLower = topicTitle.toLowerCase();
+  let bestIdx = -1;
+
+  for (let i = 0; i < editorState.suggestions.length; i++) {
+    const s = editorState.suggestions[i];
+    if (s.type !== targetTab) continue;
+
+    if (s.type === 'new') {
+      // Match if any topic in the group matches
+      if (s.topics && s.topics.some(t => t.title.toLowerCase() === titleLower)) {
+        bestIdx = i; break;
+      }
+      // Also match by title/category
+      if (s.title.toLowerCase().includes(titleLower) || titleLower.includes(s.category.toLowerCase())) {
+        bestIdx = i;
+      }
+    } else if (s.type === 'update') {
+      if (s.docTopic && s.docTopic.title.toLowerCase() === titleLower) {
+        bestIdx = i; break;
+      }
+      if (s.title.toLowerCase().includes(titleLower)) {
+        bestIdx = i;
+      }
+    }
+  }
+
+  switchEditorTab(targetTab);
+
+  if (bestIdx >= 0) {
+    selectSuggestion(bestIdx);
+    setTimeout(() => {
+      const card = document.querySelector('.suggestion-card.selected');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+    toast(`Found matching suggestion for "${topicTitle}"`, 'success');
+  } else {
+    toast(`Opened editor — browse ${targetTab} suggestions for related content`, 'info');
+  }
+}
+
+function navigateToEditorForModule(moduleIdx) {
+  const d = moduleGapData[moduleIdx];
+  if (!d) return;
+
+  // Ensure suggestions exist
+  if (editorState.suggestions.length === 0) {
+    buildEditorSuggestions();
+  }
+
+  switchView('editor');
+
+  // Collect all suggestion indices related to this module's gaps
+  const modTitle = d.module.title.toLowerCase();
+  const uncoveredTitles = d.relatedTopics
+    .filter(r => r.coverage === 'uncovered' && r.moduleRelevance >= 0.2)
+    .map(r => r.docTopic.title.toLowerCase());
+  const partialTitles = d.relatedTopics
+    .filter(r => r.coverage === 'partial' && r.moduleRelevance >= 0.2)
+    .map(r => r.docTopic.title.toLowerCase());
+
+  // Find the best single suggestion to highlight
+  let bestIdx = -1;
+  let bestTab = 'new';
+
+  for (let i = 0; i < editorState.suggestions.length; i++) {
+    const s = editorState.suggestions[i];
+
+    // Check if this is a "new" suggestion targeting this module
+    if (s.type === 'new' && s.targetModule && s.targetModule.title.toLowerCase() === modTitle) {
+      bestIdx = i; bestTab = 'new'; break;
+    }
+
+    // Check if this is a "new" suggestion with matching uncovered topics
+    if (s.type === 'new' && s.topics) {
+      const match = s.topics.some(t => uncoveredTitles.includes(t.title.toLowerCase()));
+      if (match && bestIdx === -1) { bestIdx = i; bestTab = 'new'; }
+    }
+
+    // Check if this is an update suggestion for this module
+    if (s.type === 'update' && s.module && s.module.title.toLowerCase() === modTitle) {
+      if (bestIdx === -1) { bestIdx = i; bestTab = 'update'; }
+    }
+
+    // Check if this is an update suggestion with matching partial topics
+    if (s.type === 'update' && s.docTopic) {
+      if (partialTitles.includes(s.docTopic.title.toLowerCase()) && bestIdx === -1) {
+        bestIdx = i; bestTab = 'update';
+      }
+    }
+
+    // Check if this is an outdated suggestion for this module
+    if (s.type === 'outdated' && s.module && s.module.title.toLowerCase() === modTitle) {
+      if (bestIdx === -1) { bestIdx = i; bestTab = 'outdated'; }
+    }
+  }
+
+  switchEditorTab(bestTab);
+
+  if (bestIdx >= 0) {
+    selectSuggestion(bestIdx);
+    setTimeout(() => {
+      const card = document.querySelector('.suggestion-card.selected');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+  }
+
+  const gapCount = uncoveredTitles.length + partialTitles.length;
+  toast(`Opened editor for "${d.module.title}" — ${gapCount} gap${gapCount !== 1 ? 's' : ''} to address`, 'info');
 }
 
 // ══════════════════════════════════════════════════════════════════════════
