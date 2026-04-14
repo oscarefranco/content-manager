@@ -528,6 +528,55 @@ body {
 .draft-content li { margin-bottom: 4px; }
 .draft-content strong { color: var(--text); }
 
+/* ── Module Gap View ── */
+.mgap-layout { display: grid; grid-template-columns: 380px 1fr; gap: 16px; }
+@media (max-width: 1100px) { .mgap-layout { grid-template-columns: 1fr; } }
+.mgap-search {
+  width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 12px; font-family: 'Segoe UI', sans-serif; outline: none; background: var(--bg);
+}
+.mgap-search:focus { border-color: var(--primary); background: #fff; }
+.mgap-module-item {
+  display: flex; align-items: center; gap: 8px; padding: 9px 10px;
+  border-radius: 8px; cursor: pointer; font-size: 12px;
+  transition: background 0.1s; border: 1px solid transparent;
+}
+.mgap-module-item:hover { background: var(--bg); }
+.mgap-module-item.selected { background: var(--primary-light); border-color: var(--primary); }
+.mgap-module-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.mgap-module-item .item-title { flex: 1; min-width: 0; }
+.mgap-module-item .item-title h5 { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+.mgap-module-item .item-title p { font-size: 10px; color: var(--text-muted); margin: 1px 0 0; }
+.mgap-module-item .item-score { font-size: 10px; font-family: 'JetBrains Mono', monospace; width: 36px; text-align: right; flex-shrink: 0; }
+
+.mgap-detail-section { margin-bottom: 14px; }
+.mgap-detail-section h4 { font-size: 12px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.mgap-topic-row {
+  padding: 5px 8px; border-radius: 6px; font-size: 12px;
+  display: flex; align-items: center; gap: 6px;
+}
+.mgap-topic-row.strong { background: var(--bg); }
+.mgap-gap-box {
+  margin-top: 14px; padding: 12px; border-radius: 8px; border: 1px solid;
+}
+.mgap-gap-box.has-gaps { background: var(--danger-bg); border-color: #f5c6cb; }
+.mgap-gap-box.no-gaps { background: var(--success-bg); border-color: #c3e6cb; }
+.mgap-gap-box h4 { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+.mgap-gap-box ul { font-size: 12px; margin-left: 1rem; line-height: 1.8; }
+
+/* ── Perspective toggle ── */
+.gap-perspective-bar {
+  display: flex; gap: 4px; margin-bottom: 14px; padding: 3px; background: var(--bg);
+  border-radius: 10px; border: 1px solid var(--border); width: fit-content;
+}
+.gap-perspective-btn {
+  padding: 6px 16px; font-size: 12px; font-weight: 500; border-radius: 8px;
+  border: none; background: transparent; cursor: pointer;
+  transition: all 0.15s; color: var(--text-muted); font-family: 'Segoe UI', sans-serif;
+}
+.gap-perspective-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.08); font-weight: 600; }
+.gap-perspective-btn:hover:not(.active) { color: var(--text); }
+
 /* ── Insights ── */
 .commit-item {
   padding: 10px 0; border-bottom: 1px solid var(--border);
@@ -775,6 +824,10 @@ body {
       </div>
     </div>
     <div class="page-body">
+      <div class="gap-perspective-bar" id="gap-perspective" style="display:none;">
+        <button class="gap-perspective-btn active" id="persp-doc-btn" onclick="toggleGapPerspective('doc')">📄 By Doc Topic</button>
+        <button class="gap-perspective-btn" id="persp-module-btn" onclick="toggleGapPerspective('module')">📦 By Module</button>
+      </div>
       <div id="gap-summary" style="margin-bottom:16px;display:none;">
         <div class="stat-grid">
           <div class="stat-card">
@@ -840,6 +893,41 @@ body {
         <div class="empty-state">
           <div class="empty-state-icon">🔍</div>
           <p>Load a product first, then click Quick scan or AI deep analysis.</p>
+        </div>
+      </div>
+      <!-- MODULE-CENTRIC GAP VIEW -->
+      <div id="gap-module-view" style="display:none;">
+        <div class="mgap-layout">
+          <div>
+            <div class="card">
+              <div class="card-header">
+                <span>📦</span><h3>Training Modules</h3>
+                <span class="text-xs text-muted ml-auto" id="mgap-count"></span>
+              </div>
+              <div class="card-body" style="padding:10px;">
+                <input type="text" class="mgap-search" placeholder="Search modules…" id="mgap-search" oninput="filterModuleGapList(this.value)" />
+                <div class="gap-list-filter" id="mgap-filter" style="margin-top:8px;">
+                  <button class="active" onclick="filterModuleGapStatus('all')">All</button>
+                  <button onclick="filterModuleGapStatus('has-gaps')">🔴 Has Gaps</button>
+                  <button onclick="filterModuleGapStatus('good')">🟢 Good Coverage</button>
+                </div>
+                <div id="mgap-list" style="max-height:58vh;overflow-y:auto;margin-top:8px;"></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="card" id="mgap-detail-card">
+              <div class="card-header">
+                <span>🔍</span><h3 id="mgap-detail-title">Module Gap Details</h3>
+              </div>
+              <div class="card-body" id="mgap-detail-body" style="max-height:68vh;overflow-y:auto;">
+                <div class="empty-state" style="padding:2rem;">
+                  <div class="empty-state-icon">📦</div>
+                  <p>Select a module from the list to see which documentation topics it covers and where gaps exist.</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1702,6 +1790,9 @@ function renderAll() {
   document.getElementById('gap-results').innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><p>Click Quick scan or AI deep analysis to compare training vs docs.</p></div>';
   document.getElementById('export-csv-btn').style.display = 'none';
   document.getElementById('export-html-btn').style.display = 'none';
+  document.getElementById('gap-perspective').style.display = 'none';
+  document.getElementById('gap-module-view').style.display = 'none';
+  moduleGapData = [];
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -1963,6 +2054,12 @@ function runClientGapAnalysis() {
     const coveragePct = total > 0 ? Math.round((covered + partial * 0.5) / total * 100) : 0;
 
     state.gapResults = { results, covered, partial, uncovered, total, coveragePct };
+    moduleGapData = []; // Reset module-centric data on new scan
+    document.getElementById('gap-perspective').style.display = '';
+    // Ensure doc perspective is active
+    document.getElementById('persp-doc-btn').classList.add('active');
+    document.getElementById('persp-module-btn').classList.remove('active');
+    document.getElementById('gap-module-view').style.display = 'none';
     renderGapSummary();
     renderGapHeatmap(results);
     renderGapTimeline();
@@ -2473,6 +2570,271 @@ function renderUpdateCycles() {
       Total: ${total} modules across ${sorted.length} update cycle categories
     </div>
   `;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// MODULE-CENTRIC GAP VIEW
+// ══════════════════════════════════════════════════════════════════════════
+
+let moduleGapData = [];
+let moduleGapFilter = { status: 'all', search: '' };
+
+function toggleGapPerspective(mode) {
+  const isModule = mode === 'module';
+
+  document.getElementById('persp-doc-btn').classList.toggle('active', !isModule);
+  document.getElementById('persp-module-btn').classList.toggle('active', isModule);
+
+  // Show/hide doc-centric elements
+  const docEls = ['gap-summary', 'gap-visuals', 'gap-results'];
+  docEls.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (isModule) {
+      el.style.display = 'none';
+    } else {
+      if (id === 'gap-summary') el.style.display = state.gapResults ? 'block' : 'none';
+      else if (id === 'gap-visuals') el.style.display = state.gapResults ? 'block' : 'none';
+      else el.style.display = '';
+    }
+  });
+
+  document.getElementById('gap-module-view').style.display = isModule ? '' : 'none';
+
+  if (isModule && moduleGapData.length === 0 && state.gapResults) {
+    buildModuleGapMap();
+  }
+}
+
+function buildModuleGapMap() {
+  if (!state.gapResults || state.modules.length === 0) return;
+
+  const gapResults = state.gapResults.results;
+
+  moduleGapData = state.modules.map(mod => {
+    const modKeywords = extractKeywords(mod.title + ' ' + (mod.summary || ''));
+
+    // Find doc topics where this module is the bestMatch
+    const directMatches = gapResults.filter(r => r.bestMatch && r.bestMatch.title === mod.title);
+
+    // Find ALL related doc topics by keyword relevance to this module
+    const relatedTopics = gapResults
+      .map(r => {
+        const docKeywords = extractKeywords(r.docTopic.title + ' ' + (r.docTopic.path || ''));
+        const relevance = keywordOverlap(modKeywords, docKeywords);
+        return { ...r, moduleRelevance: relevance };
+      })
+      .filter(r => r.moduleRelevance > 0.15)
+      .sort((a, b) => b.moduleRelevance - a.moduleRelevance);
+
+    const strongTopics = relatedTopics.filter(r => r.moduleRelevance >= 0.4);
+    const moderateTopics = relatedTopics.filter(r => r.moduleRelevance >= 0.2 && r.moduleRelevance < 0.4);
+    const weakTopics = relatedTopics.filter(r => r.moduleRelevance < 0.2);
+
+    // Module's gap score: average relevance of related topics weighted by coverage
+    const score = relatedTopics.length > 0
+      ? Math.round(relatedTopics.reduce((s, r) => {
+          const covBonus = r.coverage === 'covered' ? 1 : r.coverage === 'partial' ? 0.5 : 0.1;
+          return s + r.moduleRelevance * covBonus;
+        }, 0) / relatedTopics.length * 100)
+      : 0;
+
+    const hasGaps = relatedTopics.some(r => r.coverage === 'uncovered' && r.moduleRelevance >= 0.2);
+
+    return {
+      module: mod,
+      directMatches,
+      relatedTopics,
+      strongTopics,
+      moderateTopics,
+      weakTopics,
+      gapScore: Math.min(score, 100),
+      hasGaps,
+    };
+  });
+
+  // Sort: modules with gaps first, then by gap score ascending
+  moduleGapData.sort((a, b) => {
+    if (a.hasGaps !== b.hasGaps) return a.hasGaps ? -1 : 1;
+    return a.gapScore - b.gapScore;
+  });
+
+  renderModuleGapList();
+}
+
+function renderModuleGapList() {
+  const list = document.getElementById('mgap-list');
+  let filtered = moduleGapData;
+
+  if (moduleGapFilter.search) {
+    const q = moduleGapFilter.search.toLowerCase();
+    filtered = filtered.filter(d =>
+      d.module.title.toLowerCase().includes(q) ||
+      (d.module.summary || '').toLowerCase().includes(q) ||
+      (d.module.author || '').toLowerCase().includes(q)
+    );
+  }
+
+  if (moduleGapFilter.status === 'has-gaps') {
+    filtered = filtered.filter(d => d.hasGaps);
+  } else if (moduleGapFilter.status === 'good') {
+    filtered = filtered.filter(d => !d.hasGaps);
+  }
+
+  document.getElementById('mgap-count').textContent = `${filtered.length} of ${moduleGapData.length}`;
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px;font-size:12px;">No modules match this filter</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(d => {
+    const idx = moduleGapData.indexOf(d);
+    const color = d.hasGaps ? 'var(--danger)' : d.gapScore >= 40 ? 'var(--success)' : 'var(--warning)';
+    const dotClass = d.hasGaps ? 'uncovered' : d.gapScore >= 40 ? 'covered' : 'partial';
+    const age = d.module.msDate
+      ? `${Math.floor((Date.now() - new Date(d.module.msDate).getTime()) / (30 * 24 * 60 * 60 * 1000))}mo`
+      : '?';
+
+    return `<div class="mgap-module-item" data-midx="${idx}" onclick="selectModuleGap(${idx})">
+      <div class="dot ${dotClass}"></div>
+      <div class="item-title">
+        <h5 title="${escHtml(d.module.title)}">${escHtml(d.module.title)}</h5>
+        <p>${d.relatedTopics.length} related topics · ${d.module.unitCount} units · ${age}</p>
+      </div>
+      <div class="item-score" style="color:${color};">${d.gapScore}%</div>
+    </div>`;
+  }).join('');
+}
+
+function selectModuleGap(idx) {
+  const d = moduleGapData[idx];
+  if (!d) return;
+
+  // Highlight selection
+  document.querySelectorAll('#mgap-list .mgap-module-item').forEach(el => el.classList.remove('selected'));
+  const item = document.querySelector(`#mgap-list .mgap-module-item[data-midx="${idx}"]`);
+  if (item) { item.classList.add('selected'); item.scrollIntoView({ block: 'nearest' }); }
+
+  const body = document.getElementById('mgap-detail-body');
+  document.getElementById('mgap-detail-title').textContent = d.module.title;
+
+  const mod = d.module;
+  const age = mod.msDate ? Math.floor((Date.now() - new Date(mod.msDate).getTime()) / (30 * 24 * 60 * 60 * 1000)) : null;
+  const ageTag = age !== null ? (age <= 3 ? 'tag-green' : age <= 12 ? 'tag-yellow' : 'tag-red') : 'tag-blue';
+  const ageLabel = age !== null ? (age <= 3 ? 'Current' : `${age}mo old`) : 'No date';
+  const gapColor = d.hasGaps ? 'var(--danger)' : d.gapScore >= 40 ? 'var(--success)' : 'var(--warning)';
+
+  function renderTopicRows(topics, showBg) {
+    return topics.map(r => {
+      const icon = r.coverage === 'covered' ? '✅' : r.coverage === 'partial' ? '⚠️' : '❌';
+      const rel = Math.round(r.moduleRelevance * 100);
+      return `<div class="mgap-topic-row ${showBg ? 'strong' : ''}">
+        <span>${icon}</span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(r.docTopic.path)}">${escHtml(r.docTopic.title)}</span>
+        <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text-muted);flex-shrink:0;">${rel}%</span>
+      </div>`;
+    }).join('');
+  }
+
+  const uncoveredGaps = d.relatedTopics.filter(r => r.coverage === 'uncovered' && r.moduleRelevance >= 0.2);
+
+  body.innerHTML = `
+    <div style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <span class="tag ${ageTag}">${ageLabel}</span>
+        <span class="tag tag-blue">${mod.unitCount} units</span>
+        ${mod.author ? `<span class="tag tag-purple">👤 ${escHtml(mod.author)}</span>` : ''}
+        ${mod.msService ? `<span class="tag tag-blue">${escHtml(mod.msService)}</span>` : ''}
+      </div>
+      ${mod.summary ? `<p style="font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.5;">${escHtml(mod.summary)}</p>` : ''}
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        ${mod.learnUrl ? `<a href="${mod.learnUrl}" target="_blank" class="btn btn-secondary btn-sm">Learn ↗</a>` : ''}
+        ${mod.ghUrl ? `<a href="${mod.ghUrl}" target="_blank" class="btn btn-ghost btn-sm">GitHub ↗</a>` : ''}
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <strong style="font-size:13px;">Documentation Coverage</strong>
+        <span style="font-weight:600;color:${gapColor};font-family:'JetBrains Mono',monospace;">${d.gapScore}%</span>
+      </div>
+      <div class="score-bar" style="margin-bottom:4px;">
+        <div class="score-fill" style="width:${d.gapScore}%;background:${gapColor};"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);">
+        ${d.relatedTopics.length} related doc topics · ${d.strongTopics.length} strong · ${d.moderateTopics.length} moderate · ${d.weakTopics.length} weak
+      </div>
+    </div>
+
+    ${d.strongTopics.length > 0 ? `
+    <div class="mgap-detail-section">
+      <h4><span style="color:var(--success);">●</span> Strong Matches (${d.strongTopics.length})</h4>
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        ${renderTopicRows(d.strongTopics, true)}
+      </div>
+    </div>` : ''}
+
+    ${d.moderateTopics.length > 0 ? `
+    <div class="mgap-detail-section">
+      <h4><span style="color:var(--warning);">●</span> Moderate Matches (${d.moderateTopics.length})</h4>
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        ${renderTopicRows(d.moderateTopics.slice(0, 20), false)}
+        ${d.moderateTopics.length > 20 ? `<div style="font-size:11px;color:var(--text-muted);padding:4px 8px;">+ ${d.moderateTopics.length - 20} more</div>` : ''}
+      </div>
+    </div>` : ''}
+
+    ${d.weakTopics.length > 0 ? `
+    <div class="mgap-detail-section">
+      <details>
+        <summary style="font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;">
+          <span style="color:var(--text-light);">●</span> Weak Matches (${d.weakTopics.length})
+        </summary>
+        <div style="display:flex;flex-direction:column;gap:2px;margin-top:4px;">
+          ${renderTopicRows(d.weakTopics.slice(0, 15), false)}
+          ${d.weakTopics.length > 15 ? `<div style="font-size:10px;color:var(--text-light);padding:2px 8px;">+ ${d.weakTopics.length - 15} more</div>` : ''}
+        </div>
+      </details>
+    </div>` : ''}
+
+    ${d.relatedTopics.length === 0 ? `
+    <div class="mgap-gap-box no-gaps">
+      <p style="font-size:12px;color:var(--text-muted);">No related documentation topics found. This module may cover a niche area not reflected in the doc TOC.</p>
+    </div>` : ''}
+
+    ${uncoveredGaps.length > 0 ? `
+    <div class="mgap-gap-box has-gaps">
+      <h4 style="color:var(--danger);">🚨 Content Gaps (${uncoveredGaps.length})</h4>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">These documentation topics are relevant to this module but have no training coverage:</p>
+      <ul>
+        ${uncoveredGaps.slice(0, 10).map(r =>
+          `<li><strong>${escHtml(r.docTopic.title)}</strong> <span style="font-size:10px;color:var(--text-muted);">(${Math.round(r.moduleRelevance * 100)}% relevance)</span></li>`
+        ).join('')}
+        ${uncoveredGaps.length > 10 ? `<li style="color:var(--text-muted);">+ ${uncoveredGaps.length - 10} more</li>` : ''}
+      </ul>
+    </div>` : !d.hasGaps && d.relatedTopics.length > 0 ? `
+    <div class="mgap-gap-box no-gaps">
+      <p style="font-size:12px;color:var(--success);font-weight:500;">✅ Good coverage — no major content gaps detected for related documentation topics.</p>
+    </div>` : ''}
+  `;
+}
+
+function filterModuleGapList(q) {
+  moduleGapFilter.search = q;
+  renderModuleGapList();
+}
+
+function filterModuleGapStatus(status) {
+  moduleGapFilter.status = status;
+  document.querySelectorAll('#mgap-filter button').forEach(btn => {
+    const text = btn.textContent.toLowerCase();
+    btn.classList.toggle('active',
+      status === 'all' ? text.includes('all') :
+      status === 'has-gaps' ? text.includes('gaps') :
+      text.includes('good')
+    );
+  });
+  renderModuleGapList();
 }
 
 // ══════════════════════════════════════════════════════════════════════════
