@@ -3080,7 +3080,16 @@ async function generateDraft(idx) {
       // ── ADD TO EXISTING MODULE ──
       const topicList = (s.topics || [s.docTopic]).map(t => `- ${t.title} (path: ${t.path})`).join('\n');
       const mod = s.targetModule;
-      prompt = `You are a Microsoft Learn training content specialist. The following documentation topics are NOT covered in training but are closely related to an EXISTING module. Your job is to recommend exactly where and how to add this content.
+      prompt = `You are a senior Microsoft Learn training content specialist with deep expertise in ${state.selectedProduct.name}. You write COMPREHENSIVE, IN-DEPTH training content that helps real business users understand and apply concepts in their daily work.
+
+CRITICAL: Do NOT write brief outlines or bullet-point summaries. Write THOROUGH, DETAILED training content with:
+- Rich explanations of each concept (explain the "why" behind the "what")
+- Real-world business scenarios showing how each topic applies in everyday operations
+- Concrete examples from industries like retail, manufacturing, healthcare, finance, and professional services
+- Step-by-step walkthroughs with decision points and reasoning
+- Common pitfalls, edge cases, and troubleshooting guidance
+- Best practices and tips from experienced practitioners
+- Connections between concepts (how this feature relates to other areas of ${state.selectedProduct.name})
 
 TARGET MODULE: "${mod.title}"
 - UID: ${mod.uid || 'unknown'}
@@ -3090,7 +3099,7 @@ TARGET MODULE: "${mod.title}"
 - ms.date: ${mod.msDate || 'unknown'}
 - Learn URL: ${mod.learnUrl || ''}
 - GitHub URL: ${mod.ghUrl || ''}
-${mod.units && mod.units.length > 0 ? `- Unit list:\n${mod.units.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}` : ''}
+${mod.units && mod.units.length > 0 ? `- Current unit list:\n${mod.units.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}` : ''}
 
 UNCOVERED DOCUMENTATION TOPICS TO ADD:
 ${topicList}
@@ -3098,14 +3107,16 @@ ${topicList}
 PRODUCT: ${state.selectedProduct.name}
 REPO: MicrosoftDocs/${state.selectedProduct.repo}
 
-Provide your response in markdown with these sections:
+Provide your response in markdown:
 
 ## Placement Recommendation
 - Explain WHY this content belongs in "${mod.title}" rather than a new module
-- Specify exactly WHERE in the module (after which existing unit, or as a new section within an existing unit)
+- Describe how these topics extend the existing module's narrative
+- Specify exactly WHERE in the module (after which unit, and why that position makes sense for the learning flow)
 
 ## New Unit(s) to Add
-For each new unit needed:
+
+For each new unit, write COMPREHENSIVE content (aim for 600-1000 words per unit):
 
 ### Unit: [Title]
 - **Insert after**: [existing unit name or position]
@@ -3116,12 +3127,51 @@ For each new unit needed:
 \`\`\`markdown
 # [Unit Title]
 
-[Write the actual training content for this unit. Include:
-- Introduction paragraph
-- Key concepts with explanations
-- Step-by-step procedures if applicable
-- Tips/notes boxes
-- Summary]
+## Introduction
+[2-3 paragraphs providing context. Explain why this topic matters to business users. Set up a real-world scenario that threads through the unit — e.g., "Imagine you're a finance manager at Contoso Ltd. who needs to..." or "Consider a retail operations team at Adventure Works that wants to..."]
+
+## [Core Concept 1]
+[Thorough explanation of the concept. Don't just describe WHAT it does — explain WHY it exists, WHEN you'd use it, and HOW it fits into broader business processes.]
+
+### Business Example
+[Specific scenario: "For example, a manufacturing company tracking inventory across three warehouses would use this feature to... The benefit is that instead of manually reconciling each warehouse's data, the system automatically..."]
+
+### How It Works
+[Detailed walkthrough of the feature/concept. Include:
+- Step-by-step process with explanations for each step
+- Screenshots placeholders where helpful: ![Description](media/screenshot-name.png)
+- Decision points: "At this stage, you need to decide whether to... Choose option A if your organization... Choose option B if..."]
+
+> [!TIP]
+> [Practical tip that experienced users would appreciate]
+
+## [Core Concept 2]
+[Continue with the same depth...]
+
+### Real-World Application
+[Show how this concept connects to daily business operations. Be specific — mention job roles, common tasks, time savings, error reduction, etc.]
+
+> [!IMPORTANT]
+> [Critical information or common mistake to avoid]
+
+## [Core Concept 3 if applicable]
+[...]
+
+### Common Scenarios
+[Provide 2-3 brief but specific scenarios showing different ways businesses use this:]
+1. **Scenario: [Industry/Role]** — [Description of how they use it and the business outcome]
+2. **Scenario: [Industry/Role]** — [Different use case]
+
+## Best Practices
+- [Practice 1 with explanation of why]
+- [Practice 2 with explanation]
+- [Practice 3]
+
+> [!NOTE]
+> [Additional context or related feature to explore]
+
+## Summary
+[Recap key takeaways. Remind the learner how this connects to the broader module topic and their daily work.]
 \`\`\`
 
 ## Updated index.yml Entry
@@ -3133,73 +3183,149 @@ units:
 \`\`\`
 
 ## Content That Could Expand Existing Units
-(If some topics don't need a whole new unit, specify which existing unit to expand and provide the additional paragraphs/sections)
+(If some topics are better added as new sections within existing units rather than whole new units, provide the specific paragraphs to insert, including business context and examples)
 
-Be specific and write actual content that can be copy-pasted. Format all content as proper Microsoft Learn Markdown.`;
+Write with authority and depth. A learner should finish this content feeling confident about applying these concepts in their organization.`;
 
     } else if (s.type === 'new') {
       // ── NEW MODULE ──
       const topicList = (s.topics || [s.docTopic]).map(t => `- ${t.title} (path: ${t.path})`).join('\n');
-      prompt = `You are a Microsoft Learn training content architect. Create a complete NEW training module for ${state.selectedProduct.name}.
+      prompt = `You are a senior Microsoft Learn training content architect with deep expertise in ${state.selectedProduct.name}. You create COMPREHENSIVE, PUBLICATION-READY training modules that help business professionals understand and apply concepts in real-world scenarios.
+
+CRITICAL CONTENT REQUIREMENTS:
+- Write THOROUGH, DETAILED content — each unit should be 600-1000 words of actual learning material
+- Weave a CONSISTENT BUSINESS SCENARIO through the entire module (e.g., "Throughout this module, we'll follow Contoso Ltd., a mid-size distribution company, as they implement...")
+- For every concept, explain: WHAT it is, WHY it matters to the business, WHEN to use it, and HOW it works in practice
+- Include REAL-WORLD EXAMPLES from industries like retail, manufacturing, finance, healthcare, and professional services
+- Provide STEP-BY-STEP WALKTHROUGHS with decision points and reasoning at each step
+- Add BEST PRACTICES, common pitfalls, and troubleshooting tips that experienced practitioners would share
+- Show how features CONNECT to daily business operations — time savings, error reduction, compliance, reporting
+- Include EXERCISES that mirror real workplace tasks, not abstract examples
 
 DOCUMENTATION TOPICS TO COVER:
 ${topicList}
 
-EXISTING MODULES (avoid duplication):
+EXISTING MODULES (avoid duplication — explain how this module complements them):
 ${state.modules.slice(0, 30).map(m => `- "${m.title}"`).join('\n')}
 
 REPOSITORY: MicrosoftDocs/${state.selectedProduct.repo}
 FOLDER: ${state.selectedProduct.folder}
 
-Generate a complete module. Use markdown formatting:
+Generate a complete, publication-ready module:
 
 ## Module Title
-(Clear, action-oriented title)
+(Clear, action-oriented title that tells the learner what they'll be able to DO)
 
 ## Placement
 - **Repository path**: ${state.selectedProduct.folder}/[suggested-folder-name]/
-- **Reason**: Why this needs a new module vs adding to an existing one
+- **Reason**: Why this needs its own module (what gap it fills that existing modules don't cover)
+- **Relationship to existing modules**: How this complements the modules listed above
 
 ## Summary
-(2-3 sentence description)
+(3-4 sentences describing what the learner will accomplish, the business value, and who should take this module)
 
 ## Learning Objectives
-(3-5 bullet points starting with verbs: "Describe…", "Configure…", "Implement…")
+(5-6 bullet points using Bloom's taxonomy verbs: "Describe…", "Configure…", "Evaluate…", "Implement…", "Troubleshoot…")
 
 ## Prerequisites
-(What learners should know beforehand)
+(What the learner should know or have access to before starting. Be specific about required roles, licenses, or environments.)
+
+## Scenario Introduction
+(Introduce the business scenario that will thread through all units: company name, industry, business challenge, what they want to achieve with ${state.selectedProduct.name})
 
 ## Units
 
-For EACH unit, provide the full content:
+Write FULL, IN-DEPTH content for each unit (5-7 units recommended):
 
 ### Unit 1: [Title]
-- **Type**: learn / exercise / knowledge-check
-- **Duration**: X minutes
+- **Type**: learn
+- **Duration**: X minutes (estimate based on content length)
 - **File**: [unit-file-name].yml
 
 #### Content
 \`\`\`markdown
 # [Unit Title]
 
-[Write the FULL training content. Include:
-- Introduction
-- Concepts with clear explanations
-- Step-by-step procedures where applicable
-- Screenshots placeholders: ![Description](media/screenshot-name.png)
-- Notes: > [!NOTE] / > [!TIP] / > [!IMPORTANT]
-- Summary paragraph]
+## Introduction
+[2-3 paragraphs. Set the scene using the module's running business scenario. Explain what this unit covers and why it matters. Connect to the learner's daily work.]
+
+## [Main Topic Section]
+[Deep explanation of the concept. Include:]
+
+### What Is [Concept] and Why Does It Matter?
+[Explain the concept in business terms. What problem does it solve? What happens without it?]
+
+### Business Context
+[Specific example: "Consider a scenario where your accounts payable team processes 500 invoices monthly. Without [feature], each invoice requires manual data entry taking 3-5 minutes. With [feature], the system automatically... reducing processing time by 60% and error rates by 85%."]
+
+### How to [Configure/Implement/Use] [Feature]
+[Detailed step-by-step walkthrough:]
+1. **Step 1: [Action]** — [Explain what to do and why]
+   - Navigate to **[specific menu path]**
+   - Select **[specific option]**
+   ![Step 1 screenshot](media/step-1-description.png)
+
+2. **Step 2: [Action]** — [Explain what to do and why]
+   [Continue with detail...]
+
+> [!TIP]
+> [Practical tip from an experienced user's perspective]
+
+### [Secondary Topic]
+[Continue with same depth. Include another business example from a different industry/role.]
+
+### Real-World Applications
+[Show 2-3 specific business scenarios:]
+- **Finance team**: [How they use this in daily close processes, budgeting, etc.]
+- **Operations manager**: [How they use this for planning, resource allocation, etc.]
+- **IT administrator**: [Configuration and maintenance perspective]
+
+> [!IMPORTANT]
+> [Critical consideration or common mistake — explain the business impact of getting this wrong]
+
+### Common Questions and Troubleshooting
+- **Q: [Common question]** — [Thorough answer]
+- **Q: [Another question]** — [Answer with context]
+
+## Best Practices
+- [Practice 1 — explain the reasoning and business impact]
+- [Practice 2 — include a brief scenario]
+- [Practice 3 — mention what to avoid and why]
+
+> [!NOTE]
+> [Connection to related feature or next steps in their learning journey]
+
+## Summary
+[Summarize key takeaways. Remind the learner how this connects to the overall module scenario. Preview what's coming in the next unit.]
 \`\`\`
 
-(Repeat for each unit — aim for 4-6 units)
+### Unit 2: [Title]
+[... repeat with same depth and detail ...]
+
+### Unit 3: [Title — Exercise/Hands-on]
+- **Type**: exercise
+[Include a realistic exercise that mirrors actual business tasks. Provide:
+- Detailed scenario setup
+- Step-by-step tasks with expected outcomes
+- Validation criteria — how to know they did it right
+- Bonus challenges for advanced learners]
+
+### Unit 4-6: [Continue...]
+[Maintain the same depth throughout all units]
+
+### Final Unit: Knowledge Check
+- **Type**: knowledge-check
+[Write 5-8 questions that test PRACTICAL APPLICATION, not just recall:
+- Scenario-based questions: "Your company needs to... which approach should you take?"
+- Include answer explanations for each option (correct and incorrect)]
 
 ## index.yml
 \`\`\`yaml
 ### YAMLTitle: [module title]
 summary: |
-  [summary]
+  [3-4 sentence summary]
 description: |
-  [longer description]
+  [Detailed description including business value and target audience]
 ms.date: ${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
 ms.service: ${state.selectedProduct.service || ''}
 author: [author-handle]
@@ -3212,10 +3338,18 @@ units:
   - learn-bizapps.${state.selectedProduct.folder}.[module-name].[unit-name]
 \`\`\`
 
-Write ACTUAL content for each unit — not outlines, but real training text a learner would read. Format as Microsoft Learn Markdown.`;
+This module should feel like it was written by a product expert who has spent years helping businesses implement ${state.selectedProduct.name}. Every concept should have business context, every procedure should have reasoning, and every unit should leave the learner ready to apply what they learned.`;
 
     } else if (s.type === 'update') {
-      prompt = `You are a Microsoft Learn training content specialist. This module partially covers a documentation topic and needs expansion. Determine whether to ADD a new unit or EXPAND existing units.
+      prompt = `You are a senior Microsoft Learn training content specialist with deep expertise in ${state.selectedProduct.name}. This module partially covers a documentation topic and needs expansion. Your job is to write COMPREHENSIVE, DETAILED content additions.
+
+CRITICAL: Do NOT write brief summaries or outlines. Write PUBLICATION-READY content that:
+- Provides thorough explanations with business context for every concept
+- Includes real-world scenarios showing how topics apply in daily business operations (e.g., "A procurement manager at a manufacturing company would use this to...")
+- Gives concrete examples from industries like retail, healthcare, finance, and professional services
+- Explains not just WHAT a feature does but WHY it matters, WHEN to use it, and the business impact
+- Includes step-by-step procedures with reasoning at each decision point
+- Adds best practices, common pitfalls, and troubleshooting guidance
 
 MODULE: "${s.module.title}"
 - UID: ${s.module.uid || 'unknown'}
@@ -3224,7 +3358,7 @@ MODULE: "${s.module.title}"
 - Units: ${s.module.unitCount}
 - Summary: ${s.module.summary || 'N/A'}
 - Learn URL: ${s.module.learnUrl || ''}
-${s.module.units && s.module.units.length > 0 ? `- Unit list:\n${s.module.units.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}` : ''}
+${s.module.units && s.module.units.length > 0 ? `- Current unit list:\n${s.module.units.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}` : ''}
 
 DOCUMENTATION TOPIC TO BETTER COVER: "${s.docTopic.title}"
 - Doc path: ${s.docTopic.path}
@@ -3232,26 +3366,64 @@ DOCUMENTATION TOPIC TO BETTER COVER: "${s.docTopic.title}"
 
 Provide your response in markdown:
 
+## Analysis
+- What specific knowledge gap exists between the current module and the documentation
+- Why this gap matters to business users (what can't they do or understand without this content?)
+- How filling this gap improves the learner's ability to work with ${state.selectedProduct.name}
+
 ## Recommendation Type
-State clearly: **Add New Unit** or **Expand Existing Unit(s)** — explain why.
+State clearly: **Add New Unit** or **Expand Existing Unit(s)** — explain the reasoning.
 
 ## If Adding a New Unit
 
 ### New Unit: [Title]
-- **Insert after**: [which existing unit]
+- **Insert after**: [which existing unit and why this position makes sense]
 - **Type**: learn / exercise / knowledge-check
 - **Duration**: X minutes
 
-#### Content (Markdown)
+#### Content (Markdown) — WRITE COMPREHENSIVE CONTENT (600+ words)
 \`\`\`markdown
 # [Unit Title]
 
-[Write ACTUAL training content for this unit:
-- Introduction paragraph
-- Key concepts
-- Procedures/steps
-- Tips and notes
-- Summary]
+## Introduction
+[2-3 paragraphs setting context. Use a business scenario: "Imagine you're a [role] at [company type] and you need to... This unit shows you how ${state.selectedProduct.name} helps you..."]
+
+## [Main Concept]
+[Thorough explanation. Cover:]
+
+### What Is [Concept] and Why Does It Matter?
+[Explain in business terms. What problem does it solve?]
+
+### Business Example
+[Specific, detailed scenario: "For instance, a retail chain with 50 locations needs to... Using this feature, the regional manager can... This reduces [specific time/cost/error metric] by..."]
+
+### Step-by-Step Implementation
+1. **[Step]** — [What to do, why, and what to expect]
+2. **[Step]** — [Continue with practical detail]
+[Include screenshot placeholders where helpful]
+
+> [!TIP]
+> [Expert tip that saves time or prevents common mistakes]
+
+## [Secondary Concept]
+[Same depth — explain, provide business context, give examples]
+
+### How This Connects to Daily Work
+[Map to specific job tasks and workflows that the learner likely performs]
+
+### Common Scenarios
+1. **[Scenario with specific role/industry]** — [How they'd use this]
+2. **[Different scenario]** — [Different application]
+
+> [!IMPORTANT]
+> [Critical consideration or common mistake — explain business impact]
+
+## Best Practices
+- [Practice with reasoning]
+- [Practice with example]
+
+## Summary
+[Key takeaways and how this connects to the rest of the module]
 \`\`\`
 
 #### index.yml Addition
@@ -3264,21 +3436,33 @@ State clearly: **Add New Unit** or **Expand Existing Unit(s)** — explain why.
 For each unit to expand:
 
 ### Expand: [Existing Unit Name]
-#### Add After Section: [identify where]
+#### Add After Section: [identify specific section]
 \`\`\`markdown
-[Write the specific paragraphs/sections to ADD to the existing unit content]
+[Write substantial content additions (300+ words) with:
+- Full explanations of the new concepts
+- Business scenario showing practical application
+- Step-by-step procedures with reasoning
+- Tips and best practices
+- Connection to the existing unit's content flow]
 \`\`\`
 
 ## Updated Learning Objectives
-(If objectives should change)
+(Revised objectives reflecting the expanded coverage — use action verbs from Bloom's taxonomy)
 
 ## Updated Summary
-(Rewritten summary reflecting better coverage)
+(Rewritten module summary that encompasses the new content)
 
-Write ACTUAL content that can be copy-pasted. Format as Microsoft Learn Markdown.`;
+Write content that makes the learner feel confident about applying these concepts at their organization.`;
 
     } else {
-      prompt = `You are a Microsoft Learn training content specialist. This module is outdated and needs a refresh.
+      prompt = `You are a senior Microsoft Learn training content specialist with deep expertise in ${state.selectedProduct.name}. This module is outdated and needs a comprehensive refresh. Write DETAILED, PUBLICATION-READY content updates.
+
+CRITICAL: Do NOT write vague recommendations like "update screenshots" or "review content." Instead:
+- Write the ACTUAL updated content paragraphs/sections that should replace outdated text
+- Provide specific new business scenarios reflecting current ${state.selectedProduct.name} capabilities
+- Include concrete examples of how modern features change daily business workflows
+- Explain what changed, why it matters to business users, and how workflows are different now
+- Reference specific ${state.selectedProduct.name} features, UI changes, and capability updates from the past ${s.ageMonths} months
 
 MODULE: "${s.module.title}"
 - UID: ${s.module.uid || 'unknown'}
@@ -3290,39 +3474,89 @@ MODULE: "${s.module.title}"
 - Product: ${state.selectedProduct.name}
 - Learn URL: ${s.module.learnUrl || ''}
 
-CURRENT DOCUMENTATION TOPICS (what's current today):
-${state.flatDocTopics.filter(d => d.depth <= 1).slice(0, 40).map(d => `- ${d.title}`).join('\n')}
+CURRENT DOCUMENTATION TOPICS (reflecting what's current in the product today):
+${state.flatDocTopics.filter(d => d.depth <= 2).slice(0, 60).map(d => `${'  '.repeat(d.depth)}- ${d.title}`).join('\n')}
 
-Provide a refresh plan in markdown:
+Provide a comprehensive refresh in markdown:
 
 ## Staleness Assessment
-- What's likely outdated after ${s.ageMonths} months
-- ${state.selectedProduct.name} features/UI changes since then
+- Specific ${state.selectedProduct.name} features and capabilities that have changed or been added in the past ${s.ageMonths} months
+- UI/navigation changes that affect step-by-step procedures
+- New integrations, AI capabilities, or workflow improvements
+- Deprecated features or approaches that should be removed
+- Impact on business users: what can they do NOW that they couldn't when this was written?
 
-## Recommended Updates
+## Content Refresh — Section by Section
 
-### Content Sections to Rewrite
-(Identify specific areas. Provide updated content where possible.)
+For each section that needs updating, provide the ACTUAL replacement content:
 
-### New Content to Add
-(Topics from current docs that should be incorporated)
+### [Section/Unit Name] — REWRITE
+**Why it needs updating**: [Explain what changed]
+**Business impact**: [How the change affects daily work]
 
-### Content to Remove or Deprecate
-(Features/procedures that may have been deprecated)
+\`\`\`markdown
+[Write the complete updated content for this section. Include:
 
-### Updated Metadata
+## [Updated Section Title]
+
+[Updated introduction with current context]
+
+### What's New
+[Explain the changes and new capabilities in business terms: "Previously, you had to manually... Now, ${state.selectedProduct.name} automatically... This means a finance team processing month-end close can reduce their timeline from 5 days to 2 days because..."]
+
+### Updated Procedure
+1. **[Step]** — [Updated instruction with current UI paths]
+   ![Updated screenshot](media/updated-screenshot.png)
+2. **[Step]** — [Continue with current workflow]
+
+> [!TIP]
+> [New best practice reflecting current capabilities]
+
+### Business Example
+[Modern scenario: "With the latest ${state.selectedProduct.name} updates, a supply chain manager at Contoso can now... Previously, this required... but the new [feature] enables..."]]
+\`\`\`
+
+### [Another Section] — REWRITE
+[Continue with same depth for each section needing updates...]
+
+## New Content to Add
+For topics from current documentation that the module should now cover:
+
+\`\`\`markdown
+## [New Section Title]
+
+[Write comprehensive new content (400+ words) covering the new capability. Include:
+- What it is and why it was added
+- Business scenarios showing real-world value
+- Step-by-step configuration/usage
+- How it integrates with features already covered in the module
+- Best practices from early adopters]
+\`\`\`
+
+## Content to Remove or Replace
+- [Feature/procedure] — **Remove because**: [explanation, what replaced it]
+- [Outdated reference] — **Replace with**: [current equivalent]
+
+## Updated Metadata
 \`\`\`yaml
 ms.date: ${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
 ms.service: ${s.module.msService || state.selectedProduct.service || ''}
 \`\`\`
 
-## Step-by-Step Refresh Plan
-1. (Ordered list of concrete actions)
+## Updated Learning Objectives
+(Revised to reflect current capabilities — use Bloom's taxonomy verbs)
 
-Be practical and specific to ${state.selectedProduct.name}.`;
+## Updated Summary
+(Rewritten to reflect current state of ${state.selectedProduct.name})
+
+## Step-by-Step Refresh Plan
+1. [Specific action with estimated effort]
+2. [Continue with prioritized actions...]
+
+Write with the authority of someone who uses ${state.selectedProduct.name} daily and understands the business impact of every feature.`;
     }
 
-    const reply = await callAI([{ role: 'user', content: prompt }], { maxTokens: 4000, temperature: 0.4 });
+    const reply = await callAI([{ role: 'user', content: prompt }], { maxTokens: 16000, temperature: 0.45 });
 
     editorState.currentDraft = {
       suggestion: s,
