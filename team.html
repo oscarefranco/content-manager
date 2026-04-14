@@ -3019,51 +3019,169 @@ function buildEditorSuggestions() {
   const suggestions = [];
   const now = Date.now();
 
-  // 1. New content from uncovered topics
+  // ── 1. THOROUGH 3-TIER GAP CLASSIFICATION ──
+  // For each uncovered topic, check at 3 levels before recommending "new module":
+  //   Tier 1: expand-unit   → topic fits as a subsection in an existing unit
+  //   Tier 2: add-unit      → topic fits as a new unit in an existing module
+  //   Tier 3: new-module    → truly novel content with no home (last resort)
   if (state.gapResults) {
     const uncovered = state.gapResults.results.filter(r => r.coverage === 'uncovered');
 
-    // Group uncovered topics by their top-level parent
-    const groups = {};
+    // Pre-compute keyword caches for modules AND their individual units
+    const moduleCache = state.modules.map(mod => {
+      const modKeywords = extractKeywords(mod.title + ' ' + (mod.summary || ''));
+      const unitCache = (mod.units || []).map((unitTitle, idx) => ({
+        title: unitTitle,
+        index: idx,
+        keywords: extractKeywords(unitTitle),
+      }));
+      return { mod, keywords: modKeywords, units: unitCache };
+    });
+
+    // Classify each uncovered topic individually against all modules + units
+    const expandUnitItems = [];   // → subsection within existing unit
+    const addUnitItems = [];      // → new unit in existing module
+    const newModuleItems = [];    // → needs entirely new module
+
     for (const r of uncovered) {
-      const parentKey = r.docTopic.path.split(' > ')[0] || r.docTopic.title;
-      if (!groups[parentKey]) groups[parentKey] = [];
-      groups[parentKey].push(r);
-    }
+      const topicKw = extractKeywords(r.docTopic.title + ' ' + (r.docTopic.path || ''));
+      if (topicKw.length === 0) { newModuleItems.push({ topic: r.docTopic }); continue; }
 
-    // Pre-compute module keywords for matching
-    const moduleKwCache = state.modules.map(mod => ({
-      mod,
-      keywords: extractKeywords(mod.title + ' ' + (mod.summary || '')),
-    }));
+      let bestUnitScore = 0, bestUnitMod = null, bestUnitUnit = null;
+      let bestModScore = 0, bestModModule = null;
+      const moduleCandidates = [];
 
-    for (const [parent, items] of Object.entries(groups)) {
-      const groupKeywords = extractKeywords(parent + ' ' + items.map(i => i.docTopic.title).join(' '));
+      for (const mc of moduleCache) {
+        // Module-level keyword match (title + summary)
+        const modScore = keywordOverlap(topicKw, mc.keywords);
+        if (modScore > bestModScore) { bestModScore = modScore; bestModModule = mc.mod; }
+        if (modScore >= 0.1) moduleCandidates.push({ mod: mc.mod, score: modScore });
 
-      // Find best matching existing module for this gap
-      let bestModule = null;
-      let bestOverlap = 0;
-      for (const { mod, keywords } of moduleKwCache) {
-        const overlap = keywordOverlap(groupKeywords, keywords);
-        if (overlap > bestOverlap) { bestOverlap = overlap; bestModule = mod; }
+        // Unit-level keyword match — check every unit in this module
+        for (const uc of mc.units) {
+          if (uc.keywords.length === 0) continue;
+          const unitScore = keywordOverlap(topicKw, uc.keywords);
+          // Combined score: strong unit match boosted by module relevance
+          const combined = unitScore * 0.7 + modScore * 0.3;
+          if (unitScore >= 0.25 && combined > bestUnitScore) {
+            bestUnitScore = combined;
+            bestUnitMod = mc.mod;
+            bestUnitUnit = uc;
+          }
+        }
       }
 
-      const recommendation = bestOverlap >= 0.2 ? 'add-to-existing' : 'new-module';
-      const priority = items.length >= 5 ? 'high' : items.length >= 2 ? 'medium' : 'low';
+      // Also check reverse overlap (topic keywords found in module/unit)
+      // This catches cases where the gap topic has fewer keywords than the module
+      if (bestUnitScore < 0.25 && bestModScore < 0.15) {
+        for (const mc of moduleCache) {
+          const revScore = keywordOverlap(mc.keywords, topicKw);
+          const avg = (revScore + keywordOverlap(topicKw, mc.keywords)) / 2;
+          if (avg > bestModScore) { bestModScore = avg; bestModModule = mc.mod; }
+          for (const uc of mc.units) {
+            if (uc.keywords.length === 0) continue;
+            const revUnit = keywordOverlap(uc.keywords, topicKw);
+            const avgUnit = (revUnit + keywordOverlap(topicKw, uc.keywords)) / 2;
+            const combined = avgUnit * 0.7 + bestModScore * 0.3;
+            if (avgUnit >= 0.2 && combined > bestUnitScore) {
+              bestUnitScore = combined;
+              bestUnitMod = mc.mod;
+              bestUnitUnit = uc;
+            }
+          }
+        }
+      }
 
+      const topCandidates = moduleCandidates.sort((a, b) => b.score - a.score).slice(0, 3);
+
+      // ── Classification decision ──
+      if (bestUnitScore >= 0.2 && bestUnitUnit) {
+        // TIER 1: Strong unit-level match → add subsection to existing unit
+        expandUnitItems.push({
+          topic: r.docTopic, targetModule: bestUnitMod,
+          targetUnit: bestUnitUnit, score: bestUnitScore,
+          allCandidates: topCandidates,
+        });
+      } else if (bestModScore >= 0.12) {
+        // TIER 2: Good module-level match → add new unit to existing module
+        addUnitItems.push({
+          topic: r.docTopic, targetModule: bestModModule,
+          score: bestModScore, allCandidates: topCandidates,
+        });
+      } else {
+        // TIER 3: No meaningful match anywhere → new module (last resort)
+        newModuleItems.push({ topic: r.docTopic });
+      }
+    }
+
+    // ── Group expand-unit items by target unit ──
+    const expandGroups = {};
+    for (const item of expandUnitItems) {
+      const key = `${item.targetModule.title}||${item.targetUnit.title}`;
+      if (!expandGroups[key]) expandGroups[key] = { ...item, topics: [] };
+      expandGroups[key].topics.push(item.topic);
+    }
+    for (const group of Object.values(expandGroups)) {
+      const n = group.topics.length;
       suggestions.push({
         type: 'new',
+        recommendation: 'expand-unit',
+        category: group.topics[0].path.split(' > ')[0] || group.topics[0].title,
+        topics: group.topics,
+        topicCount: n,
+        priority: n >= 3 ? 'high' : n >= 2 ? 'medium' : 'low',
+        targetModule: group.targetModule,
+        targetUnit: group.targetUnit,
+        targetOverlap: group.score,
+        allCandidates: group.allCandidates || [],
+        title: n === 1 ? group.topics[0].title : `${group.topics[0].title} (+${n - 1} more)`,
+        reason: `Add as ${n > 1 ? 'subsections' : 'a subsection'} within unit "${group.targetUnit.title}" in "${group.targetModule.title}" (${Math.round(group.score * 100)}% match). No new unit or module needed — just expand existing content.`,
+        suggestedPlacement: `${state.selectedProduct.folder}/`,
+      });
+    }
+
+    // ── Group add-unit items by target module ──
+    const addUnitGroups = {};
+    for (const item of addUnitItems) {
+      const key = item.targetModule.title;
+      if (!addUnitGroups[key]) addUnitGroups[key] = { ...item, topics: [] };
+      addUnitGroups[key].topics.push(item.topic);
+    }
+    for (const [key, group] of Object.entries(addUnitGroups)) {
+      const n = group.topics.length;
+      suggestions.push({
+        type: 'new',
+        recommendation: 'add-unit',
+        category: group.topics[0].path.split(' > ')[0] || group.topics[0].title,
+        topics: group.topics,
+        topicCount: n,
+        priority: n >= 3 ? 'high' : n >= 2 ? 'medium' : 'low',
+        targetModule: group.targetModule,
+        targetOverlap: group.score,
+        allCandidates: group.allCandidates || [],
+        title: n === 1 ? group.topics[0].title : `${key} — ${n} new topics`,
+        reason: `Add as ${n > 1 ? 'new units' : 'a new unit'} in "${group.targetModule.title}" (${Math.round(group.score * 100)}% module match). Topics relate to the module but aren't covered by any existing unit.`,
+        suggestedPlacement: `${state.selectedProduct.folder}/`,
+      });
+    }
+
+    // ── Group new-module items by parent path (last resort only) ──
+    const newModGroups = {};
+    for (const item of newModuleItems) {
+      const parentKey = item.topic.path.split(' > ')[0] || item.topic.title;
+      if (!newModGroups[parentKey]) newModGroups[parentKey] = [];
+      newModGroups[parentKey].push(item.topic);
+    }
+    for (const [parent, topics] of Object.entries(newModGroups)) {
+      suggestions.push({
+        type: 'new',
+        recommendation: 'new-module',
         category: parent,
-        topics: items.map(i => i.docTopic),
-        topicCount: items.length,
-        priority,
-        recommendation,
-        targetModule: recommendation === 'add-to-existing' ? bestModule : null,
-        targetOverlap: bestOverlap,
-        title: items.length === 1 ? items[0].docTopic.title : `${parent} (${items.length} topics)`,
-        reason: recommendation === 'add-to-existing'
-          ? `Can be added to "${bestModule.title}" (${Math.round(bestOverlap * 100)}% related). ${items.length} uncovered topic${items.length > 1 ? 's' : ''}.`
-          : `${items.length} documentation topic${items.length > 1 ? 's' : ''} under "${parent}" need${items.length === 1 ? 's' : ''} new training content.`,
+        topics,
+        topicCount: topics.length,
+        priority: topics.length >= 5 ? 'high' : topics.length >= 2 ? 'medium' : 'low',
+        title: topics.length === 1 ? topics[0].title : `${parent} (${topics.length} topics)`,
+        reason: `${topics.length} documentation topic${topics.length > 1 ? 's' : ''} under "${parent}" — thoroughly checked against all ${state.modules.length} modules and ${state.modules.reduce((s, m) => s + (m.units || []).length, 0)} units with no match. Requires new training content.`,
         suggestedPlacement: `${state.selectedProduct.folder}/`,
       });
     }
@@ -3169,17 +3287,23 @@ function renderSuggestionList() {
       metaHtml = `<span class="tag tag-red">${s.ageMonths}mo old</span>`;
     }
 
-    // Recommendation badge for "new" type
+    // Recommendation badge for "new" type — 3-tier system
     let recHtml = '';
     if (s.type === 'new') {
-      if (s.recommendation === 'add-to-existing' && s.targetModule) {
+      if (s.recommendation === 'expand-unit' && s.targetUnit) {
+        recHtml = `<div style="margin-top:6px;padding:6px 10px;background:var(--success-bg);border-radius:6px;font-size:11px;display:flex;align-items:center;gap:6px;">
+          <span>📄</span> <strong>Expand unit:</strong> <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Add subsection to &quot;${escHtml(s.targetUnit.title)}&quot; in ${escHtml(s.targetModule.title)}">${escHtml(s.targetUnit.title)}</span>
+          <span class="tag tag-green" style="flex-shrink:0;">${Math.round(s.targetOverlap * 100)}%</span>
+        </div>
+        <div style="margin-top:3px;font-size:10px;color:var(--text-muted);padding-left:26px;">in module: ${escHtml(s.targetModule.title)}</div>`;
+      } else if (s.recommendation === 'add-unit' && s.targetModule) {
         recHtml = `<div style="margin-top:6px;padding:6px 10px;background:var(--primary-light);border-radius:6px;font-size:11px;display:flex;align-items:center;gap:6px;">
-          <span>📎</span> <strong>Add to:</strong> <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(s.targetModule.title)}">${escHtml(s.targetModule.title)}</span>
+          <span>➕</span> <strong>New unit in:</strong> <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(s.targetModule.title)}">${escHtml(s.targetModule.title)}</span>
           <span class="tag tag-blue" style="flex-shrink:0;">${Math.round(s.targetOverlap * 100)}%</span>
         </div>`;
       } else {
         recHtml = `<div style="margin-top:6px;padding:6px 10px;background:var(--purple-light);border-radius:6px;font-size:11px;display:flex;align-items:center;gap:6px;">
-          <span>🆕</span> <strong>Recommendation:</strong> Create new training module
+          <span>🆕</span> <strong>New module needed</strong> <span style="font-size:10px;color:var(--text-muted);">— checked ${state.modules.length} modules, no match</span>
         </div>`;
       }
     }
@@ -3225,7 +3349,9 @@ async function generateDraft(idx) {
   const footer = document.getElementById('draft-panel-footer');
   const copyBtn = document.getElementById('copy-draft-btn');
 
-  panelTitle.textContent = s.type === 'new' ? (s.recommendation === 'add-to-existing' ? 'Add to Existing Module' : 'New Module Draft') : s.type === 'update' ? 'Update Recommendations' : 'Refresh Plan';
+  panelTitle.textContent = s.type === 'new'
+    ? (s.recommendation === 'expand-unit' ? 'Expand Existing Unit' : s.recommendation === 'add-unit' ? 'Add Unit to Module' : 'New Module Draft')
+    : s.type === 'update' ? 'Update Recommendations' : 'Refresh Plan';
   panelBody.innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div> Generating content with AI…</div>';
   footer.style.display = 'none';
   copyBtn.style.display = 'none';
@@ -3233,8 +3359,67 @@ async function generateDraft(idx) {
   try {
     let prompt;
 
-    if (s.type === 'new' && s.recommendation === 'add-to-existing' && s.targetModule) {
-      // ── ADD TO EXISTING MODULE ──
+    if (s.type === 'new' && s.recommendation === 'expand-unit' && s.targetUnit) {
+      // ── EXPAND EXISTING UNIT — add subsection(s) within an existing unit ──
+      const topicList = (s.topics || []).map(t => `- ${t.title} (path: ${t.path})`).join('\n');
+      const mod = s.targetModule;
+      const unit = s.targetUnit;
+      prompt = `You are a senior Microsoft Learn training content specialist with deep expertise in ${state.selectedProduct.name}. Your task is to write NEW SUBSECTIONS to add WITHIN an existing training unit. You are NOT creating a new unit or module — you are expanding existing content with additional depth.
+
+CRITICAL: Do NOT write a complete new unit. Write SUBSECTION CONTENT (new headings and paragraphs) that will be INSERTED into the existing unit below. This is like adding a new chapter section to an existing chapter.
+
+TARGET MODULE: "${mod.title}"
+- UID: ${mod.uid || 'unknown'}
+- Summary: ${mod.summary || 'N/A'}
+${mod.units && mod.units.length > 0 ? `- All units in this module:\n${mod.units.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}` : ''}
+
+TARGET UNIT TO EXPAND: "${unit.title}" (unit #${unit.index + 1})
+
+DOCUMENTATION TOPICS TO ADD AS SUBSECTIONS:
+${topicList}
+
+PRODUCT: ${state.selectedProduct.name}
+
+Write your response in markdown:
+
+## Analysis
+- Explain why these topics belong as subsections within "${unit.title}" rather than a separate unit
+- Describe how they naturally extend the existing unit's narrative flow
+- Note where in the unit these subsections should be inserted (e.g., "after the section on [X]" or "before the Summary section")
+
+## Subsections to Insert
+
+For each documentation topic, write a COMPLETE subsection (250-500 words each) ready to be pasted into the existing unit:
+
+${(s.topics || []).map(t => `### New Subsection: ${t.title}
+
+**Insert point**: [Where in the unit this should go and why]
+
+\\\`\\\`\\\`markdown
+## ${t.title}
+
+[Write 250-500 words of rich content for this subsection. Include:]
+- [2-3 paragraphs explaining the concept in business context]
+- [A concrete real-world example: "For example, a finance team at Contoso Ltd. would use this to..."]
+- [How this connects to the unit's existing content — reference what the learner already knows from earlier sections]
+- [A practical tip, best practice, or common pitfall]
+
+> [!TIP]
+> [One actionable insight for practitioners]
+
+[If applicable, include a brief procedure or decision guide]
+\\\`\\\`\\\`
+`).join('\n')}
+
+## Impact Summary
+- How many words/minutes does this add to the unit?
+- Does this change the unit's learning objectives? If so, suggest updated objectives
+- Any existing content in the unit that should be revised to reference these new subsections?
+
+Write with authority. A reader should not be able to tell these subsections were added later — they should feel like natural parts of the original unit. Include business context, real scenarios (Contoso Ltd, Adventure Works, Fabrikam), and connect every concept to daily business operations.`;
+
+    } else if (s.type === 'new' && s.recommendation === 'add-unit' && s.targetModule) {
+      // ── ADD NEW UNIT TO EXISTING MODULE ──
       const topicList = (s.topics || [s.docTopic]).map(t => `- ${t.title} (path: ${t.path})`).join('\n');
       const mod = s.targetModule;
       prompt = `You are a senior Microsoft Learn training content specialist with deep expertise in ${state.selectedProduct.name}. You write COMPREHENSIVE, IN-DEPTH training content that helps real business users understand and apply concepts in their daily work.
@@ -3831,14 +4016,26 @@ function buildGitHubReadyMd(suggestion, rawContent) {
   const rec = suggestion.recommendation || '';
 
   let header = '';
-  if (type === 'new' && rec === 'add-to-existing' && suggestion.targetModule) {
+  if (type === 'new' && rec === 'expand-unit' && suggestion.targetUnit) {
     header = `---
-# Content Addition for: ${suggestion.targetModule.title}
+# Subsection Addition for Unit: ${suggestion.targetUnit.title}
+# Module: ${suggestion.targetModule.title}
 # Product: ${product}
 # Repository: MicrosoftDocs/${repo}
 # Target module: ${suggestion.targetModule.uid || suggestion.targetModule.title}
 # Generated: ${date}
-# Type: Add to existing module
+# Type: Expand existing unit with new subsections
+---
+
+`;
+  } else if (type === 'new' && (rec === 'add-unit') && suggestion.targetModule) {
+    header = `---
+# New Unit(s) for Module: ${suggestion.targetModule.title}
+# Product: ${product}
+# Repository: MicrosoftDocs/${repo}
+# Target module: ${suggestion.targetModule.uid || suggestion.targetModule.title}
+# Generated: ${date}
+# Type: Add new unit to existing module
 ---
 
 `;
