@@ -976,8 +976,9 @@ body {
                 </div>
               </div>
               <div class="draft-panel-footer" id="draft-panel-footer" style="display:none;">
+                <button class="btn btn-primary btn-sm" onclick="exportDraft('md')" title="GitHub-ready Markdown with frontmatter">⬇ .md File</button>
+                <button class="btn btn-secondary btn-sm" onclick="exportDraft('md-bundle')" title="Full bundle with checklist">📦 Bundle</button>
                 <button class="btn btn-secondary btn-sm" onclick="exportDraft('yaml')">⬇ YAML</button>
-                <button class="btn btn-secondary btn-sm" onclick="exportDraft('md')">⬇ Markdown</button>
                 <button class="btn btn-secondary btn-sm" onclick="exportDraft('json')">⬇ JSON</button>
                 <div style="flex:1;"></div>
                 <button class="btn btn-primary btn-sm" onclick="regenerateDraft()">🔄 Regenerate</button>
@@ -2873,18 +2874,39 @@ function buildEditorSuggestions() {
       groups[parentKey].push(r);
     }
 
+    // Pre-compute module keywords for matching
+    const moduleKwCache = state.modules.map(mod => ({
+      mod,
+      keywords: extractKeywords(mod.title + ' ' + (mod.summary || '')),
+    }));
+
     for (const [parent, items] of Object.entries(groups)) {
+      const groupKeywords = extractKeywords(parent + ' ' + items.map(i => i.docTopic.title).join(' '));
+
+      // Find best matching existing module for this gap
+      let bestModule = null;
+      let bestOverlap = 0;
+      for (const { mod, keywords } of moduleKwCache) {
+        const overlap = keywordOverlap(groupKeywords, keywords);
+        if (overlap > bestOverlap) { bestOverlap = overlap; bestModule = mod; }
+      }
+
+      const recommendation = bestOverlap >= 0.2 ? 'add-to-existing' : 'new-module';
       const priority = items.length >= 5 ? 'high' : items.length >= 2 ? 'medium' : 'low';
+
       suggestions.push({
         type: 'new',
         category: parent,
         topics: items.map(i => i.docTopic),
         topicCount: items.length,
         priority,
+        recommendation,
+        targetModule: recommendation === 'add-to-existing' ? bestModule : null,
+        targetOverlap: bestOverlap,
         title: items.length === 1 ? items[0].docTopic.title : `${parent} (${items.length} topics)`,
-        reason: items.length === 1
-          ? `No training module covers "${items[0].docTopic.title}" from the documentation.`
-          : `${items.length} documentation topics under "${parent}" have no matching training content.`,
+        reason: recommendation === 'add-to-existing'
+          ? `Can be added to "${bestModule.title}" (${Math.round(bestOverlap * 100)}% related). ${items.length} uncovered topic${items.length > 1 ? 's' : ''}.`
+          : `${items.length} documentation topic${items.length > 1 ? 's' : ''} under "${parent}" need${items.length === 1 ? 's' : ''} new training content.`,
         suggestedPlacement: `${state.selectedProduct.folder}/`,
       });
     }
@@ -2990,6 +3012,26 @@ function renderSuggestionList() {
       metaHtml = `<span class="tag tag-red">${s.ageMonths}mo old</span>`;
     }
 
+    // Recommendation badge for "new" type
+    let recHtml = '';
+    if (s.type === 'new') {
+      if (s.recommendation === 'add-to-existing' && s.targetModule) {
+        recHtml = `<div style="margin-top:6px;padding:6px 10px;background:var(--primary-light);border-radius:6px;font-size:11px;display:flex;align-items:center;gap:6px;">
+          <span>📎</span> <strong>Add to:</strong> <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(s.targetModule.title)}">${escHtml(s.targetModule.title)}</span>
+          <span class="tag tag-blue" style="flex-shrink:0;">${Math.round(s.targetOverlap * 100)}%</span>
+        </div>`;
+      } else {
+        recHtml = `<div style="margin-top:6px;padding:6px 10px;background:var(--purple-light);border-radius:6px;font-size:11px;display:flex;align-items:center;gap:6px;">
+          <span>🆕</span> <strong>Recommendation:</strong> Create new training module
+        </div>`;
+      }
+    }
+    if (s.type === 'update' && s.module) {
+      recHtml = `<div style="margin-top:6px;padding:6px 10px;background:var(--warning-bg);border-radius:6px;font-size:11px;display:flex;align-items:center;gap:6px;">
+        <span>✏️</span> <strong>Expand:</strong> <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(s.module.title)}">${escHtml(s.module.title)}</span>
+      </div>`;
+    }
+
     return `<div class="suggestion-card ${isSelected ? 'selected' : ''}" onclick="selectSuggestion(${globalIdx})">
       <div class="suggestion-card-header">
         <span>${typeIcon}</span>
@@ -2997,6 +3039,7 @@ function renderSuggestionList() {
         <span class="tag ${priorityColor}">${s.priority}</span>
       </div>
       <p>${escHtml(s.reason)}</p>
+      ${recHtml}
       <div class="suggestion-meta">
         ${metaHtml}
         <button class="generate-btn" onclick="event.stopPropagation(); selectSuggestion(${globalIdx}); generateDraft(${globalIdx});">✨ Generate Draft</button>
@@ -3025,7 +3068,7 @@ async function generateDraft(idx) {
   const footer = document.getElementById('draft-panel-footer');
   const copyBtn = document.getElementById('copy-draft-btn');
 
-  panelTitle.textContent = s.type === 'new' ? 'New Module Draft' : s.type === 'update' ? 'Update Recommendations' : 'Refresh Plan';
+  panelTitle.textContent = s.type === 'new' ? (s.recommendation === 'add-to-existing' ? 'Add to Existing Module' : 'New Module Draft') : s.type === 'update' ? 'Update Recommendations' : 'Refresh Plan';
   panelBody.innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div> Generating content with AI…</div>';
   footer.style.display = 'none';
   copyBtn.style.display = 'none';
@@ -3033,26 +3076,92 @@ async function generateDraft(idx) {
   try {
     let prompt;
 
-    if (s.type === 'new') {
+    if (s.type === 'new' && s.recommendation === 'add-to-existing' && s.targetModule) {
+      // ── ADD TO EXISTING MODULE ──
       const topicList = (s.topics || [s.docTopic]).map(t => `- ${t.title} (path: ${t.path})`).join('\n');
-      prompt = `You are a Microsoft Learn training content architect. Create a complete training module draft for ${state.selectedProduct.name}.
+      const mod = s.targetModule;
+      prompt = `You are a Microsoft Learn training content specialist. The following documentation topics are NOT covered in training but are closely related to an EXISTING module. Your job is to recommend exactly where and how to add this content.
+
+TARGET MODULE: "${mod.title}"
+- UID: ${mod.uid || 'unknown'}
+- Current units: ${mod.unitCount}
+- Summary: ${mod.summary || 'N/A'}
+- Author: ${mod.author || 'unknown'}
+- ms.date: ${mod.msDate || 'unknown'}
+- Learn URL: ${mod.learnUrl || ''}
+- GitHub URL: ${mod.ghUrl || ''}
+${mod.units && mod.units.length > 0 ? `- Unit list:\n${mod.units.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}` : ''}
+
+UNCOVERED DOCUMENTATION TOPICS TO ADD:
+${topicList}
+
+PRODUCT: ${state.selectedProduct.name}
+REPO: MicrosoftDocs/${state.selectedProduct.repo}
+
+Provide your response in markdown with these sections:
+
+## Placement Recommendation
+- Explain WHY this content belongs in "${mod.title}" rather than a new module
+- Specify exactly WHERE in the module (after which existing unit, or as a new section within an existing unit)
+
+## New Unit(s) to Add
+For each new unit needed:
+
+### Unit: [Title]
+- **Insert after**: [existing unit name or position]
+- **Type**: learn / exercise / knowledge-check
+- **Duration**: X minutes
+
+#### Content (Markdown)
+\`\`\`markdown
+# [Unit Title]
+
+[Write the actual training content for this unit. Include:
+- Introduction paragraph
+- Key concepts with explanations
+- Step-by-step procedures if applicable
+- Tips/notes boxes
+- Summary]
+\`\`\`
+
+## Updated index.yml Entry
+\`\`\`yaml
+# Add these unit UIDs to the existing module's units list:
+units:
+  # ... existing units ...
+  - learn-bizapps.[module-folder].[new-unit-name]
+\`\`\`
+
+## Content That Could Expand Existing Units
+(If some topics don't need a whole new unit, specify which existing unit to expand and provide the additional paragraphs/sections)
+
+Be specific and write actual content that can be copy-pasted. Format all content as proper Microsoft Learn Markdown.`;
+
+    } else if (s.type === 'new') {
+      // ── NEW MODULE ──
+      const topicList = (s.topics || [s.docTopic]).map(t => `- ${t.title} (path: ${t.path})`).join('\n');
+      prompt = `You are a Microsoft Learn training content architect. Create a complete NEW training module for ${state.selectedProduct.name}.
 
 DOCUMENTATION TOPICS TO COVER:
 ${topicList}
 
-EXISTING TRAINING MODULES (avoid duplication):
+EXISTING MODULES (avoid duplication):
 ${state.modules.slice(0, 30).map(m => `- "${m.title}"`).join('\n')}
 
 REPOSITORY: MicrosoftDocs/${state.selectedProduct.repo}
 FOLDER: ${state.selectedProduct.folder}
 
-Generate a complete training module. Use markdown formatting:
+Generate a complete module. Use markdown formatting:
 
 ## Module Title
 (Clear, action-oriented title)
 
+## Placement
+- **Repository path**: ${state.selectedProduct.folder}/[suggested-folder-name]/
+- **Reason**: Why this needs a new module vs adding to an existing one
+
 ## Summary
-(2-3 sentence description of what learners will accomplish)
+(2-3 sentence description)
 
 ## Learning Objectives
 (3-5 bullet points starting with verbs: "Describe…", "Configure…", "Implement…")
@@ -3060,40 +3169,53 @@ Generate a complete training module. Use markdown formatting:
 ## Prerequisites
 (What learners should know beforehand)
 
-## Suggested Units
-(4-7 units, each with:)
-### Unit N: Title
+## Units
+
+For EACH unit, provide the full content:
+
+### Unit 1: [Title]
 - **Type**: learn / exercise / knowledge-check
 - **Duration**: X minutes
-- **Content outline**: What this unit covers and key points to include
+- **File**: [unit-file-name].yml
 
-## Suggested Placement
-- **Repository path**: ${state.selectedProduct.folder}/[suggested-folder-name]/index.yml
-- **Reason**: Why this location makes sense in the existing module structure
+#### Content
+\`\`\`markdown
+# [Unit Title]
 
-## index.yml Draft
+[Write the FULL training content. Include:
+- Introduction
+- Concepts with clear explanations
+- Step-by-step procedures where applicable
+- Screenshots placeholders: ![Description](media/screenshot-name.png)
+- Notes: > [!NOTE] / > [!TIP] / > [!IMPORTANT]
+- Summary paragraph]
+\`\`\`
+
+(Repeat for each unit — aim for 4-6 units)
+
+## index.yml
 \`\`\`yaml
 ### YAMLTitle: [module title]
 summary: |
-  [2-3 sentence summary]
+  [summary]
 description: |
-  [Longer description]
+  [longer description]
 ms.date: ${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
 ms.service: ${state.selectedProduct.service || ''}
-author: [author-github-handle]
+author: [author-handle]
 ms.author: [ms-alias]
 ms.topic: module
-uid: learn-bizapps.${s.suggestedPlacement ? s.suggestedPlacement.replace(/\//g, '.').replace(/\.+$/, '') : 'new-module'}
+uid: learn-bizapps.${state.selectedProduct.folder}.[module-name]
 products:
   - ${state.selectedProduct.service || 'power-platform'}
 units:
-  - [list each unit uid]
+  - learn-bizapps.${state.selectedProduct.folder}.[module-name].[unit-name]
 \`\`\`
 
-Be specific, practical, and aligned with existing ${state.selectedProduct.name} content style.`;
+Write ACTUAL content for each unit — not outlines, but real training text a learner would read. Format as Microsoft Learn Markdown.`;
 
     } else if (s.type === 'update') {
-      prompt = `You are a Microsoft Learn training content specialist. Analyze this module and suggest specific content updates.
+      prompt = `You are a Microsoft Learn training content specialist. This module partially covers a documentation topic and needs expansion. Determine whether to ADD a new unit or EXPAND existing units.
 
 MODULE: "${s.module.title}"
 - UID: ${s.module.uid || 'unknown'}
@@ -3102,39 +3224,58 @@ MODULE: "${s.module.title}"
 - Units: ${s.module.unitCount}
 - Summary: ${s.module.summary || 'N/A'}
 - Learn URL: ${s.module.learnUrl || ''}
+${s.module.units && s.module.units.length > 0 ? `- Unit list:\n${s.module.units.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}` : ''}
 
-DOCUMENTATION TOPIC IT SHOULD BETTER COVER: "${s.docTopic.title}"
+DOCUMENTATION TOPIC TO BETTER COVER: "${s.docTopic.title}"
 - Doc path: ${s.docTopic.path}
 - Current match score: ${Math.round(s.score * 100)}%
 
-Provide specific recommendations in markdown:
+Provide your response in markdown:
 
-## Analysis
-- What's missing or weak in the current training vs documentation
-- Why the match score is low
+## Recommendation Type
+State clearly: **Add New Unit** or **Expand Existing Unit(s)** — explain why.
 
-## Recommended Changes
+## If Adding a New Unit
 
-### Content to Add
-(Specific sections, paragraphs, or concepts to add. Write actual draft content that could be used.)
+### New Unit: [Title]
+- **Insert after**: [which existing unit]
+- **Type**: learn / exercise / knowledge-check
+- **Duration**: X minutes
 
-### Existing Content to Update
-(What sections need rewriting and why)
+#### Content (Markdown)
+\`\`\`markdown
+# [Unit Title]
 
-### New Units to Add
-(If applicable — describe with content outlines)
+[Write ACTUAL training content for this unit:
+- Introduction paragraph
+- Key concepts
+- Procedures/steps
+- Tips and notes
+- Summary]
+\`\`\`
 
-### Updated Learning Objectives
-(Revised objectives reflecting better coverage)
+#### index.yml Addition
+\`\`\`yaml
+# Add this UID to the module's units list:
+  - learn-bizapps.[module].[new-unit-name]
+\`\`\`
+
+## If Expanding Existing Units
+For each unit to expand:
+
+### Expand: [Existing Unit Name]
+#### Add After Section: [identify where]
+\`\`\`markdown
+[Write the specific paragraphs/sections to ADD to the existing unit content]
+\`\`\`
+
+## Updated Learning Objectives
+(If objectives should change)
 
 ## Updated Summary
-(Rewritten summary covering "${s.docTopic.title}")
+(Rewritten summary reflecting better coverage)
 
-## Priority Actions
-1. (Most important change first)
-2. …
-
-Provide actual content that could be copy-pasted into the module.`;
+Write ACTUAL content that can be copy-pasted. Format as Microsoft Learn Markdown.`;
 
     } else {
       prompt = `You are a Microsoft Learn training content specialist. This module is outdated and needs a refresh.
@@ -3254,27 +3395,151 @@ function exportDraft(format) {
   if (!editorState.currentDraft) return;
   const s = editorState.currentDraft.suggestion;
   const content = editorState.currentDraft.content;
+  const productName = (state.selectedProduct?.name || 'product').replace(/\s+/g, '-').toLowerCase();
   const name = (s.title || 'draft').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+  const dateStr = new Date().toISOString().slice(0, 10);
 
-  let blob, ext;
+  let blob, ext, filename;
   if (format === 'yaml') {
     const yamlMatch = content.match(/```ya?ml\n([\s\S]*?)```/);
     const yamlContent = yamlMatch ? yamlMatch[1] : content;
     blob = new Blob([yamlContent], { type: 'text/yaml' });
     ext = 'yml';
+    filename = `${name}-${dateStr}.${ext}`;
   } else if (format === 'md') {
-    blob = new Blob([content], { type: 'text/markdown' });
+    // Generate a GitHub-ready .md file with frontmatter
+    const mdContent = buildGitHubReadyMd(s, content);
+    blob = new Blob([mdContent], { type: 'text/markdown' });
     ext = 'md';
+    filename = `${name}-${dateStr}.${ext}`;
+  } else if (format === 'md-bundle') {
+    // Generate a structured bundle with all files
+    const bundle = buildMdBundle(s, content);
+    blob = new Blob([bundle], { type: 'text/markdown' });
+    ext = 'md';
+    filename = `${productName}-content-bundle-${dateStr}.${ext}`;
   } else {
     blob = new Blob([JSON.stringify(editorState.currentDraft, null, 2)], { type: 'application/json' });
     ext = 'json';
+    filename = `${name}-${dateStr}.${ext}`;
   }
 
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `${name}-${new Date().toISOString().slice(0, 10)}.${ext}`;
+  a.download = filename;
   a.click();
   toast(`Exported as .${ext}`, 'success');
+}
+
+function buildGitHubReadyMd(suggestion, rawContent) {
+  const product = state.selectedProduct?.name || 'Unknown Product';
+  const repo = state.selectedProduct?.repo || 'unknown-repo';
+  const folder = state.selectedProduct?.folder || '';
+  const date = new Date().toISOString().slice(0, 10);
+  const type = suggestion.type || 'new';
+  const rec = suggestion.recommendation || '';
+
+  let header = '';
+  if (type === 'new' && rec === 'add-to-existing' && suggestion.targetModule) {
+    header = `---
+# Content Addition for: ${suggestion.targetModule.title}
+# Product: ${product}
+# Repository: MicrosoftDocs/${repo}
+# Target module: ${suggestion.targetModule.uid || suggestion.targetModule.title}
+# Generated: ${date}
+# Type: Add to existing module
+---
+
+`;
+  } else if (type === 'new') {
+    header = `---
+# New Training Module Draft
+# Product: ${product}
+# Repository: MicrosoftDocs/${repo}
+# Suggested path: ${folder}/[module-name]/
+# Generated: ${date}
+# Type: New module
+---
+
+`;
+  } else if (type === 'update') {
+    header = `---
+# Content Update for: ${suggestion.module?.title || suggestion.title}
+# Product: ${product}
+# Repository: MicrosoftDocs/${repo}
+# Module UID: ${suggestion.module?.uid || 'unknown'}
+# Generated: ${date}
+# Type: Update existing content
+---
+
+`;
+  } else {
+    header = `---
+# Content Refresh Plan for: ${suggestion.module?.title || suggestion.title}
+# Product: ${product}
+# Generated: ${date}
+# Type: Module refresh
+---
+
+`;
+  }
+
+  // Extract markdown code blocks and inline them as-is
+  let processedContent = rawContent;
+  // Ensure code blocks are preserved properly
+  processedContent = processedContent.replace(/```yaml\n### YAMLTitle/g, '```yaml\n### YAML\nTitle');
+
+  return header + processedContent;
+}
+
+function buildMdBundle(suggestion, rawContent) {
+  const product = state.selectedProduct?.name || 'Unknown Product';
+  const repo = state.selectedProduct?.repo || 'unknown-repo';
+  const folder = state.selectedProduct?.folder || '';
+  const date = new Date().toISOString().slice(0, 10);
+
+  let bundle = `# Content Bundle — ${product}
+> Generated ${date} by Team Content Gap Manager
+> Repository: MicrosoftDocs/${repo}
+
+---
+
+## How to Use This File
+
+1. Review each section below
+2. Copy the relevant YAML/Markdown blocks into the appropriate repo files
+3. For new modules: create the folder structure shown in "Placement"
+4. For existing module additions: find the target module and add the new units
+5. Submit a pull request to MicrosoftDocs/${repo}
+
+---
+
+`;
+
+  // Add the raw AI content
+  bundle += rawContent;
+
+  // Add a file checklist at the end
+  bundle += `
+
+---
+
+## PR Checklist
+
+- [ ] Created/updated index.yml with correct UIDs
+- [ ] Added unit .yml files with proper metadata
+- [ ] Added unit .md content files
+- [ ] Verified all cross-references and links
+- [ ] Added screenshots to media/ folder (if referenced)
+- [ ] Ran local build/preview to verify formatting
+- [ ] Updated ms.date to today's date
+- [ ] Assigned reviewer
+
+---
+*Generated by [Team Content Gap Manager](https://oscarefranco.github.io/content-manager/team.html)*
+`;
+
+  return bundle;
 }
 
 async function generateContentPlan() {
