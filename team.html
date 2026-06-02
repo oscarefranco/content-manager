@@ -504,19 +504,71 @@ body {
 }
 .generate-btn:hover { background: var(--primary); color: #fff; }
 
-.draft-panel {
+/* ── URL Input Section ── */
+.url-input-section {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 16px 20px; margin-bottom: 16px;
+}
+.url-input-header { margin-bottom: 10px; }
+.url-input-header h3 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.url-input-header p { font-size: 12px; color: var(--text-muted); }
+.url-input-row { display: flex; gap: 8px; align-items: center; }
+.url-input-row input {
+  flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 13px; font-family: 'Segoe UI', sans-serif; outline: none; background: var(--bg);
+}
+.url-input-row input:focus { border-color: var(--primary); background: #fff; }
+.url-input-row .merge-toggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.url-input-row .merge-toggle input[type="checkbox"] { accent-color: var(--primary); }
+
+/* ── Module Builder Panel ── */
+.module-builder-panel {
   background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
   display: flex; flex-direction: column; max-height: 80vh; position: sticky; top: 70px;
 }
-.draft-panel-header {
+.module-builder-header {
   padding: 12px 16px; border-bottom: 1px solid var(--border);
   display: flex; align-items: center; gap: 8px;
 }
-.draft-panel-header h3 { font-size: 14px; font-weight: 500; flex: 1; }
-.draft-panel-body { padding: 16px; overflow-y: auto; flex: 1; }
-.draft-panel-footer { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; }
+.module-builder-header h3 { font-size: 14px; font-weight: 500; flex: 1; }
+.module-builder-body { padding: 16px; overflow-y: auto; flex: 1; }
+.module-builder-footer { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Generation Progress ── */
+.generation-progress { padding: 12px 16px; }
+.progress-step {
+  display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 12px;
+}
+.progress-step .step-icon {
+  width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 11px; flex-shrink: 0; border: 2px solid var(--border); color: var(--text-muted); background: var(--bg);
+}
+.progress-step.active .step-icon { border-color: var(--primary); color: var(--primary); background: var(--primary-light); animation: pulse-step 1.2s infinite; }
+.progress-step.done .step-icon { border-color: var(--success); color: #fff; background: var(--success); }
+.progress-step.error .step-icon { border-color: var(--danger); color: #fff; background: var(--danger); }
+.progress-step .step-label { flex: 1; color: var(--text-muted); }
+.progress-step.active .step-label { color: var(--text); font-weight: 500; }
+.progress-step.done .step-label { color: var(--success); }
+.progress-step .step-chars { font-size: 10px; color: var(--text-light); font-family: 'JetBrains Mono', monospace; }
+@keyframes pulse-step { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+/* ── Unit Tabs ── */
+.unit-tabs-bar {
+  display: flex; gap: 2px; padding: 8px 16px; border-bottom: 1px solid var(--border);
+  overflow-x: auto; flex-wrap: nowrap;
+}
+.unit-tab {
+  padding: 5px 12px; font-size: 11px; font-weight: 500; border-radius: 6px 6px 0 0;
+  border: 1px solid transparent; border-bottom: none; background: transparent; cursor: pointer;
+  color: var(--text-muted); font-family: 'Segoe UI', sans-serif; white-space: nowrap;
+  transition: all 0.12s;
+}
+.unit-tab:hover { background: var(--bg); color: var(--text); }
+.unit-tab.active { background: var(--surface); color: var(--primary); border-color: var(--border); font-weight: 600; position: relative; }
+.unit-tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--primary); }
 
 .draft-content { font-size: 13px; line-height: 1.7; color: var(--text); }
+.draft-content h1 { font-size: 18px; font-weight: 700; margin: 0 0 12px; color: var(--text); }
 .draft-content h2 { font-size: 16px; font-weight: 600; margin: 18px 0 8px; color: var(--primary-dark); border-bottom: 1px solid var(--border); padding-bottom: 4px; }
 .draft-content h3 { font-size: 14px; font-weight: 600; margin: 14px 0 6px; }
 .draft-content pre {
@@ -527,6 +579,10 @@ body {
 .draft-content ul, .draft-content ol { margin-left: 1.5rem; margin-bottom: 8px; }
 .draft-content li { margin-bottom: 4px; }
 .draft-content strong { color: var(--text); }
+.draft-content blockquote {
+  border-left: 3px solid var(--primary); padding: 8px 12px; margin: 8px 0;
+  background: var(--primary-light); border-radius: 0 6px 6px 0; font-size: 12px;
+}
 
 /* ── Module Gap View ── */
 .mgap-layout { display: grid; grid-template-columns: 380px 1fr; gap: 16px; }
@@ -959,7 +1015,7 @@ body {
     <div class="page-header">
       <div class="page-header-text">
         <h1>✏️ Content Editor</h1>
-        <p id="editor-subtitle">AI-powered content suggestions, drafts, and update planning</p>
+        <p id="editor-subtitle">AI-powered module generation from gaps or URLs</p>
       </div>
       <div class="page-header-actions">
         <button class="btn btn-secondary" id="refresh-suggestions-btn" onclick="buildEditorSuggestions()">🔄 Refresh</button>
@@ -968,10 +1024,22 @@ body {
       </div>
     </div>
     <div class="page-body">
+      <!-- URL Input Section -->
+      <div class="url-input-section" id="url-input-section">
+        <div class="url-input-header">
+          <h3>📎 Generate from URL</h3>
+          <p>Paste a documentation URL or GitHub repo URL to generate a full training module</p>
+        </div>
+        <div class="url-input-row">
+          <input type="text" id="url-input" placeholder="https://learn.microsoft.com/... or https://github.com/..." />
+          <button class="btn btn-primary" onclick="generateFromUrl()">🚀 Generate Module</button>
+        </div>
+      </div>
+
       <div id="editor-empty" class="empty-state">
         <div class="empty-state-icon">✏️</div>
         <p>Run a gap analysis first (Gap Analysis → Quick scan), then come here for content suggestions.<br>
-        Or select a product and click <strong>Refresh</strong> above.</p>
+        Or paste a URL above to generate a training module directly.</p>
       </div>
       <div id="editor-content" style="display:none;">
         <div class="editor-tabs" id="editor-tabs">
@@ -984,25 +1052,29 @@ body {
             <div class="suggestion-list" id="suggestion-list"></div>
           </div>
           <div>
-            <div class="draft-panel" id="draft-panel">
-              <div class="draft-panel-header">
-                <span>📄</span>
-                <h3 id="draft-panel-title">Draft Preview</h3>
-                <button class="btn btn-ghost btn-sm" onclick="copyDraft()" id="copy-draft-btn" style="display:none;">📋 Copy</button>
+            <div class="module-builder-panel" id="module-builder-panel">
+              <div class="module-builder-header">
+                <span>🏗️</span>
+                <h3 id="module-builder-title">Module Builder</h3>
+                <button class="btn btn-ghost btn-sm" onclick="copyModuleContent()" id="copy-module-btn" style="display:none;">📋 Copy</button>
               </div>
-              <div class="draft-panel-body" id="draft-panel-body">
+              <div id="module-builder-progress" style="display:none;">
+                <div class="generation-progress" id="progress-steps"></div>
+              </div>
+              <div class="unit-tabs-bar" id="unit-tabs-bar" style="display:none;"></div>
+              <div class="module-builder-body" id="module-builder-body">
                 <div class="empty-state" style="padding:2rem;">
-                  <div class="empty-state-icon">✨</div>
-                  <p>Select a suggestion and click <strong>Generate Draft</strong> to see AI-generated content here.</p>
+                  <div class="empty-state-icon">🏗️</div>
+                  <p>Select a suggestion and click <strong>Generate Module</strong> to build a full training module with Overview, Introduction, Areas, Knowledge Check &amp; Summary.<br><br>Or paste a URL above to generate from documentation.</p>
                 </div>
               </div>
-              <div class="draft-panel-footer" id="draft-panel-footer" style="display:none;">
-                <button class="btn btn-primary btn-sm" onclick="exportDraft('md')" title="GitHub-ready Markdown with frontmatter">⬇ .md File</button>
-                <button class="btn btn-secondary btn-sm" onclick="exportDraft('md-bundle')" title="Full bundle with checklist">📦 Bundle</button>
-                <button class="btn btn-secondary btn-sm" onclick="exportDraft('yaml')">⬇ YAML</button>
-                <button class="btn btn-secondary btn-sm" onclick="exportDraft('json')">⬇ JSON</button>
+              <div class="module-builder-footer" id="module-builder-footer" style="display:none;">
+                <button class="btn btn-primary btn-sm" onclick="exportModule('bundle')">📦 Export Module</button>
+                <button class="btn btn-secondary btn-sm" onclick="exportModule('md')">⬇ Current .md</button>
+                <button class="btn btn-secondary btn-sm" onclick="exportModule('yaml')">⬇ YAML</button>
+                <button class="btn btn-secondary btn-sm" onclick="exportModule('json')">⬇ JSON</button>
                 <div style="flex:1;"></div>
-                <button class="btn btn-primary btn-sm" onclick="regenerateDraft()">🔄 Regenerate</button>
+                <button class="btn btn-primary btn-sm" onclick="regenerateCurrentUnit()">🔄 Regenerate Unit</button>
               </div>
             </div>
           </div>
@@ -2996,15 +3068,227 @@ function navigateToEditorForModule(moduleIdx) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// CONTENT EDITOR — AI-Powered Suggestions & Draft Generation
+// URL FETCHING & CONTENT EXTRACTION (ported from url_fetcher.py)
+// ══════════════════════════════════════════════════════════════════════════
+
+function parseGitHubUrl(url) {
+  try {
+    const u = new URL(url);
+    if (!['github.com', 'www.github.com'].includes(u.hostname)) return null;
+    const parts = u.pathname.replace(/^\//, '').split('/').filter(Boolean);
+    if (parts.length < 2) return null;
+    const info = { owner: parts[0], repo: parts[1], ref: null, path: '' };
+    if (parts.length >= 4 && ['blob', 'tree'].includes(parts[2])) {
+      info.ref = parts[3];
+      info.path = parts.slice(4).join('/');
+    } else if (parts.length > 2) {
+      info.path = parts.slice(2).join('/');
+    }
+    return info;
+  } catch { return null; }
+}
+
+function deriveSlug(url, title) {
+  try {
+    const u = new URL(url);
+    const parts = u.pathname.replace(/^\//, '').replace(/\/$/, '').split('/').filter(Boolean);
+    const base = parts.length > 0 ? parts[parts.length - 1] : title;
+    return base.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'untitled-module';
+  } catch {
+    return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'untitled-module';
+  }
+}
+
+async function fetchUrlContent(url) {
+  const ghInfo = parseGitHubUrl(url);
+  if (ghInfo) return await fetchGitHubContentForEditor(ghInfo, url);
+
+  // Try direct fetch first, then CORS proxies
+  const proxies = [
+    u => u, // direct
+    u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+  ];
+  for (const proxy of proxies) {
+    try {
+      const resp = await fetch(proxy(url), {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!resp.ok) continue;
+      const html = await resp.text();
+      if (html.length < 100) continue;
+      return extractContentFromHtml(html, url);
+    } catch {}
+  }
+  throw new Error('Failed to fetch URL. The page may block cross-origin requests.');
+}
+
+async function fetchGitHubContentForEditor(ghInfo, originalUrl) {
+  const token = getToken();
+  const headers = { 'Accept': 'application/vnd.github.v3+json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  let apiUrl = `https://api.github.com/repos/${ghInfo.owner}/${ghInfo.repo}/contents/${ghInfo.path}`;
+  if (ghInfo.ref) apiUrl += `?ref=${ghInfo.ref}`;
+
+  const resp = await fetch(apiUrl, { headers });
+  if (!resp.ok) throw new Error(`GitHub API ${resp.status} — ensure your token has repo access`);
+  const data = await resp.json();
+
+  let rawText = '';
+  let title = '';
+  if (data.type === 'file') {
+    rawText = atob(data.content);
+  } else if (Array.isArray(data)) {
+    const parts = [];
+    for (const item of data) {
+      if (item.type !== 'file') continue;
+      const fileResp = await fetch(item.url, { headers });
+      if (!fileResp.ok) continue;
+      const fileData = await fileResp.json();
+      parts.push(`\n--- File: ${item.path} ---\n\n${atob(fileData.content)}`);
+    }
+    rawText = parts.join('\n');
+  }
+
+  // Extract title from first heading
+  for (const line of rawText.split('\n')) {
+    if (line.trim().startsWith('# ')) { title = line.trim().replace(/^#\s+/, ''); break; }
+  }
+  if (!title) title = ghInfo.path.split('/').pop() || ghInfo.repo;
+
+  const slug = deriveSlug(originalUrl, title);
+  const description = rawText.substring(0, 200).replace(/\n/g, ' ').trim();
+
+  return { url: originalUrl, title, description, rawText: rawText.trim(), slug };
+}
+
+function extractContentFromHtml(html, url) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  // Remove noise
+  doc.querySelectorAll('script, style, nav, footer, header, aside').forEach(el => el.remove());
+
+  // Title
+  let title = '';
+  const h1 = doc.querySelector('h1');
+  if (h1) title = h1.textContent.trim();
+  if (!title) { const t = doc.querySelector('title'); if (t) title = t.textContent.trim(); }
+
+  // Description
+  let description = '';
+  const metaDesc = doc.querySelector('meta[name="description"]');
+  if (metaDesc) description = metaDesc.getAttribute('content') || '';
+
+  // Main content
+  const main = doc.querySelector('main') || doc.querySelector('article') || doc.querySelector('body');
+  const rawText = main ? main.innerText.replace(/\n{3,}/g, '\n\n').replace(/[ \t]+/g, ' ').trim() : '';
+
+  const slug = deriveSlug(url, title);
+  return { url, title, description, rawText, slug };
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PROMPT TEMPLATES (ported from prompts.py)
+// ══════════════════════════════════════════════════════════════════════════
+
+function formatSourceContent(title, description, rawText) {
+  let parts = [`# Source Material\n\n**Title:** ${title}`];
+  if (description) parts.push(`**Description:** ${description}`);
+  parts.push(`\n**Content:**\n${rawText.substring(0, 24000)}`);
+  return parts.join('\n');
+}
+
+const ID_SYSTEM_PROMPT = `You are an expert instructional designer who creates professional \
+training content following Microsoft Learn module conventions. You produce clear, \
+well-structured markdown content that follows instructional design best practices:
+
+- Use Bloom's taxonomy action verbs for learning objectives
+- Apply scaffolding: build from foundational to advanced concepts
+- Use clear, concise language appropriate for a professional audience
+- Include real-world context and practical examples
+- Format output as clean, well-structured markdown
+
+Always output ONLY the markdown content, with no preamble or explanation.`;
+
+const MODULE_PROMPTS = {
+  overview(title, desc, text) {
+    const source = formatSourceContent(title, desc, text);
+    return {
+      system: ID_SYSTEM_PROMPT,
+      user: `${source}\n\n---\n\nBased on the source material above, generate a **Module Overview** page in markdown with:\n\n1. **Module Title** — as an H1 heading\n2. **Overview paragraph** — 2-3 sentences describing what this module covers and why it matters\n3. **Learning Objectives** — a bulleted list starting with "In this module, you'll learn to:" using Bloom's taxonomy verbs (describe, explain, identify, implement, configure, evaluate, etc.)\n4. **Prerequisites** — what learners should know or have before starting\n5. **Estimated Time** — reasonable estimate based on content depth (e.g., "30 minutes")\n\nKeep it concise and professional.`,
+    };
+  },
+
+  introduction(title, desc, text) {
+    const source = formatSourceContent(title, desc, text);
+    return {
+      system: ID_SYSTEM_PROMPT,
+      user: `${source}\n\n---\n\nBased on the source material above, generate an **Introduction** unit in markdown with:\n\n1. **H1 title**: "Introduction to [topic]"\n2. **Context setting** — why this topic matters, the problem it solves, or the scenario it addresses (2-3 paragraphs)\n3. **Scope** — what this module covers and what it does not\n4. **Key terminology** — define 3-5 key terms that will appear throughout the module in a brief glossary format\n5. **What's next** — a brief sentence transitioning to the concepts unit\n\nUse engaging, professional language. Ground the content in real-world use cases.`,
+    };
+  },
+
+  identifyAreas(title, desc, text) {
+    const source = formatSourceContent(title, desc, text);
+    return {
+      system: 'You are an expert instructional designer. Analyze source material and identify its logical topic areas. Respond ONLY with a JSON array — no markdown fences, no explanation.',
+      user: `${source}\n\n---\n\nAnalyze the source material above and identify **2 to 6 logical topic areas** that the content naturally divides into. Each area should be a coherent subtopic that deserves its own concepts-and-procedures section.\n\nReturn a JSON array of objects with these keys:\n- "name": a short, descriptive area title (e.g., "VM Sizing and Performance")\n- "slug": a lowercase-hyphenated identifier (e.g., "vm-sizing-and-performance")\n- "description": a one-sentence summary of what this area covers\n\nExample output:\n[\n  {"name": "VM Sizing and Performance", "slug": "vm-sizing-and-performance", "description": "Covers how to choose and configure VM sizes for workload requirements."},\n  {"name": "Networking", "slug": "networking", "description": "Explains virtual network setup, NSGs, and connectivity options."}\n]\n\nReturn ONLY the JSON array, nothing else.`,
+    };
+  },
+
+  areaContent(title, desc, text, areaName, areaDesc) {
+    const source = formatSourceContent(title, desc, text);
+    return {
+      system: ID_SYSTEM_PROMPT,
+      user: `${source}\n\n---\n\nBased on the source material above, generate a training unit for the topic area **"${areaName}"** (${areaDesc}).\n\nStructure the markdown as follows:\n\n1. **H1 title**: "${areaName}"\n2. **Concepts section** (H2: "Key Concepts"):\n   - For each concept relevant to this area (2-4 concepts):\n     - **H3 heading** with the concept name\n     - **Explanation** — what it is and why it matters (concept-first: what/why before how)\n     - **Example or analogy** — concrete illustration or real-world comparison\n     - **Key takeaway** — one-sentence summary in bold\n3. **Procedures section** (H2: "Step-by-Step Procedures"):\n   - For each procedure relevant to this area (1-3 procedures):\n     - **H3 heading** describing the task\n     - **Numbered steps** — clear, actionable instructions\n     - **Expected result** — what the learner should see/achieve\n     - **Tip or Note** — helpful guidance as a blockquote (> **Tip:** ...)\n4. **Troubleshooting** (H2) — brief section with common issues and solutions for this area\n\nFocus ONLY on content relevant to "${areaName}". Do not cover other topic areas. Use clear headings, short paragraphs, and bullet points. Use imperative voice for steps.`,
+    };
+  },
+
+  knowledgeCheck(title, desc, text) {
+    const source = formatSourceContent(title, desc, text);
+    return {
+      system: ID_SYSTEM_PROMPT,
+      user: `${source}\n\n---\n\nBased on the source material above, generate a **Knowledge Check** unit in markdown with:\n\n1. **H1 title**: "Knowledge Check"\n2. **3 to 5 multiple-choice questions** that test understanding (not memorization). For each question:\n   - **H2**: "Question N" (numbered)\n   - The question text in bold\n   - Four answer choices labeled A through D\n   - An "Answer" section with:\n     - **Correct answer** clearly marked\n     - **Explanation** — why the correct answer is right and briefly why others are wrong\n\nQuestions should cover different Bloom's taxonomy levels:\n- At least 1 recall/comprehension question\n- At least 1 application/analysis question\n- At least 1 evaluation/synthesis question\n\nMix difficulty levels. Distractors should be plausible but clearly incorrect upon understanding.`,
+    };
+  },
+
+  summary(title, desc, text) {
+    const source = formatSourceContent(title, desc, text);
+    return {
+      system: ID_SYSTEM_PROMPT,
+      user: `${source}\n\n---\n\nBased on the source material above, generate a **Summary** unit in markdown with:\n\n1. **H1 title**: "Summary"\n2. **Recap paragraph** — 2-3 sentences summarizing what was covered in this module\n3. **Key takeaways** — bulleted list of 4-6 most important points\n4. **Next steps** — what the learner should do next or explore further\n5. **Additional resources** — 3-5 links or references for further learning (use the source URL and any related links found in the material)\n\nKeep it concise. The summary should reinforce the learning objectives stated in the overview.`,
+    };
+  },
+};
+
+function parseAreasResponse(raw) {
+  const cleaned = raw.replace(/```(?:json)?\s*/g, '').trim().replace(/`+$/, '');
+  let areas;
+  try { areas = JSON.parse(cleaned); } catch (e) {
+    throw new Error(`Failed to parse areas JSON: ${e.message}`);
+  }
+  if (!Array.isArray(areas) || areas.length === 0) throw new Error('Expected a non-empty JSON array of areas');
+  return areas.map((a, i) => ({
+    name: (a.name || '').trim() || `Area ${i + 1}`,
+    slug: (a.slug || '').trim() || a.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+    description: (a.description || '').trim(),
+  }));
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// CONTENT EDITOR — Module Builder with Gap Analysis & URL Support
 // ══════════════════════════════════════════════════════════════════════════
 
 let editorState = {
   suggestions: [],
   activeTab: 'new',
   selectedIdx: -1,
-  currentDraft: null,
+  currentModule: null, // generated module with units
+  currentUnitIdx: 0,
   contentPlan: null,
+  isGenerating: false,
 };
 
 function buildEditorSuggestions() {
@@ -3020,28 +3304,20 @@ function buildEditorSuggestions() {
   const now = Date.now();
 
   // ── 1. THOROUGH 3-TIER GAP CLASSIFICATION ──
-  // For each uncovered topic, check at 3 levels before recommending "new module":
-  //   Tier 1: expand-unit   → topic fits as a subsection in an existing unit
-  //   Tier 2: add-unit      → topic fits as a new unit in an existing module
-  //   Tier 3: new-module    → truly novel content with no home (last resort)
   if (state.gapResults) {
     const uncovered = state.gapResults.results.filter(r => r.coverage === 'uncovered');
 
-    // Pre-compute keyword caches for modules AND their individual units
     const moduleCache = state.modules.map(mod => {
       const modKeywords = extractKeywords(mod.title + ' ' + (mod.summary || ''));
       const unitCache = (mod.units || []).map((unitTitle, idx) => ({
-        title: unitTitle,
-        index: idx,
-        keywords: extractKeywords(unitTitle),
+        title: unitTitle, index: idx, keywords: extractKeywords(unitTitle),
       }));
       return { mod, keywords: modKeywords, units: unitCache };
     });
 
-    // Classify each uncovered topic individually against all modules + units
-    const expandUnitItems = [];   // → subsection within existing unit
-    const addUnitItems = [];      // → new unit in existing module
-    const newModuleItems = [];    // → needs entirely new module
+    const expandUnitItems = [];
+    const addUnitItems = [];
+    const newModuleItems = [];
 
     for (const r of uncovered) {
       const topicKw = extractKeywords(r.docTopic.title + ' ' + (r.docTopic.path || ''));
@@ -3052,27 +3328,19 @@ function buildEditorSuggestions() {
       const moduleCandidates = [];
 
       for (const mc of moduleCache) {
-        // Module-level keyword match (title + summary)
         const modScore = keywordOverlap(topicKw, mc.keywords);
         if (modScore > bestModScore) { bestModScore = modScore; bestModModule = mc.mod; }
         if (modScore >= 0.1) moduleCandidates.push({ mod: mc.mod, score: modScore });
-
-        // Unit-level keyword match — check every unit in this module
         for (const uc of mc.units) {
           if (uc.keywords.length === 0) continue;
           const unitScore = keywordOverlap(topicKw, uc.keywords);
-          // Combined score: strong unit match boosted by module relevance
           const combined = unitScore * 0.7 + modScore * 0.3;
           if (unitScore >= 0.25 && combined > bestUnitScore) {
-            bestUnitScore = combined;
-            bestUnitMod = mc.mod;
-            bestUnitUnit = uc;
+            bestUnitScore = combined; bestUnitMod = mc.mod; bestUnitUnit = uc;
           }
         }
       }
 
-      // Also check reverse overlap (topic keywords found in module/unit)
-      // This catches cases where the gap topic has fewer keywords than the module
       if (bestUnitScore < 0.25 && bestModScore < 0.15) {
         for (const mc of moduleCache) {
           const revScore = keywordOverlap(mc.keywords, topicKw);
@@ -3084,9 +3352,7 @@ function buildEditorSuggestions() {
             const avgUnit = (revUnit + keywordOverlap(topicKw, uc.keywords)) / 2;
             const combined = avgUnit * 0.7 + bestModScore * 0.3;
             if (avgUnit >= 0.2 && combined > bestUnitScore) {
-              bestUnitScore = combined;
-              bestUnitMod = mc.mod;
-              bestUnitUnit = uc;
+              bestUnitScore = combined; bestUnitMod = mc.mod; bestUnitUnit = uc;
             }
           }
         }
@@ -3094,27 +3360,16 @@ function buildEditorSuggestions() {
 
       const topCandidates = moduleCandidates.sort((a, b) => b.score - a.score).slice(0, 3);
 
-      // ── Classification decision ──
       if (bestUnitScore >= 0.2 && bestUnitUnit) {
-        // TIER 1: Strong unit-level match → add subsection to existing unit
-        expandUnitItems.push({
-          topic: r.docTopic, targetModule: bestUnitMod,
-          targetUnit: bestUnitUnit, score: bestUnitScore,
-          allCandidates: topCandidates,
-        });
+        expandUnitItems.push({ topic: r.docTopic, targetModule: bestUnitMod, targetUnit: bestUnitUnit, score: bestUnitScore, allCandidates: topCandidates });
       } else if (bestModScore >= 0.12) {
-        // TIER 2: Good module-level match → add new unit to existing module
-        addUnitItems.push({
-          topic: r.docTopic, targetModule: bestModModule,
-          score: bestModScore, allCandidates: topCandidates,
-        });
+        addUnitItems.push({ topic: r.docTopic, targetModule: bestModModule, score: bestModScore, allCandidates: topCandidates });
       } else {
-        // TIER 3: No meaningful match anywhere → new module (last resort)
         newModuleItems.push({ topic: r.docTopic });
       }
     }
 
-    // ── Group expand-unit items by target unit ──
+    // Group expand-unit items
     const expandGroups = {};
     for (const item of expandUnitItems) {
       const key = `${item.targetModule.title}||${item.targetUnit.title}`;
@@ -3124,23 +3379,19 @@ function buildEditorSuggestions() {
     for (const group of Object.values(expandGroups)) {
       const n = group.topics.length;
       suggestions.push({
-        type: 'new',
-        recommendation: 'expand-unit',
+        type: 'new', recommendation: 'expand-unit',
         category: group.topics[0].path.split(' > ')[0] || group.topics[0].title,
-        topics: group.topics,
-        topicCount: n,
+        topics: group.topics, topicCount: n,
         priority: n >= 3 ? 'high' : n >= 2 ? 'medium' : 'low',
-        targetModule: group.targetModule,
-        targetUnit: group.targetUnit,
-        targetOverlap: group.score,
-        allCandidates: group.allCandidates || [],
+        targetModule: group.targetModule, targetUnit: group.targetUnit,
+        targetOverlap: group.score, allCandidates: group.allCandidates || [],
         title: n === 1 ? group.topics[0].title : `${group.topics[0].title} (+${n - 1} more)`,
-        reason: `Add as ${n > 1 ? 'subsections' : 'a subsection'} within unit "${group.targetUnit.title}" in "${group.targetModule.title}" (${Math.round(group.score * 100)}% match). No new unit or module needed — just expand existing content.`,
+        reason: `Add as ${n > 1 ? 'subsections' : 'a subsection'} within unit "${group.targetUnit.title}" in "${group.targetModule.title}" (${Math.round(group.score * 100)}% match).`,
         suggestedPlacement: `${state.selectedProduct.folder}/`,
       });
     }
 
-    // ── Group add-unit items by target module ──
+    // Group add-unit items
     const addUnitGroups = {};
     for (const item of addUnitItems) {
       const key = item.targetModule.title;
@@ -3150,22 +3401,19 @@ function buildEditorSuggestions() {
     for (const [key, group] of Object.entries(addUnitGroups)) {
       const n = group.topics.length;
       suggestions.push({
-        type: 'new',
-        recommendation: 'add-unit',
+        type: 'new', recommendation: 'add-unit',
         category: group.topics[0].path.split(' > ')[0] || group.topics[0].title,
-        topics: group.topics,
-        topicCount: n,
+        topics: group.topics, topicCount: n,
         priority: n >= 3 ? 'high' : n >= 2 ? 'medium' : 'low',
-        targetModule: group.targetModule,
-        targetOverlap: group.score,
+        targetModule: group.targetModule, targetOverlap: group.score,
         allCandidates: group.allCandidates || [],
         title: n === 1 ? group.topics[0].title : `${key} — ${n} new topics`,
-        reason: `Add as ${n > 1 ? 'new units' : 'a new unit'} in "${group.targetModule.title}" (${Math.round(group.score * 100)}% module match). Topics relate to the module but aren't covered by any existing unit.`,
+        reason: `Add as ${n > 1 ? 'new units' : 'a new unit'} in "${group.targetModule.title}" (${Math.round(group.score * 100)}% module match).`,
         suggestedPlacement: `${state.selectedProduct.folder}/`,
       });
     }
 
-    // ── Group new-module items by parent path (last resort only) ──
+    // Group new-module items
     const newModGroups = {};
     for (const item of newModuleItems) {
       const parentKey = item.topic.path.split(' > ')[0] || item.topic.title;
@@ -3174,14 +3422,11 @@ function buildEditorSuggestions() {
     }
     for (const [parent, topics] of Object.entries(newModGroups)) {
       suggestions.push({
-        type: 'new',
-        recommendation: 'new-module',
-        category: parent,
-        topics,
-        topicCount: topics.length,
+        type: 'new', recommendation: 'new-module',
+        category: parent, topics, topicCount: topics.length,
         priority: topics.length >= 5 ? 'high' : topics.length >= 2 ? 'medium' : 'low',
         title: topics.length === 1 ? topics[0].title : `${parent} (${topics.length} topics)`,
-        reason: `${topics.length} documentation topic${topics.length > 1 ? 's' : ''} under "${parent}" — thoroughly checked against all ${state.modules.length} modules and ${state.modules.reduce((s, m) => s + (m.units || []).length, 0)} units with no match. Requires new training content.`,
+        reason: `${topics.length} documentation topic${topics.length > 1 ? 's' : ''} under "${parent}" — checked all ${state.modules.length} modules with no match. Requires new training content.`,
         suggestedPlacement: `${state.selectedProduct.folder}/`,
       });
     }
@@ -3190,10 +3435,7 @@ function buildEditorSuggestions() {
     const partial = state.gapResults.results.filter(r => r.coverage === 'partial' && r.bestMatch);
     for (const r of partial) {
       suggestions.push({
-        type: 'update',
-        docTopic: r.docTopic,
-        module: r.bestMatch,
-        score: r.score,
+        type: 'update', docTopic: r.docTopic, module: r.bestMatch, score: r.score,
         priority: r.score < 0.25 ? 'high' : 'medium',
         title: r.bestMatch.title,
         reason: `Partially covers "${r.docTopic.title}" (${Math.round(r.score * 100)}% match). Content expansion recommended.`,
@@ -3207,12 +3449,10 @@ function buildEditorSuggestions() {
     const ageMonths = Math.floor((now - new Date(m.msDate).getTime()) / (30 * 24 * 60 * 60 * 1000));
     if (ageMonths > 12) {
       suggestions.push({
-        type: 'outdated',
-        module: m,
-        ageMonths,
+        type: 'outdated', module: m, ageMonths,
         priority: ageMonths > 24 ? 'high' : ageMonths > 18 ? 'medium' : 'low',
         title: m.title,
-        reason: `Last updated ${ageMonths} months ago (${m.msDate}). May contain outdated information or reference deprecated features.`,
+        reason: `Last updated ${ageMonths} months ago (${m.msDate}). May contain outdated information.`,
       });
     }
   }
@@ -3222,7 +3462,7 @@ function buildEditorSuggestions() {
 
   editorState.suggestions = suggestions;
   editorState.selectedIdx = -1;
-  editorState.currentDraft = null;
+  editorState.currentModule = null;
 
   document.getElementById('count-suggestions').textContent = suggestions.length;
   renderEditorView();
@@ -3236,14 +3476,11 @@ function renderEditorView() {
     document.getElementById('editor-content').style.display = 'none';
     return;
   }
-
   document.getElementById('editor-empty').style.display = 'none';
   document.getElementById('editor-content').style.display = '';
-
   document.getElementById('tab-count-new').textContent = s.filter(x => x.type === 'new').length;
   document.getElementById('tab-count-update').textContent = s.filter(x => x.type === 'update').length;
   document.getElementById('tab-count-outdated').textContent = s.filter(x => x.type === 'outdated').length;
-
   renderSuggestionList();
 }
 
@@ -3277,22 +3514,15 @@ function renderSuggestionList() {
     const typeIcon = s.type === 'new' ? '📝' : s.type === 'update' ? '🔄' : '⏰';
 
     let metaHtml = '';
-    if (s.type === 'new' && s.topicCount > 1) {
-      metaHtml = `<span class="tag tag-purple">${s.topicCount} topics</span>`;
-    }
-    if (s.type === 'update' && s.score !== undefined) {
-      metaHtml = `<span class="tag tag-blue">${Math.round(s.score * 100)}% match</span>`;
-    }
-    if (s.type === 'outdated') {
-      metaHtml = `<span class="tag tag-red">${s.ageMonths}mo old</span>`;
-    }
+    if (s.type === 'new' && s.topicCount > 1) metaHtml = `<span class="tag tag-purple">${s.topicCount} topics</span>`;
+    if (s.type === 'update' && s.score !== undefined) metaHtml = `<span class="tag tag-blue">${Math.round(s.score * 100)}% match</span>`;
+    if (s.type === 'outdated') metaHtml = `<span class="tag tag-red">${s.ageMonths}mo old</span>`;
 
-    // Recommendation badge for "new" type — 3-tier system
     let recHtml = '';
     if (s.type === 'new') {
       if (s.recommendation === 'expand-unit' && s.targetUnit) {
         recHtml = `<div style="margin-top:6px;padding:6px 10px;background:var(--success-bg);border-radius:6px;font-size:11px;display:flex;align-items:center;gap:6px;">
-          <span>📄</span> <strong>Expand unit:</strong> <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Add subsection to &quot;${escHtml(s.targetUnit.title)}&quot; in ${escHtml(s.targetModule.title)}">${escHtml(s.targetUnit.title)}</span>
+          <span>📄</span> <strong>Expand unit:</strong> <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(s.targetUnit.title)}">${escHtml(s.targetUnit.title)}</span>
           <span class="tag tag-green" style="flex-shrink:0;">${Math.round(s.targetOverlap * 100)}%</span>
         </div>
         <div style="margin-top:3px;font-size:10px;color:var(--text-muted);padding-left:26px;">in module: ${escHtml(s.targetModule.title)}</div>`;
@@ -3323,7 +3553,7 @@ function renderSuggestionList() {
       ${recHtml}
       <div class="suggestion-meta">
         ${metaHtml}
-        <button class="generate-btn" onclick="event.stopPropagation(); selectSuggestion(${globalIdx}); generateDraft(${globalIdx});">✨ Generate Draft</button>
+        <button class="generate-btn" onclick="event.stopPropagation(); selectSuggestion(${globalIdx}); generateModuleFromSuggestion(${globalIdx});">🏗️ Generate Module</button>
       </div>
     </div>`;
   }).join('');
@@ -3334,599 +3564,267 @@ function selectSuggestion(idx) {
   renderSuggestionList();
 }
 
-async function generateDraft(idx) {
-  const s = editorState.suggestions[idx];
-  if (!s) return;
+// ══════════════════════════════════════════════════════════════════════════
+// MODULE GENERATION PIPELINE (ported from generate_training.py)
+// ══════════════════════════════════════════════════════════════════════════
 
+function buildSourceFromSuggestion(s) {
+  // Build source material content from gap analysis suggestion data
+  const productName = state.selectedProduct?.name || 'Unknown Product';
+  let title = s.title || 'Untitled';
+  let description = s.reason || '';
+  let rawText = '';
+
+  if (s.type === 'new') {
+    const topicList = (s.topics || []).map(t => `## ${t.title}\nDocumentation path: ${t.path}\n`).join('\n');
+    const moduleContext = s.targetModule
+      ? `\nTarget Module: "${s.targetModule.title}"\nModule Summary: ${s.targetModule.summary || 'N/A'}\nExisting Units:\n${(s.targetModule.units || []).map((u, i) => `  ${i + 1}. ${u}`).join('\n')}\n`
+      : '';
+    rawText = `Product: ${productName}\n${moduleContext}\n# Documentation Topics to Cover\n\n${topicList}\n\n# Context\n${s.reason}\n\nRecommendation: ${s.recommendation || 'new-module'}`;
+    if (s.recommendation === 'expand-unit' && s.targetUnit) {
+      title = `Expand: ${s.targetUnit.title}`;
+      description = `Add subsections within unit "${s.targetUnit.title}" in module "${s.targetModule.title}" for ${productName}`;
+    } else if (s.recommendation === 'add-unit' && s.targetModule) {
+      title = `New Unit for: ${s.targetModule.title}`;
+      description = `Add new training unit(s) to module "${s.targetModule.title}" for ${productName}`;
+    } else {
+      title = s.title;
+      description = `New training module for ${productName} covering ${s.topicCount || 1} documentation topic(s)`;
+    }
+  } else if (s.type === 'update') {
+    title = s.module?.title || s.title;
+    description = `Update "${s.module?.title}" to better cover "${s.docTopic?.title}" (currently ${Math.round((s.score || 0) * 100)}% match)`;
+    rawText = `Product: ${productName}\n\n# Module to Update\nTitle: ${s.module?.title}\nUID: ${s.module?.uid || 'unknown'}\nSummary: ${s.module?.summary || 'N/A'}\nUnits: ${s.module?.unitCount || 0}\n${s.module?.units ? `\nCurrent Units:\n${s.module.units.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}\n` : ''}\n\n# Documentation Topic Not Fully Covered\nTitle: ${s.docTopic?.title}\nPath: ${s.docTopic?.path}\nCurrent Match: ${Math.round((s.score || 0) * 100)}%\n\n# Context\n${s.reason}`;
+  } else if (s.type === 'outdated') {
+    title = s.module?.title || s.title;
+    description = `Refresh outdated module "${s.module?.title}" (${s.ageMonths} months old) for ${productName}`;
+    const docContext = state.flatDocTopics.filter(d => d.depth <= 2).slice(0, 40).map(d => `${'  '.repeat(d.depth)}• ${d.title}`).join('\n');
+    rawText = `Product: ${productName}\n\n# Module to Refresh\nTitle: ${s.module?.title}\nUID: ${s.module?.uid || 'unknown'}\nLast Updated: ${s.module?.msDate} (${s.ageMonths} months ago)\nSummary: ${s.module?.summary || 'N/A'}\n\n# Current Documentation Topics (for reference)\n${docContext}\n\n# Context\n${s.reason}`;
+  }
+
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'module';
+  return { title, description, rawText, slug, sourceUrl: '' };
+}
+
+function updateProgressUI(steps) {
+  const container = document.getElementById('progress-steps');
+  document.getElementById('module-builder-progress').style.display = '';
+  container.innerHTML = steps.map((step, i) => {
+    const statusClass = step.status === 'active' ? 'active' : step.status === 'done' ? 'done' : step.status === 'error' ? 'error' : '';
+    const icon = step.status === 'done' ? '✓' : step.status === 'error' ? '✗' : step.status === 'active' ? '⏳' : (i + 1);
+    const chars = step.chars ? `${step.chars.toLocaleString()} chars` : '';
+    return `<div class="progress-step ${statusClass}">
+      <div class="step-icon">${icon}</div>
+      <span class="step-label">${step.label}</span>
+      <span class="step-chars">${chars}</span>
+    </div>`;
+  }).join('');
+}
+
+async function generateFullModule(source) {
   const { token } = getAIConfig();
-  if (!token) { toast('Add your GitHub token in Settings first', 'warning'); openSettings(); return; }
+  if (!token) { toast('Add your GitHub token in Settings first', 'warning'); openSettings(); return null; }
+  if (editorState.isGenerating) { toast('Generation already in progress', 'warning'); return null; }
 
-  editorState.selectedIdx = idx;
-  renderSuggestionList();
+  editorState.isGenerating = true;
+  const body = document.getElementById('module-builder-body');
+  const footer = document.getElementById('module-builder-footer');
+  const unitTabsBar = document.getElementById('unit-tabs-bar');
+  const titleEl = document.getElementById('module-builder-title');
+  const copyBtn = document.getElementById('copy-module-btn');
 
-  const panelBody = document.getElementById('draft-panel-body');
-  const panelTitle = document.getElementById('draft-panel-title');
-  const footer = document.getElementById('draft-panel-footer');
-  const copyBtn = document.getElementById('copy-draft-btn');
-
-  panelTitle.textContent = s.type === 'new'
-    ? (s.recommendation === 'expand-unit' ? 'Expand Existing Unit' : s.recommendation === 'add-unit' ? 'Add Unit to Module' : 'New Module Draft')
-    : s.type === 'update' ? 'Update Recommendations' : 'Refresh Plan';
-  panelBody.innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div> Generating content with AI…</div>';
+  titleEl.textContent = `Building: ${source.title}`;
   footer.style.display = 'none';
+  unitTabsBar.style.display = 'none';
   copyBtn.style.display = 'none';
+  body.innerHTML = '';
+
+  // Build step list
+  const steps = [
+    { label: 'Identifying logical areas…', status: 'pending', chars: 0 },
+    { label: 'Generating Overview…', status: 'pending', chars: 0 },
+    { label: 'Generating Introduction…', status: 'pending', chars: 0 },
+    // Area steps will be inserted dynamically
+    { label: 'Generating Knowledge Check…', status: 'pending', chars: 0 },
+    { label: 'Generating Summary…', status: 'pending', chars: 0 },
+  ];
+  updateProgressUI(steps);
+
+  const units = [];
 
   try {
-    let prompt;
-
-    if (s.type === 'new' && s.recommendation === 'expand-unit' && s.targetUnit) {
-      // ── EXPAND EXISTING UNIT — add subsection(s) within an existing unit ──
-      const topicList = (s.topics || []).map(t => `- ${t.title} (path: ${t.path})`).join('\n');
-      const mod = s.targetModule;
-      const unit = s.targetUnit;
-      prompt = `You are a senior Microsoft Learn training content specialist with deep expertise in ${state.selectedProduct.name}. Your task is to write NEW SUBSECTIONS to add WITHIN an existing training unit. You are NOT creating a new unit or module — you are expanding existing content with additional depth.
-
-CRITICAL: Do NOT write a complete new unit. Write SUBSECTION CONTENT (new headings and paragraphs) that will be INSERTED into the existing unit below. This is like adding a new chapter section to an existing chapter.
-
-TARGET MODULE: "${mod.title}"
-- UID: ${mod.uid || 'unknown'}
-- Summary: ${mod.summary || 'N/A'}
-${mod.units && mod.units.length > 0 ? `- All units in this module:\n${mod.units.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}` : ''}
-
-TARGET UNIT TO EXPAND: "${unit.title}" (unit #${unit.index + 1})
-
-DOCUMENTATION TOPICS TO ADD AS SUBSECTIONS:
-${topicList}
-
-PRODUCT: ${state.selectedProduct.name}
-
-Write your response in markdown:
-
-## Analysis
-- Explain why these topics belong as subsections within "${unit.title}" rather than a separate unit
-- Describe how they naturally extend the existing unit's narrative flow
-- Note where in the unit these subsections should be inserted (e.g., "after the section on [X]" or "before the Summary section")
-
-## Subsections to Insert
-
-For each documentation topic, write a COMPLETE subsection (250-500 words each) ready to be pasted into the existing unit:
-
-${(s.topics || []).map(t => `### New Subsection: ${t.title}
-
-**Insert point**: [Where in the unit this should go and why]
-
-\\\`\\\`\\\`markdown
-## ${t.title}
-
-[Write 250-500 words of rich content for this subsection. Include:]
-- [2-3 paragraphs explaining the concept in business context]
-- [A concrete real-world example: "For example, a finance team at Contoso Ltd. would use this to..."]
-- [How this connects to the unit's existing content — reference what the learner already knows from earlier sections]
-- [A practical tip, best practice, or common pitfall]
-
-> [!TIP]
-> [One actionable insight for practitioners]
-
-[If applicable, include a brief procedure or decision guide]
-\\\`\\\`\\\`
-`).join('\n')}
-
-## Impact Summary
-- How many words/minutes does this add to the unit?
-- Does this change the unit's learning objectives? If so, suggest updated objectives
-- Any existing content in the unit that should be revised to reference these new subsections?
-
-Write with authority. A reader should not be able to tell these subsections were added later — they should feel like natural parts of the original unit. Include business context, real scenarios (Contoso Ltd, Adventure Works, Fabrikam), and connect every concept to daily business operations.`;
-
-    } else if (s.type === 'new' && s.recommendation === 'add-unit' && s.targetModule) {
-      // ── ADD NEW UNIT TO EXISTING MODULE ──
-      const topicList = (s.topics || [s.docTopic]).map(t => `- ${t.title} (path: ${t.path})`).join('\n');
-      const mod = s.targetModule;
-      prompt = `You are a senior Microsoft Learn training content specialist with deep expertise in ${state.selectedProduct.name}. You write COMPREHENSIVE, IN-DEPTH training content that helps real business users understand and apply concepts in their daily work.
-
-CRITICAL: Do NOT write brief outlines or bullet-point summaries. Write THOROUGH, DETAILED training content with:
-- Rich explanations of each concept (explain the "why" behind the "what")
-- Real-world business scenarios showing how each topic applies in everyday operations
-- Concrete examples from industries like retail, manufacturing, healthcare, finance, and professional services
-- Step-by-step walkthroughs with decision points and reasoning
-- Common pitfalls, edge cases, and troubleshooting guidance
-- Best practices and tips from experienced practitioners
-- Connections between concepts (how this feature relates to other areas of ${state.selectedProduct.name})
-
-TARGET MODULE: "${mod.title}"
-- UID: ${mod.uid || 'unknown'}
-- Current units: ${mod.unitCount}
-- Summary: ${mod.summary || 'N/A'}
-- Author: ${mod.author || 'unknown'}
-- ms.date: ${mod.msDate || 'unknown'}
-- Learn URL: ${mod.learnUrl || ''}
-- GitHub URL: ${mod.ghUrl || ''}
-${mod.units && mod.units.length > 0 ? `- Current unit list:\n${mod.units.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}` : ''}
-
-UNCOVERED DOCUMENTATION TOPICS TO ADD:
-${topicList}
-
-PRODUCT: ${state.selectedProduct.name}
-REPO: MicrosoftDocs/${state.selectedProduct.repo}
-
-Provide your response in markdown:
-
-## Placement Recommendation
-- Explain WHY this content belongs in "${mod.title}" rather than a new module
-- Describe how these topics extend the existing module's narrative
-- Specify exactly WHERE in the module (after which unit, and why that position makes sense for the learning flow)
-
-## New Unit(s) to Add
-
-For each new unit, write COMPREHENSIVE content (aim for 600-1000 words per unit):
-
-### Unit: [Title]
-- **Insert after**: [existing unit name or position]
-- **Type**: learn / exercise / knowledge-check
-- **Duration**: X minutes
-
-#### Content (Markdown)
-\`\`\`markdown
-# [Unit Title]
-
-## Introduction
-[2-3 paragraphs providing context. Explain why this topic matters to business users. Set up a real-world scenario that threads through the unit — e.g., "Imagine you're a finance manager at Contoso Ltd. who needs to..." or "Consider a retail operations team at Adventure Works that wants to..."]
-
-## [Core Concept 1]
-[Thorough explanation of the concept. Don't just describe WHAT it does — explain WHY it exists, WHEN you'd use it, and HOW it fits into broader business processes.]
-
-### Business Example
-[Specific scenario: "For example, a manufacturing company tracking inventory across three warehouses would use this feature to... The benefit is that instead of manually reconciling each warehouse's data, the system automatically..."]
-
-### How It Works
-[Detailed walkthrough of the feature/concept. Include:
-- Step-by-step process with explanations for each step
-- Screenshots placeholders where helpful: ![Description](media/screenshot-name.png)
-- Decision points: "At this stage, you need to decide whether to... Choose option A if your organization... Choose option B if..."]
-
-> [!TIP]
-> [Practical tip that experienced users would appreciate]
-
-## [Core Concept 2]
-[Continue with the same depth...]
-
-### Real-World Application
-[Show how this concept connects to daily business operations. Be specific — mention job roles, common tasks, time savings, error reduction, etc.]
-
-> [!IMPORTANT]
-> [Critical information or common mistake to avoid]
-
-## [Core Concept 3 if applicable]
-[...]
-
-### Common Scenarios
-[Provide 2-3 brief but specific scenarios showing different ways businesses use this:]
-1. **Scenario: [Industry/Role]** — [Description of how they use it and the business outcome]
-2. **Scenario: [Industry/Role]** — [Different use case]
-
-## Best Practices
-- [Practice 1 with explanation of why]
-- [Practice 2 with explanation]
-- [Practice 3]
-
-> [!NOTE]
-> [Additional context or related feature to explore]
-
-## Summary
-[Recap key takeaways. Remind the learner how this connects to the broader module topic and their daily work.]
-\`\`\`
-
-## Updated index.yml Entry
-\`\`\`yaml
-# Add these unit UIDs to the existing module's units list:
-units:
-  # ... existing units ...
-  - learn-bizapps.[module-folder].[new-unit-name]
-\`\`\`
-
-## Content That Could Expand Existing Units
-(If some topics are better added as new sections within existing units rather than whole new units, provide the specific paragraphs to insert, including business context and examples)
-
-Write with authority and depth. A learner should finish this content feeling confident about applying these concepts in their organization.`;
-
-    } else if (s.type === 'new') {
-      // ── NEW MODULE ──
-      const topicList = (s.topics || [s.docTopic]).map(t => `- ${t.title} (path: ${t.path})`).join('\n');
-      prompt = `You are a senior Microsoft Learn training content architect with deep expertise in ${state.selectedProduct.name}. You create COMPREHENSIVE, PUBLICATION-READY training modules that help business professionals understand and apply concepts in real-world scenarios.
-
-CRITICAL CONTENT REQUIREMENTS:
-- Write THOROUGH, DETAILED content — each unit should be 600-1000 words of actual learning material
-- Weave a CONSISTENT BUSINESS SCENARIO through the entire module (e.g., "Throughout this module, we'll follow Contoso Ltd., a mid-size distribution company, as they implement...")
-- For every concept, explain: WHAT it is, WHY it matters to the business, WHEN to use it, and HOW it works in practice
-- Include REAL-WORLD EXAMPLES from industries like retail, manufacturing, finance, healthcare, and professional services
-- Provide STEP-BY-STEP WALKTHROUGHS with decision points and reasoning at each step
-- Add BEST PRACTICES, common pitfalls, and troubleshooting tips that experienced practitioners would share
-- Show how features CONNECT to daily business operations — time savings, error reduction, compliance, reporting
-- Include EXERCISES that mirror real workplace tasks, not abstract examples
-
-DOCUMENTATION TOPICS TO COVER:
-${topicList}
-
-EXISTING MODULES (avoid duplication — explain how this module complements them):
-${state.modules.slice(0, 30).map(m => `- "${m.title}"`).join('\n')}
-
-REPOSITORY: MicrosoftDocs/${state.selectedProduct.repo}
-FOLDER: ${state.selectedProduct.folder}
-
-Generate a complete, publication-ready module:
-
-## Module Title
-(Clear, action-oriented title that tells the learner what they'll be able to DO)
-
-## Placement
-- **Repository path**: ${state.selectedProduct.folder}/[suggested-folder-name]/
-- **Reason**: Why this needs its own module (what gap it fills that existing modules don't cover)
-- **Relationship to existing modules**: How this complements the modules listed above
-
-## Summary
-(3-4 sentences describing what the learner will accomplish, the business value, and who should take this module)
-
-## Learning Objectives
-(5-6 bullet points using Bloom's taxonomy verbs: "Describe…", "Configure…", "Evaluate…", "Implement…", "Troubleshoot…")
-
-## Prerequisites
-(What the learner should know or have access to before starting. Be specific about required roles, licenses, or environments.)
-
-## Scenario Introduction
-(Introduce the business scenario that will thread through all units: company name, industry, business challenge, what they want to achieve with ${state.selectedProduct.name})
-
-## Units
-
-Write FULL, IN-DEPTH content for each unit (5-7 units recommended):
-
-### Unit 1: [Title]
-- **Type**: learn
-- **Duration**: X minutes (estimate based on content length)
-- **File**: [unit-file-name].yml
-
-#### Content
-\`\`\`markdown
-# [Unit Title]
-
-## Introduction
-[2-3 paragraphs. Set the scene using the module's running business scenario. Explain what this unit covers and why it matters. Connect to the learner's daily work.]
-
-## [Main Topic Section]
-[Deep explanation of the concept. Include:]
-
-### What Is [Concept] and Why Does It Matter?
-[Explain the concept in business terms. What problem does it solve? What happens without it?]
-
-### Business Context
-[Specific example: "Consider a scenario where your accounts payable team processes 500 invoices monthly. Without [feature], each invoice requires manual data entry taking 3-5 minutes. With [feature], the system automatically... reducing processing time by 60% and error rates by 85%."]
-
-### How to [Configure/Implement/Use] [Feature]
-[Detailed step-by-step walkthrough:]
-1. **Step 1: [Action]** — [Explain what to do and why]
-   - Navigate to **[specific menu path]**
-   - Select **[specific option]**
-   ![Step 1 screenshot](media/step-1-description.png)
-
-2. **Step 2: [Action]** — [Explain what to do and why]
-   [Continue with detail...]
-
-> [!TIP]
-> [Practical tip from an experienced user's perspective]
-
-### [Secondary Topic]
-[Continue with same depth. Include another business example from a different industry/role.]
-
-### Real-World Applications
-[Show 2-3 specific business scenarios:]
-- **Finance team**: [How they use this in daily close processes, budgeting, etc.]
-- **Operations manager**: [How they use this for planning, resource allocation, etc.]
-- **IT administrator**: [Configuration and maintenance perspective]
-
-> [!IMPORTANT]
-> [Critical consideration or common mistake — explain the business impact of getting this wrong]
-
-### Common Questions and Troubleshooting
-- **Q: [Common question]** — [Thorough answer]
-- **Q: [Another question]** — [Answer with context]
-
-## Best Practices
-- [Practice 1 — explain the reasoning and business impact]
-- [Practice 2 — include a brief scenario]
-- [Practice 3 — mention what to avoid and why]
-
-> [!NOTE]
-> [Connection to related feature or next steps in their learning journey]
-
-## Summary
-[Summarize key takeaways. Remind the learner how this connects to the overall module scenario. Preview what's coming in the next unit.]
-\`\`\`
-
-### Unit 2: [Title]
-[... repeat with same depth and detail ...]
-
-### Unit 3: [Title — Exercise/Hands-on]
-- **Type**: exercise
-[Include a realistic exercise that mirrors actual business tasks. Provide:
-- Detailed scenario setup
-- Step-by-step tasks with expected outcomes
-- Validation criteria — how to know they did it right
-- Bonus challenges for advanced learners]
-
-### Unit 4-6: [Continue...]
-[Maintain the same depth throughout all units]
-
-### Final Unit: Knowledge Check
-- **Type**: knowledge-check
-[Write 5-8 questions that test PRACTICAL APPLICATION, not just recall:
-- Scenario-based questions: "Your company needs to... which approach should you take?"
-- Include answer explanations for each option (correct and incorrect)]
-
-## index.yml
-\`\`\`yaml
-### YAMLTitle: [module title]
-summary: |
-  [3-4 sentence summary]
-description: |
-  [Detailed description including business value and target audience]
-ms.date: ${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
-ms.service: ${state.selectedProduct.service || ''}
-author: [author-handle]
-ms.author: [ms-alias]
-ms.topic: module
-uid: learn-bizapps.${state.selectedProduct.folder}.[module-name]
-products:
-  - ${state.selectedProduct.service || 'power-platform'}
-units:
-  - learn-bizapps.${state.selectedProduct.folder}.[module-name].[unit-name]
-\`\`\`
-
-This module should feel like it was written by a product expert who has spent years helping businesses implement ${state.selectedProduct.name}. Every concept should have business context, every procedure should have reasoning, and every unit should leave the learner ready to apply what they learned.`;
-
-    } else if (s.type === 'update') {
-      prompt = `You are a senior Microsoft Learn training content specialist with deep expertise in ${state.selectedProduct.name}. This module partially covers a documentation topic and needs expansion. Your job is to write COMPREHENSIVE, DETAILED content additions.
-
-CRITICAL: Do NOT write brief summaries or outlines. Write PUBLICATION-READY content that:
-- Provides thorough explanations with business context for every concept
-- Includes real-world scenarios showing how topics apply in daily business operations (e.g., "A procurement manager at a manufacturing company would use this to...")
-- Gives concrete examples from industries like retail, healthcare, finance, and professional services
-- Explains not just WHAT a feature does but WHY it matters, WHEN to use it, and the business impact
-- Includes step-by-step procedures with reasoning at each decision point
-- Adds best practices, common pitfalls, and troubleshooting guidance
-
-MODULE: "${s.module.title}"
-- UID: ${s.module.uid || 'unknown'}
-- Author: ${s.module.author || 'unknown'}
-- Last updated: ${s.module.msDate || 'unknown'}
-- Units: ${s.module.unitCount}
-- Summary: ${s.module.summary || 'N/A'}
-- Learn URL: ${s.module.learnUrl || ''}
-${s.module.units && s.module.units.length > 0 ? `- Current unit list:\n${s.module.units.map((u, i) => `  ${i + 1}. ${u}`).join('\n')}` : ''}
-
-DOCUMENTATION TOPIC TO BETTER COVER: "${s.docTopic.title}"
-- Doc path: ${s.docTopic.path}
-- Current match score: ${Math.round(s.score * 100)}%
-
-Provide your response in markdown:
-
-## Analysis
-- What specific knowledge gap exists between the current module and the documentation
-- Why this gap matters to business users (what can't they do or understand without this content?)
-- How filling this gap improves the learner's ability to work with ${state.selectedProduct.name}
-
-## Recommendation Type
-State clearly: **Add New Unit** or **Expand Existing Unit(s)** — explain the reasoning.
-
-## If Adding a New Unit
-
-### New Unit: [Title]
-- **Insert after**: [which existing unit and why this position makes sense]
-- **Type**: learn / exercise / knowledge-check
-- **Duration**: X minutes
-
-#### Content (Markdown) — WRITE COMPREHENSIVE CONTENT (600+ words)
-\`\`\`markdown
-# [Unit Title]
-
-## Introduction
-[2-3 paragraphs setting context. Use a business scenario: "Imagine you're a [role] at [company type] and you need to... This unit shows you how ${state.selectedProduct.name} helps you..."]
-
-## [Main Concept]
-[Thorough explanation. Cover:]
-
-### What Is [Concept] and Why Does It Matter?
-[Explain in business terms. What problem does it solve?]
-
-### Business Example
-[Specific, detailed scenario: "For instance, a retail chain with 50 locations needs to... Using this feature, the regional manager can... This reduces [specific time/cost/error metric] by..."]
-
-### Step-by-Step Implementation
-1. **[Step]** — [What to do, why, and what to expect]
-2. **[Step]** — [Continue with practical detail]
-[Include screenshot placeholders where helpful]
-
-> [!TIP]
-> [Expert tip that saves time or prevents common mistakes]
-
-## [Secondary Concept]
-[Same depth — explain, provide business context, give examples]
-
-### How This Connects to Daily Work
-[Map to specific job tasks and workflows that the learner likely performs]
-
-### Common Scenarios
-1. **[Scenario with specific role/industry]** — [How they'd use this]
-2. **[Different scenario]** — [Different application]
-
-> [!IMPORTANT]
-> [Critical consideration or common mistake — explain business impact]
-
-## Best Practices
-- [Practice with reasoning]
-- [Practice with example]
-
-## Summary
-[Key takeaways and how this connects to the rest of the module]
-\`\`\`
-
-#### index.yml Addition
-\`\`\`yaml
-# Add this UID to the module's units list:
-  - learn-bizapps.[module].[new-unit-name]
-\`\`\`
-
-## If Expanding Existing Units
-For each unit to expand:
-
-### Expand: [Existing Unit Name]
-#### Add After Section: [identify specific section]
-\`\`\`markdown
-[Write substantial content additions (300+ words) with:
-- Full explanations of the new concepts
-- Business scenario showing practical application
-- Step-by-step procedures with reasoning
-- Tips and best practices
-- Connection to the existing unit's content flow]
-\`\`\`
-
-## Updated Learning Objectives
-(Revised objectives reflecting the expanded coverage — use action verbs from Bloom's taxonomy)
-
-## Updated Summary
-(Rewritten module summary that encompasses the new content)
-
-Write content that makes the learner feel confident about applying these concepts at their organization.`;
-
-    } else {
-      prompt = `You are a senior Microsoft Learn training content specialist with deep expertise in ${state.selectedProduct.name}. This module is outdated and needs a comprehensive refresh. Write DETAILED, PUBLICATION-READY content updates.
-
-CRITICAL: Do NOT write vague recommendations like "update screenshots" or "review content." Instead:
-- Write the ACTUAL updated content paragraphs/sections that should replace outdated text
-- Provide specific new business scenarios reflecting current ${state.selectedProduct.name} capabilities
-- Include concrete examples of how modern features change daily business workflows
-- Explain what changed, why it matters to business users, and how workflows are different now
-- Reference specific ${state.selectedProduct.name} features, UI changes, and capability updates from the past ${s.ageMonths} months
-
-MODULE: "${s.module.title}"
-- UID: ${s.module.uid || 'unknown'}
-- Author: ${s.module.author || 'unknown'}
-- Last updated: ${s.module.msDate} (${s.ageMonths} months ago)
-- Units: ${s.module.unitCount}
-- Summary: ${s.module.summary || 'N/A'}
-- ms.service: ${s.module.msService || ''}
-- Product: ${state.selectedProduct.name}
-- Learn URL: ${s.module.learnUrl || ''}
-
-CURRENT DOCUMENTATION TOPICS (reflecting what's current in the product today):
-${state.flatDocTopics.filter(d => d.depth <= 2).slice(0, 60).map(d => `${'  '.repeat(d.depth)}- ${d.title}`).join('\n')}
-
-Provide a comprehensive refresh in markdown:
-
-## Staleness Assessment
-- Specific ${state.selectedProduct.name} features and capabilities that have changed or been added in the past ${s.ageMonths} months
-- UI/navigation changes that affect step-by-step procedures
-- New integrations, AI capabilities, or workflow improvements
-- Deprecated features or approaches that should be removed
-- Impact on business users: what can they do NOW that they couldn't when this was written?
-
-## Content Refresh — Section by Section
-
-For each section that needs updating, provide the ACTUAL replacement content:
-
-### [Section/Unit Name] — REWRITE
-**Why it needs updating**: [Explain what changed]
-**Business impact**: [How the change affects daily work]
-
-\`\`\`markdown
-[Write the complete updated content for this section. Include:
-
-## [Updated Section Title]
-
-[Updated introduction with current context]
-
-### What's New
-[Explain the changes and new capabilities in business terms: "Previously, you had to manually... Now, ${state.selectedProduct.name} automatically... This means a finance team processing month-end close can reduce their timeline from 5 days to 2 days because..."]
-
-### Updated Procedure
-1. **[Step]** — [Updated instruction with current UI paths]
-   ![Updated screenshot](media/updated-screenshot.png)
-2. **[Step]** — [Continue with current workflow]
-
-> [!TIP]
-> [New best practice reflecting current capabilities]
-
-### Business Example
-[Modern scenario: "With the latest ${state.selectedProduct.name} updates, a supply chain manager at Contoso can now... Previously, this required... but the new [feature] enables..."]]
-\`\`\`
-
-### [Another Section] — REWRITE
-[Continue with same depth for each section needing updates...]
-
-## New Content to Add
-For topics from current documentation that the module should now cover:
-
-\`\`\`markdown
-## [New Section Title]
-
-[Write comprehensive new content (400+ words) covering the new capability. Include:
-- What it is and why it was added
-- Business scenarios showing real-world value
-- Step-by-step configuration/usage
-- How it integrates with features already covered in the module
-- Best practices from early adopters]
-\`\`\`
-
-## Content to Remove or Replace
-- [Feature/procedure] — **Remove because**: [explanation, what replaced it]
-- [Outdated reference] — **Replace with**: [current equivalent]
-
-## Updated Metadata
-\`\`\`yaml
-ms.date: ${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
-ms.service: ${s.module.msService || state.selectedProduct.service || ''}
-\`\`\`
-
-## Updated Learning Objectives
-(Revised to reflect current capabilities — use Bloom's taxonomy verbs)
-
-## Updated Summary
-(Rewritten to reflect current state of ${state.selectedProduct.name})
-
-## Step-by-Step Refresh Plan
-1. [Specific action with estimated effort]
-2. [Continue with prioritized actions...]
-
-Write with the authority of someone who uses ${state.selectedProduct.name} daily and understands the business impact of every feature.`;
+    // Step 1: Identify areas
+    steps[0].status = 'active';
+    updateProgressUI(steps);
+    const areasPrompt = MODULE_PROMPTS.identifyAreas(source.title, source.description, source.rawText);
+    const areasRaw = await callAI([
+      { role: 'system', content: areasPrompt.system },
+      { role: 'user', content: areasPrompt.user },
+    ], { maxTokens: 2000, temperature: 0.3 });
+    const areas = parseAreasResponse(areasRaw);
+    steps[0].status = 'done';
+    steps[0].label = `Found ${areas.length} area(s): ${areas.map(a => a.name).join(', ')}`;
+    steps[0].chars = areasRaw.length;
+
+    // Insert area steps before knowledge check
+    const areaSteps = areas.map(a => ({ label: `Generating: ${a.name}…`, status: 'pending', chars: 0 }));
+    steps.splice(3, 0, ...areaSteps);
+    updateProgressUI(steps);
+
+    // Step 2: Overview
+    steps[1].status = 'active';
+    updateProgressUI(steps);
+    const ovPrompt = MODULE_PROMPTS.overview(source.title, source.description, source.rawText);
+    const overview = await callAI([
+      { role: 'system', content: ovPrompt.system },
+      { role: 'user', content: ovPrompt.user },
+    ], { maxTokens: 4000, temperature: 0.5 });
+    units.push({ name: '0-overview', title: 'Overview', content: overview, slug: 'overview' });
+    steps[1].status = 'done';
+    steps[1].chars = overview.length;
+    updateProgressUI(steps);
+
+    // Step 3: Introduction
+    steps[2].status = 'active';
+    updateProgressUI(steps);
+    const introPrompt = MODULE_PROMPTS.introduction(source.title, source.description, source.rawText);
+    const intro = await callAI([
+      { role: 'system', content: introPrompt.system },
+      { role: 'user', content: introPrompt.user },
+    ], { maxTokens: 6000, temperature: 0.5 });
+    units.push({ name: '1-introduction', title: 'Introduction', content: intro, slug: 'introduction' });
+    steps[2].status = 'done';
+    steps[2].chars = intro.length;
+    updateProgressUI(steps);
+
+    // Steps 4+: Area units
+    for (let i = 0; i < areas.length; i++) {
+      const stepIdx = 3 + i;
+      steps[stepIdx].status = 'active';
+      updateProgressUI(steps);
+      const areaPrompt = MODULE_PROMPTS.areaContent(source.title, source.description, source.rawText, areas[i].name, areas[i].description);
+      const areaContent = await callAI([
+        { role: 'system', content: areaPrompt.system },
+        { role: 'user', content: areaPrompt.user },
+      ], { maxTokens: 8000, temperature: 0.5 });
+      units.push({
+        name: `${i + 2}-${areas[i].slug}`,
+        title: areas[i].name,
+        content: areaContent,
+        slug: areas[i].slug,
+      });
+      steps[stepIdx].status = 'done';
+      steps[stepIdx].chars = areaContent.length;
+      updateProgressUI(steps);
     }
 
-    const reply = await callAI([{ role: 'user', content: prompt }], { maxTokens: 16000, temperature: 0.45 });
+    // Knowledge Check
+    const kcStepIdx = 3 + areas.length;
+    steps[kcStepIdx].status = 'active';
+    updateProgressUI(steps);
+    const kcPrompt = MODULE_PROMPTS.knowledgeCheck(source.title, source.description, source.rawText);
+    const kc = await callAI([
+      { role: 'system', content: kcPrompt.system },
+      { role: 'user', content: kcPrompt.user },
+    ], { maxTokens: 6000, temperature: 0.5 });
+    units.push({ name: `${areas.length + 2}-knowledge-check`, title: 'Knowledge Check', content: kc, slug: 'knowledge-check' });
+    steps[kcStepIdx].status = 'done';
+    steps[kcStepIdx].chars = kc.length;
+    updateProgressUI(steps);
 
-    editorState.currentDraft = {
-      suggestion: s,
-      content: reply,
+    // Summary
+    const sumStepIdx = 4 + areas.length;
+    steps[sumStepIdx].status = 'active';
+    updateProgressUI(steps);
+    const sumPrompt = MODULE_PROMPTS.summary(source.title, source.description, source.rawText);
+    const summary = await callAI([
+      { role: 'system', content: sumPrompt.system },
+      { role: 'user', content: sumPrompt.user },
+    ], { maxTokens: 4000, temperature: 0.5 });
+    units.push({ name: `${areas.length + 3}-summary`, title: 'Summary', content: summary, slug: 'summary' });
+    steps[sumStepIdx].status = 'done';
+    steps[sumStepIdx].chars = summary.length;
+    updateProgressUI(steps);
+
+    // Build module object
+    const module = {
+      title: source.title,
+      slug: source.slug,
+      sourceUrl: source.sourceUrl || '',
+      units,
+      areas,
       generatedAt: new Date().toISOString(),
+      product: state.selectedProduct?.name || '',
+      totalChars: units.reduce((s, u) => s + u.content.length, 0),
     };
 
-    renderDraftPreview(reply);
-    footer.style.display = 'flex';
-    copyBtn.style.display = 'inline-flex';
-    toast('Draft generated', 'success');
+    editorState.currentModule = module;
+    editorState.currentUnitIdx = 0;
+
+    // Show module output
+    setTimeout(() => {
+      document.getElementById('module-builder-progress').style.display = 'none';
+      renderModuleOutput();
+      footer.style.display = 'flex';
+      copyBtn.style.display = 'inline-flex';
+      titleEl.textContent = `🏗️ ${source.title}`;
+      toast(`Module generated: ${units.length} units, ${module.totalChars.toLocaleString()} chars total`, 'success');
+    }, 500);
+
+    return module;
 
   } catch (e) {
+    const failedStep = steps.find(s => s.status === 'active');
+    if (failedStep) failedStep.status = 'error';
+    updateProgressUI(steps);
+
     if (e.message === 'NO_TOKEN') { toast('Add your GitHub token in Settings', 'warning'); openSettings(); }
     else {
-      panelBody.innerHTML = `<div class="empty-state" style="padding:2rem;"><p style="color:var(--danger);">❌ Generation failed: ${escHtml(e.message)}</p></div>`;
-      toast('Draft generation failed', 'warning');
+      body.innerHTML = `<div class="empty-state" style="padding:2rem;"><p style="color:var(--danger);">❌ Generation failed: ${escHtml(e.message)}</p><p style="margin-top:8px;font-size:12px;">Units generated before failure are preserved above.</p></div>`;
+      toast('Module generation failed', 'warning');
     }
+    return null;
+  } finally {
+    editorState.isGenerating = false;
   }
 }
 
-function renderDraftPreview(markdown) {
-  const panel = document.getElementById('draft-panel-body');
-  let html = escHtml(markdown);
-  // Convert markdown to simple HTML
+function renderModuleOutput() {
+  const mod = editorState.currentModule;
+  if (!mod) return;
+
+  // Render unit tabs
+  const tabsBar = document.getElementById('unit-tabs-bar');
+  tabsBar.style.display = 'flex';
+  tabsBar.innerHTML = mod.units.map((u, i) => {
+    const active = i === editorState.currentUnitIdx ? 'active' : '';
+    return `<button class="unit-tab ${active}" onclick="switchModuleUnit(${i})" title="${escHtml(u.title)}">${escHtml(u.title)}</button>`;
+  }).join('');
+
+  // Render current unit content
+  const body = document.getElementById('module-builder-body');
+  const unit = mod.units[editorState.currentUnitIdx];
+  if (!unit) return;
+
+  body.innerHTML = `<div class="draft-content">${renderMarkdown(unit.content)}</div>`;
+}
+
+function switchModuleUnit(idx) {
+  editorState.currentUnitIdx = idx;
+  renderModuleOutput();
+}
+
+function renderMarkdown(md) {
+  let html = escHtml(md);
+  html = html.replace(/^#### (.+)$/gm, '<h4 style="font-size:13px;font-weight:600;margin:10px 0 4px;">$1</h4>');
   html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
   html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1 style="font-size:18px;font-weight:700;margin:0 0 12px;">$1</h1>');
   html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => `<pre><code>${code.trim()}</code></pre>`);
+  html = html.replace(/&gt; \[!TIP\]\s*\n&gt; (.+)/g, '<blockquote style="border-left-color:var(--success);background:var(--success-bg);"><strong>💡 Tip:</strong> $1</blockquote>');
+  html = html.replace(/&gt; \[!IMPORTANT\]\s*\n&gt; (.+)/g, '<blockquote style="border-left-color:var(--warning);background:var(--warning-bg);"><strong>⚠️ Important:</strong> $1</blockquote>');
+  html = html.replace(/&gt; \[!NOTE\]\s*\n&gt; (.+)/g, '<blockquote><strong>📝 Note:</strong> $1</blockquote>');
+  html = html.replace(/&gt; (.+)/gm, '<blockquote>$1</blockquote>');
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
   html = html.replace(/`([^`]+)`/g, '<code style="background:var(--bg);padding:1px 5px;border-radius:3px;font-size:12px;">$1</code>');
@@ -3936,187 +3834,202 @@ function renderDraftPreview(markdown) {
   html = html.replace(/\n\n/g, '</p><p>');
   html = html.replace(/\n/g, '<br>');
   html = `<p>${html}</p>`;
-  // Clean up nesting issues
   html = html.replace(/<p><\/p>/g, '');
-  html = html.replace(/<p>(<h[23]>)/g, '$1');
-  html = html.replace(/(<\/h[23]>)<\/p>/g, '$1');
+  html = html.replace(/<p>(<h[1-4][^>]*>)/g, '$1');
+  html = html.replace(/(<\/h[1-4]>)<\/p>/g, '$1');
   html = html.replace(/<p>(<pre>)/g, '$1');
   html = html.replace(/(<\/pre>)<\/p>/g, '$1');
   html = html.replace(/<p>(<ul>)/g, '$1');
   html = html.replace(/(<\/ul>)<\/p>/g, '$1');
-
-  panel.innerHTML = `<div class="draft-content">${html}</div>`;
+  html = html.replace(/<p>(<blockquote)/g, '$1');
+  html = html.replace(/(<\/blockquote>)<\/p>/g, '$1');
+  return html;
 }
 
-function regenerateDraft() {
-  if (editorState.selectedIdx >= 0) generateDraft(editorState.selectedIdx);
+// ── Generate from Suggestion (gap analysis) ──
+
+async function generateModuleFromSuggestion(idx) {
+  const s = editorState.suggestions[idx];
+  if (!s) return;
+  editorState.selectedIdx = idx;
+  renderSuggestionList();
+  const source = buildSourceFromSuggestion(s);
+  await generateFullModule(source);
 }
 
-function copyDraft() {
-  if (!editorState.currentDraft) return;
-  navigator.clipboard.writeText(editorState.currentDraft.content).then(() => {
-    toast('Draft copied to clipboard', 'success');
+// ── Generate from URL ──
+
+async function generateFromUrl() {
+  const input = document.getElementById('url-input');
+  const url = input.value.trim();
+  if (!url) { toast('Enter a URL first', 'warning'); return; }
+  if (!url.startsWith('http')) { toast('Enter a valid URL starting with http(s)://', 'warning'); return; }
+
+  const { token } = getAIConfig();
+  if (!token) { toast('Add your GitHub token in Settings first', 'warning'); openSettings(); return; }
+
+  // Show editor content area
+  document.getElementById('editor-empty').style.display = 'none';
+  document.getElementById('editor-content').style.display = '';
+
+  const body = document.getElementById('module-builder-body');
+  const titleEl = document.getElementById('module-builder-title');
+  titleEl.textContent = 'Fetching URL…';
+  body.innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div> Fetching and extracting content…</div>';
+
+  try {
+    const extracted = await fetchUrlContent(url);
+    if (!extracted.rawText || extracted.rawText.length < 50) {
+      body.innerHTML = `<div class="empty-state" style="padding:2rem;"><p style="color:var(--danger);">⚠️ Very little content extracted from URL. Try a different page.</p></div>`;
+      return;
+    }
+
+    toast(`Fetched: "${extracted.title}" (${extracted.rawText.length.toLocaleString()} chars)`, 'success');
+    extracted.sourceUrl = url;
+    await generateFullModule(extracted);
+
+  } catch (e) {
+    body.innerHTML = `<div class="empty-state" style="padding:2rem;"><p style="color:var(--danger);">❌ Failed to fetch URL: ${escHtml(e.message)}</p></div>`;
+    toast('URL fetch failed', 'warning');
+  }
+}
+
+// ── Regenerate current unit ──
+
+async function regenerateCurrentUnit() {
+  const mod = editorState.currentModule;
+  if (!mod || editorState.isGenerating) return;
+
+  const unit = mod.units[editorState.currentUnitIdx];
+  if (!unit) return;
+
+  const body = document.getElementById('module-builder-body');
+  body.innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div> Regenerating unit…</div>';
+
+  try {
+    // Reconstruct source from module
+    const source = { title: mod.title, description: '', rawText: '', slug: mod.slug };
+    // Use the original suggestion or URL data if available
+    if (editorState.selectedIdx >= 0) {
+      const s = editorState.suggestions[editorState.selectedIdx];
+      if (s) { const src = buildSourceFromSuggestion(s); Object.assign(source, src); }
+    }
+
+    let prompt;
+    if (unit.slug === 'overview') prompt = MODULE_PROMPTS.overview(source.title, source.description, source.rawText);
+    else if (unit.slug === 'introduction') prompt = MODULE_PROMPTS.introduction(source.title, source.description, source.rawText);
+    else if (unit.slug === 'knowledge-check') prompt = MODULE_PROMPTS.knowledgeCheck(source.title, source.description, source.rawText);
+    else if (unit.slug === 'summary') prompt = MODULE_PROMPTS.summary(source.title, source.description, source.rawText);
+    else {
+      const area = mod.areas.find(a => a.slug === unit.slug);
+      if (area) prompt = MODULE_PROMPTS.areaContent(source.title, source.description, source.rawText, area.name, area.description);
+      else prompt = MODULE_PROMPTS.overview(source.title, source.description, source.rawText);
+    }
+
+    const content = await callAI([
+      { role: 'system', content: prompt.system },
+      { role: 'user', content: prompt.user },
+    ], { maxTokens: 8000, temperature: 0.6 });
+
+    mod.units[editorState.currentUnitIdx].content = content;
+    mod.totalChars = mod.units.reduce((s, u) => s + u.content.length, 0);
+    renderModuleOutput();
+    toast('Unit regenerated', 'success');
+  } catch (e) {
+    body.innerHTML = `<div class="empty-state" style="padding:2rem;"><p style="color:var(--danger);">❌ Regeneration failed: ${escHtml(e.message)}</p></div>`;
+  }
+}
+
+// ── Copy & Export ──
+
+function copyModuleContent() {
+  const mod = editorState.currentModule;
+  if (!mod) return;
+  // Copy all units as a combined document
+  const combined = mod.units.map(u => `# ${u.title}\n\n${u.content}`).join('\n\n---\n\n');
+  navigator.clipboard.writeText(combined).then(() => {
+    toast('All units copied to clipboard', 'success');
   }).catch(() => {
-    // Fallback: select text
-    const range = document.createRange();
-    range.selectNodeContents(document.getElementById('draft-panel-body'));
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-    toast('Text selected — use Ctrl+C to copy', 'info');
+    const unit = mod.units[editorState.currentUnitIdx];
+    if (unit) navigator.clipboard.writeText(unit.content).then(() => toast('Current unit copied', 'success'));
   });
 }
 
-function exportDraft(format) {
-  if (!editorState.currentDraft) return;
-  const s = editorState.currentDraft.suggestion;
-  const content = editorState.currentDraft.content;
-  const productName = (state.selectedProduct?.name || 'product').replace(/\s+/g, '-').toLowerCase();
-  const name = (s.title || 'draft').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+function exportModule(format) {
+  const mod = editorState.currentModule;
+  if (!mod) { toast('Generate a module first', 'warning'); return; }
+
   const dateStr = new Date().toISOString().slice(0, 10);
+  const product = state.selectedProduct?.name || 'product';
+  const productSlug = product.replace(/\s+/g, '-').toLowerCase();
 
-  let blob, ext, filename;
-  if (format === 'yaml') {
-    const yamlMatch = content.match(/```ya?ml\n([\s\S]*?)```/);
-    const yamlContent = yamlMatch ? yamlMatch[1] : content;
-    blob = new Blob([yamlContent], { type: 'text/yaml' });
-    ext = 'yml';
-    filename = `${name}-${dateStr}.${ext}`;
-  } else if (format === 'md') {
-    // Generate a GitHub-ready .md file with frontmatter
-    const mdContent = buildGitHubReadyMd(s, content);
-    blob = new Blob([mdContent], { type: 'text/markdown' });
-    ext = 'md';
-    filename = `${name}-${dateStr}.${ext}`;
-  } else if (format === 'md-bundle') {
-    // Generate a structured bundle with all files
-    const bundle = buildMdBundle(s, content);
-    blob = new Blob([bundle], { type: 'text/markdown' });
-    ext = 'md';
-    filename = `${productName}-content-bundle-${dateStr}.${ext}`;
-  } else {
-    blob = new Blob([JSON.stringify(editorState.currentDraft, null, 2)], { type: 'application/json' });
-    ext = 'json';
-    filename = `${name}-${dateStr}.${ext}`;
-  }
-
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  toast(`Exported as .${ext}`, 'success');
-}
-
-function buildGitHubReadyMd(suggestion, rawContent) {
-  const product = state.selectedProduct?.name || 'Unknown Product';
-  const repo = state.selectedProduct?.repo || 'unknown-repo';
-  const folder = state.selectedProduct?.folder || '';
-  const date = new Date().toISOString().slice(0, 10);
-  const type = suggestion.type || 'new';
-  const rec = suggestion.recommendation || '';
-
-  let header = '';
-  if (type === 'new' && rec === 'expand-unit' && suggestion.targetUnit) {
-    header = `---
-# Subsection Addition for Unit: ${suggestion.targetUnit.title}
-# Module: ${suggestion.targetModule.title}
-# Product: ${product}
-# Repository: MicrosoftDocs/${repo}
-# Target module: ${suggestion.targetModule.uid || suggestion.targetModule.title}
-# Generated: ${date}
-# Type: Expand existing unit with new subsections
----
-
-`;
-  } else if (type === 'new' && (rec === 'add-unit') && suggestion.targetModule) {
-    header = `---
-# New Unit(s) for Module: ${suggestion.targetModule.title}
-# Product: ${product}
-# Repository: MicrosoftDocs/${repo}
-# Target module: ${suggestion.targetModule.uid || suggestion.targetModule.title}
-# Generated: ${date}
-# Type: Add new unit to existing module
----
-
-`;
-  } else if (type === 'new') {
-    header = `---
-# New Training Module Draft
-# Product: ${product}
-# Repository: MicrosoftDocs/${repo}
-# Suggested path: ${folder}/[module-name]/
-# Generated: ${date}
-# Type: New module
----
-
-`;
-  } else if (type === 'update') {
-    header = `---
-# Content Update for: ${suggestion.module?.title || suggestion.title}
-# Product: ${product}
-# Repository: MicrosoftDocs/${repo}
-# Module UID: ${suggestion.module?.uid || 'unknown'}
-# Generated: ${date}
-# Type: Update existing content
----
-
-`;
-  } else {
-    header = `---
-# Content Refresh Plan for: ${suggestion.module?.title || suggestion.title}
-# Product: ${product}
-# Generated: ${date}
-# Type: Module refresh
----
-
-`;
-  }
-
-  // Extract markdown code blocks and inline them as-is
-  let processedContent = rawContent;
-  // Ensure code blocks are preserved properly
-  processedContent = processedContent.replace(/```yaml\n### YAMLTitle/g, '```yaml\n### YAML\nTitle');
-
-  return header + processedContent;
-}
-
-function buildMdBundle(suggestion, rawContent) {
-  const product = state.selectedProduct?.name || 'Unknown Product';
-  const repo = state.selectedProduct?.repo || 'unknown-repo';
-  const folder = state.selectedProduct?.folder || '';
-  const date = new Date().toISOString().slice(0, 10);
-
-  let bundle = `# Content Bundle — ${product}
-> Generated ${date} by Team Content Gap Manager
+  if (format === 'bundle') {
+    // Full module bundle — all units in one file with structure
+    const repo = state.selectedProduct?.repo || 'unknown-repo';
+    const folder = state.selectedProduct?.folder || '';
+    let bundle = `# Training Module: ${mod.title}
+> Generated ${dateStr} by Team Content Gap Manager
+> Product: ${product}
 > Repository: MicrosoftDocs/${repo}
+> Module Slug: ${mod.slug}
+> Units: ${mod.units.length}
+> Total Content: ${mod.totalChars.toLocaleString()} characters
 
 ---
 
-## How to Use This File
+## File Structure
 
-1. Review each section below
-2. Copy the relevant YAML/Markdown blocks into the appropriate repo files
-3. For new modules: create the folder structure shown in "Placement"
-4. For existing module additions: find the target module and add the new units
-5. Submit a pull request to MicrosoftDocs/${repo}
+\`\`\`
+${folder}/${mod.slug}/
+├── index.yml
+├── includes/
+`;
+    mod.units.forEach(u => { bundle += `│   ├── ${u.name}.md\n`; });
+    bundle += `\`\`\`
 
 ---
 
 `;
+    // Each unit as a section
+    mod.units.forEach((u, i) => {
+      bundle += `## File: includes/${u.name}.md
 
-  // Add the raw AI content
-  bundle += rawContent;
+\`\`\`markdown
+${u.content}
+\`\`\`
 
-  // Add a file checklist at the end
-  bundle += `
+---
+
+`;
+    });
+
+    // index.yml
+    bundle += `## File: index.yml
+
+\`\`\`yaml
+### YamlMime:Module
+uid: learn.${mod.slug}
+title: ${mod.title}
+metadata:
+  title: ${mod.title}
+  description: Training module for ${product}
+  ms.date: ${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
+  author: AuthorName
+  ms.author: authoralias
+  ms.topic: module
+summary: |
+  [Module summary here]
+units:
+${mod.units.map(u => `  - learn.${mod.slug}.${u.slug}`).join('\n')}
+\`\`\`
 
 ---
 
 ## PR Checklist
 
-- [ ] Created/updated index.yml with correct UIDs
+- [ ] Created index.yml with correct UIDs
 - [ ] Added unit .yml files with proper metadata
-- [ ] Added unit .md content files
+- [ ] Added unit .md content files in includes/
 - [ ] Verified all cross-references and links
 - [ ] Added screenshots to media/ folder (if referenced)
 - [ ] Ran local build/preview to verify formatting
@@ -4127,8 +4040,42 @@ function buildMdBundle(suggestion, rawContent) {
 *Generated by [Team Content Gap Manager](https://oscarefranco.github.io/content-manager/team.html)*
 `;
 
-  return bundle;
+    const blob = new Blob([bundle], { type: 'text/markdown' });
+    downloadBlob(blob, `${mod.slug}-module-bundle-${dateStr}.md`);
+    toast('Module bundle exported', 'success');
+
+  } else if (format === 'md') {
+    // Export current unit as .md
+    const unit = mod.units[editorState.currentUnitIdx];
+    if (!unit) return;
+    const header = `---\n# Unit: ${unit.title}\n# Module: ${mod.title}\n# Product: ${product}\n# Generated: ${dateStr}\n---\n\n`;
+    const blob = new Blob([header + unit.content], { type: 'text/markdown' });
+    downloadBlob(blob, `${unit.name}-${dateStr}.md`);
+    toast(`Exported ${unit.name}.md`, 'success');
+
+  } else if (format === 'yaml') {
+    // Generate YAML metadata for all units
+    let yaml = `### YamlMime:Module\nuid: learn.${mod.slug}\ntitle: ${mod.title}\nmetadata:\n  title: ${mod.title}\n  description: Training module for ${product}\n  ms.date: ${new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}\n  author: AuthorName\n  ms.author: authoralias\n  ms.topic: module\nunits:\n`;
+    mod.units.forEach(u => { yaml += `  - learn.${mod.slug}.${u.slug}\n`; });
+    const blob = new Blob([yaml], { type: 'text/yaml' });
+    downloadBlob(blob, `${mod.slug}-index-${dateStr}.yml`);
+    toast('YAML exported', 'success');
+
+  } else if (format === 'json') {
+    const blob = new Blob([JSON.stringify(mod, null, 2)], { type: 'application/json' });
+    downloadBlob(blob, `${mod.slug}-module-${dateStr}.json`);
+    toast('JSON exported', 'success');
+  }
 }
+
+function downloadBlob(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+// ── Content Plan (kept from original) ──
 
 async function generateContentPlan() {
   const { token } = getAIConfig();
@@ -4146,8 +4093,8 @@ async function generateContentPlan() {
   btn.disabled = true;
   btn.textContent = '⏳ Generating…';
 
-  const panelBody = document.getElementById('draft-panel-body');
-  panelBody.innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div> Generating content plan…</div>';
+  const body = document.getElementById('module-builder-body');
+  body.innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div> Generating content plan…</div>';
 
   const newCount = editorState.suggestions.filter(s => s.type === 'new').length;
   const updateCount = editorState.suggestions.filter(s => s.type === 'update').length;
@@ -4216,23 +4163,30 @@ Be actionable. This plan will be shared with the content team.`;
       product: state.selectedProduct.name,
     };
 
-    editorState.currentDraft = {
-      suggestion: { title: `Content Plan - ${state.selectedProduct.name}`, type: 'plan' },
-      content: reply,
+    // Show as a single-unit module for consistent display
+    editorState.currentModule = {
+      title: `Content Plan — ${state.selectedProduct.name}`,
+      slug: 'content-plan',
+      units: [{ name: 'content-plan', title: 'Content Plan', content: reply, slug: 'content-plan' }],
+      areas: [],
       generatedAt: new Date().toISOString(),
+      product: state.selectedProduct.name,
+      totalChars: reply.length,
     };
+    editorState.currentUnitIdx = 0;
 
-    document.getElementById('draft-panel-title').textContent = `📋 Content Plan — ${state.selectedProduct.name}`;
-    renderDraftPreview(reply);
-    document.getElementById('draft-panel-footer').style.display = 'flex';
-    document.getElementById('copy-draft-btn').style.display = 'inline-flex';
+    document.getElementById('module-builder-title').textContent = `📋 Content Plan — ${state.selectedProduct.name}`;
+    document.getElementById('module-builder-progress').style.display = 'none';
+    renderModuleOutput();
+    document.getElementById('module-builder-footer').style.display = 'flex';
+    document.getElementById('copy-module-btn').style.display = 'inline-flex';
     document.getElementById('export-plan-btn').style.display = 'inline-flex';
 
     toast('Content plan generated!', 'success');
   } catch (e) {
     if (e.message === 'NO_TOKEN') { toast('Add GitHub token in Settings', 'warning'); openSettings(); }
     else {
-      panelBody.innerHTML = `<div class="empty-state" style="padding:2rem;"><p style="color:var(--danger);">❌ Failed: ${escHtml(e.message)}</p></div>`;
+      body.innerHTML = `<div class="empty-state" style="padding:2rem;"><p style="color:var(--danger);">❌ Failed: ${escHtml(e.message)}</p></div>`;
       toast('Plan generation failed', 'warning');
     }
   }
@@ -4245,10 +4199,7 @@ function exportContentPlan() {
   if (!editorState.contentPlan) { toast('Generate a content plan first', 'warning'); return; }
   const name = (state.selectedProduct?.name || 'product').replace(/\s+/g, '-').toLowerCase();
   const blob = new Blob([editorState.contentPlan.content], { type: 'text/markdown' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `content-plan-${name}-${new Date().toISOString().slice(0, 10)}.md`;
-  a.click();
+  downloadBlob(blob, `content-plan-${name}-${new Date().toISOString().slice(0, 10)}.md`);
   toast('Content plan exported', 'success');
 }
 
