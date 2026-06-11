@@ -1808,13 +1808,20 @@ async function init() {
 
       if (Object.keys(trees).length > 0) {
         state.trees = trees;
+        // Debug: log sample paths to understand repo structure
+        for (const [repo, paths] of Object.entries(trees)) {
+          const indexPaths = paths.filter(p => p.includes('index.yml')).slice(0, 10);
+          console.log(`[DEBUG] ${repo} - ${paths.length} total paths. Sample index.yml paths:`, indexPaths);
+          const topFolders = [...new Set(paths.map(p => p.split('/')[0]))].sort();
+          console.log(`[DEBUG] ${repo} - Top-level folders:`, topFolders.slice(0, 20));
+        }
         state.discoveredProducts = discoverProducts(trees);
         dataSourceMode = 'github';
         useGitHub = true;
         const repoNames = Object.keys(trees).join(' + ');
         toast(`GitHub mode: ${state.discoveredProducts.length} products from ${repoNames}`, 'success');
-        if (bizTree.status === 'rejected') toast('⚠️ learn-bizapps-pr not accessible — using Catalog API for those products', 'warning');
-        if (dynTree.status === 'rejected') toast('⚠️ learn-dynamics-pr not accessible — using Catalog API for those products', 'warning');
+        if (bizTree.status === 'rejected') toast('⚠️ learn-bizapps-pr not accessible', 'warning');
+        if (dynTree.status === 'rejected') toast('⚠️ learn-dynamics-pr not accessible', 'warning');
       }
     } catch (e) {
       console.warn('GitHub mode failed:', e);
