@@ -851,6 +851,9 @@ body {
       </div>
       <div class="page-header-actions">
         <input type="text" id="module-search" placeholder="Search modules…" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Segoe UI',sans-serif;outline:none;width:200px;background:var(--bg);" oninput="filterModules(this.value)" />
+        <select id="module-author-filter" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:'Segoe UI',sans-serif;background:var(--bg);" onchange="filterByAuthor(this.value)">
+          <option value="">All authors</option>
+        </select>
         <select id="module-sort" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:'Segoe UI',sans-serif;background:var(--bg);" onchange="sortModules(this.value)">
           <option value="title">Sort: Title</option>
           <option value="date">Sort: Date (newest)</option>
@@ -1932,6 +1935,7 @@ async function onProductChange(folder) {
 
     state.modules = modules;
     progressEl.style.display = 'none';
+    populateAuthorFilter();
 
     // Load doc TOC
     state.docTopics = null;
@@ -2115,8 +2119,9 @@ function toggleModuleExpand(el) {
 }
 
 function filterModules(q) {
-  if (!q) { renderModuleList(state.modules); return; }
-  const filtered = state.modules.filter(m =>
+  if (!q) { renderModuleList(getAuthorFilteredModules()); return; }
+  const base = getAuthorFilteredModules();
+  const filtered = base.filter(m =>
     m.title.toLowerCase().includes(q.toLowerCase()) ||
     m.summary.toLowerCase().includes(q.toLowerCase()) ||
     m.author.toLowerCase().includes(q.toLowerCase())
@@ -2124,8 +2129,44 @@ function filterModules(q) {
   renderModuleList(filtered);
 }
 
+function filterByAuthor(author) {
+  document.getElementById('module-search').value = '';
+  renderModuleList(getAuthorFilteredModules(author));
+}
+
+function getAuthorFilteredModules(author) {
+  const selected = author !== undefined ? author : document.getElementById('module-author-filter').value;
+  if (!selected) return state.modules;
+  return state.modules.filter(m => m.msAuthor === selected);
+}
+
+function populateAuthorFilter() {
+  const select = document.getElementById('module-author-filter');
+  const currentVal = select.value;
+  while (select.options.length > 1) select.remove(1);
+  
+  // Collect unique ms.author values and count
+  const authors = {};
+  for (const m of state.modules) {
+    const a = m.msAuthor || 'unknown';
+    authors[a] = (authors[a] || 0) + 1;
+  }
+  
+  // Sort by count descending
+  const sorted = Object.entries(authors).sort((a, b) => b[1] - a[1]);
+  for (const [author, count] of sorted) {
+    const opt = document.createElement('option');
+    opt.value = author;
+    opt.textContent = `${author} (${count})`;
+    select.appendChild(opt);
+  }
+  
+  // Restore selection if still valid
+  if (currentVal) select.value = currentVal;
+}
+
 function sortModules(by) {
-  const sorted = [...state.modules];
+  const sorted = [...getAuthorFilteredModules()];
   switch (by) {
     case 'title': sorted.sort((a, b) => a.title.localeCompare(b.title)); break;
     case 'date': sorted.sort((a, b) => new Date(b.msDate || 0) - new Date(a.msDate || 0)); break;
