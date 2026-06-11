@@ -1807,26 +1807,15 @@ async function init() {
   }
 
   // Fallback (or supplement) with public Catalog API
-  if (!useGitHub || state.discoveredProducts.length < 5) {
+  // ONLY use catalog if GitHub mode completely failed (no access to repos)
+  if (!useGitHub) {
     try {
       toast('Loading from Microsoft Learn Catalog API…', 'info');
       const catalog = await fetchCatalog();
       const catalogProducts = buildProductsFromCatalog(catalog);
-      dataSourceMode = useGitHub ? 'hybrid' : 'catalog';
-
-      if (useGitHub) {
-        // Merge: add catalog products not already from GitHub
-        const existingFolders = new Set(state.discoveredProducts.map(p => p.folder));
-        for (const cp of catalogProducts) {
-          if (!existingFolders.has(cp.folder)) state.discoveredProducts.push(cp);
-        }
-        state.discoveredProducts.sort((a, b) => a.name.localeCompare(b.name));
-      } else {
-        state.discoveredProducts = catalogProducts;
-      }
-
-      const label = dataSourceMode === 'catalog' ? 'Catalog API' : 'hybrid (GitHub + Catalog)';
-      toast(`${label}: ${state.discoveredProducts.length} products loaded`, 'success');
+      dataSourceMode = 'catalog';
+      state.discoveredProducts = catalogProducts;
+      toast(`Catalog API: ${state.discoveredProducts.length} products loaded`, 'success');
     } catch (e) {
       toast(`Catalog API error: ${e.message}`, 'warning');
       console.error(e);
