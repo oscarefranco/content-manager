@@ -750,6 +750,8 @@ body {
     <span class="topbar-title" id="topbar-title">Team Content Gap Manager</span>
     <div class="topbar-right">
       <span class="badge-warn" id="auth-badge" style="display:none;">⚠ Unauthenticated (60 req/hr)</span>
+      <button class="btn-settings" id="github-login-btn" onclick="initiateGitHubLogin()" style="display:none;">🔑 Sign in with GitHub</button>
+      <button class="btn-settings" id="github-logout-btn" onclick="logoutGitHub()" style="display:none;">🚪 Sign out</button>
       <span class="badge-model" id="model-badge">gpt-4.1-mini</span>
       <button class="btn-settings" onclick="openSettings()">⚙ Settings</button>
     </div>
@@ -1027,13 +1029,29 @@ body {
       <!-- URL Input Section -->
       <div class="url-input-section" id="url-input-section">
         <div class="url-input-header">
-          <h3>📎 Generate from URL</h3>
-          <p>Paste a documentation URL or GitHub repo URL to generate a full training module</p>
+          <h3>📎 Generate from URL or Repo</h3>
+          <p>Paste a documentation URL, or browse a private repo to pull source content</p>
         </div>
         <div class="url-input-row">
-          <input type="text" id="url-input" placeholder="https://learn.microsoft.com/... or https://github.com/..." />
+          <input type="text" id="url-input" placeholder="https://learn.microsoft.com/... or owner/repo/path/to/file.yml" />
           <button class="btn btn-primary" onclick="generateFromUrl()">🚀 Generate Module</button>
+          <button class="btn btn-secondary" onclick="openRepoBrowser()">📂 Browse Repo</button>
         </div>
+      </div>
+
+      <!-- Repo Browser Panel -->
+      <div class="url-input-section" id="repo-browser-panel" style="display:none;">
+        <div class="url-input-header" style="display:flex;align-items:center;gap:8px;">
+          <h3 style="flex:1;">📂 Repository Browser</h3>
+          <button class="btn btn-ghost btn-sm" onclick="closeRepoBrowser()">✕ Close</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
+          <input type="text" id="repo-browser-input" placeholder="owner/repo (e.g. MicrosoftDocs/learn-bizapps-pr)" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--bg);" />
+          <input type="text" id="repo-browser-branch" placeholder="main" style="width:100px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--bg);" />
+          <button class="btn btn-primary btn-sm" onclick="browseRepo()">Load</button>
+        </div>
+        <div id="repo-browser-breadcrumb" style="font-size:12px;color:var(--text-muted);margin-bottom:8px;"></div>
+        <div id="repo-browser-list" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);"></div>
       </div>
 
       <div id="editor-empty" class="empty-state">
@@ -1137,9 +1155,19 @@ body {
     </div>
     <div class="modal-body">
       <div class="field">
-        <label>GitHub Personal Access Token</label>
-        <input type="password" id="api-key-input" placeholder="ghp_… or github_pat_…" autocomplete="off" />
-        <p class="field-hint">Used for GitHub API auth &amp; GitHub Models AI. Generate at <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--primary);">github.com/settings/tokens</a>. Stored in localStorage as <code>gh_models_token</code>.</p>
+        <label>GitHub Authentication</label>
+        <div id="settings-auth-status" style="margin-bottom:8px;font-size:12px;"></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+          <button class="btn btn-primary btn-sm" onclick="initiateGitHubLogin()">🔑 Sign in with GitHub (SSO)</button>
+          <span style="font-size:11px;color:var(--text-muted);">Recommended — uses OAuth for private repo access</span>
+        </div>
+        <details style="margin-top:6px;">
+          <summary style="font-size:12px;color:var(--text-muted);cursor:pointer;">Or use a Personal Access Token instead</summary>
+          <div style="margin-top:8px;">
+            <input type="password" id="api-key-input" placeholder="ghp_… or github_pat_…" autocomplete="off" />
+            <p class="field-hint">Used for GitHub API auth &amp; GitHub Models AI. Generate at <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--primary);">github.com/settings/tokens</a>. Stored in localStorage as <code>gh_models_token</code>.</p>
+          </div>
+        </details>
       </div>
       <div class="field">
         <label>AI Model</label>
@@ -1179,6 +1207,71 @@ body {
 
 <div class="toast-container" id="toasts"></div>
 <script>
+// ══════════════════════════════════════════════════════════════════════════
+// GITHUB OAUTH SSO
+// ══════════════════════════════════════════════════════════════════════════
+
+const OAUTH_CLIENT_ID = 'Ov23liqIsK38zHrDUlDj';
+const OAUTH_PROXY_URL = 'https://github-oauth-proxy.oscarfranco.workers.dev';
+const OAUTH_REDIRECT_URI = 'https://oscarefranco.github.io/content-manager/team.html';
+const OAUTH_SCOPES = 'repo read:user';
+
+function initiateGitHubLogin() {
+  const state = crypto.randomUUID();
+  localStorage.setItem('oauth_state', state);
+  const authUrl = `https://github.com/login/oauth/authorize?client_id=${OAUTH_CLIENT_ID}&redirect_uri=${encodeURIComponent(OAUTH_REDIRECT_URI)}&scope=${encodeURIComponent(OAUTH_SCOPES)}&state=${state}`;
+  window.location.href = authUrl;
+}
+
+async function handleOAuthCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const returnedState = params.get('state');
+  if (!code) return false;
+
+  // Validate state to prevent CSRF
+  const savedState = localStorage.getItem('oauth_state');
+  if (returnedState !== savedState) {
+    console.error('OAuth state mismatch');
+    toast('GitHub sign-in failed: state mismatch', 'warning');
+    window.history.replaceState({}, '', window.location.pathname);
+    return false;
+  }
+  localStorage.removeItem('oauth_state');
+
+  // Clean URL immediately
+  window.history.replaceState({}, '', window.location.pathname);
+
+  try {
+    const resp = await fetch(OAUTH_PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    const data = await resp.json();
+    if (data.access_token) {
+      localStorage.setItem('gh_models_token', data.access_token);
+      localStorage.setItem('gh_auth_method', 'oauth');
+      toast('✓ Signed in with GitHub successfully!', 'success');
+      return true;
+    } else {
+      toast(`GitHub sign-in failed: ${data.error_description || data.error || 'Unknown error'}`, 'warning');
+      return false;
+    }
+  } catch (e) {
+    toast(`GitHub sign-in failed: ${e.message}`, 'warning');
+    return false;
+  }
+}
+
+function logoutGitHub() {
+  localStorage.removeItem('gh_models_token');
+  localStorage.removeItem('gh_auth_method');
+  updateAuthBadge();
+  toast('Signed out', 'info');
+  location.reload();
+}
+
 // ══════════════════════════════════════════════════════════════════════════
 // CONFIGURATION
 // ══════════════════════════════════════════════════════════════════════════
@@ -1675,6 +1768,9 @@ function flattenToc(toc, depth = 0, parentPath = '') {
 // ══════════════════════════════════════════════════════════════════════════
 
 async function init() {
+  // Handle OAuth callback if redirected from GitHub
+  const oauthHandled = await handleOAuthCallback();
+  
   loadSettings();
   updateAuthBadge();
 
@@ -1749,7 +1845,12 @@ async function init() {
 
 function updateAuthBadge() {
   const badge = document.getElementById('auth-badge');
-  badge.style.display = getToken() ? 'none' : 'inline';
+  const loginBtn = document.getElementById('github-login-btn');
+  const logoutBtn = document.getElementById('github-logout-btn');
+  const hasToken = !!getToken();
+  badge.style.display = hasToken ? 'none' : 'inline';
+  loginBtn.style.display = hasToken ? 'none' : 'inline-block';
+  logoutBtn.style.display = hasToken ? 'inline-block' : 'none';
 }
 
 function renderProductSelector() {
@@ -3863,10 +3964,23 @@ async function generateFromUrl() {
   const input = document.getElementById('url-input');
   const url = input.value.trim();
   if (!url) { toast('Enter a URL first', 'warning'); return; }
-  if (!url.startsWith('http')) { toast('Enter a valid URL starting with http(s)://', 'warning'); return; }
 
   const { token } = getAIConfig();
-  if (!token) { toast('Add your GitHub token in Settings first', 'warning'); openSettings(); return; }
+  if (!token) { toast('Sign in with GitHub or add a token in Settings first', 'warning'); openSettings(); return; }
+
+  // Support owner/repo/path shorthand (not a URL)
+  if (!url.startsWith('http') && url.includes('/')) {
+    const parts = url.split('/');
+    if (parts.length >= 3) {
+      const owner = parts[0];
+      const repo = parts[1];
+      const path = parts.slice(2).join('/');
+      await generateFromRepoFile(owner, repo, path);
+      return;
+    }
+  }
+
+  if (!url.startsWith('http')) { toast('Enter a valid URL starting with http(s):// or owner/repo/path', 'warning'); return; }
 
   // Show editor content area
   document.getElementById('editor-empty').style.display = 'none';
@@ -3891,6 +4005,155 @@ async function generateFromUrl() {
   } catch (e) {
     body.innerHTML = `<div class="empty-state" style="padding:2rem;"><p style="color:var(--danger);">❌ Failed to fetch URL: ${escHtml(e.message)}</p></div>`;
     toast('URL fetch failed', 'warning');
+  }
+}
+
+// ── Repo Browser ──
+
+let repoBrowserState = { owner: '', repo: '', branch: 'main', path: '' };
+
+function openRepoBrowser() {
+  const panel = document.getElementById('repo-browser-panel');
+  panel.style.display = '';
+  if (!getToken()) {
+    document.getElementById('repo-browser-list').innerHTML = '<p style="padding:16px;font-size:12px;color:var(--text-muted);">Sign in with GitHub first to browse private repos.</p>';
+  }
+}
+
+function closeRepoBrowser() {
+  document.getElementById('repo-browser-panel').style.display = 'none';
+}
+
+async function browseRepo(subPath) {
+  const token = getToken();
+  if (!token) { toast('Sign in with GitHub first', 'warning'); return; }
+
+  if (subPath === undefined) {
+    // Initial load from inputs
+    const input = document.getElementById('repo-browser-input').value.trim();
+    const branch = document.getElementById('repo-browser-branch').value.trim() || 'main';
+    const parts = input.split('/');
+    if (parts.length < 2) { toast('Enter owner/repo (e.g. MicrosoftDocs/learn-bizapps-pr)', 'warning'); return; }
+    repoBrowserState = { owner: parts[0], repo: parts[1], branch, path: '' };
+  } else {
+    repoBrowserState.path = subPath;
+  }
+
+  const { owner, repo, branch, path } = repoBrowserState;
+  const listEl = document.getElementById('repo-browser-list');
+  const breadcrumb = document.getElementById('repo-browser-breadcrumb');
+
+  // Breadcrumb
+  const crumbs = [`<a href="#" onclick="browseRepo('');return false;" style="color:var(--primary);">${owner}/${repo}</a>`];
+  if (path) {
+    const segments = path.split('/');
+    let cumulative = '';
+    for (const seg of segments) {
+      cumulative += (cumulative ? '/' : '') + seg;
+      const link = cumulative;
+      crumbs.push(`<a href="#" onclick="browseRepo('${link}');return false;" style="color:var(--primary);">${seg}</a>`);
+    }
+  }
+  breadcrumb.innerHTML = '📁 ' + crumbs.join(' / ');
+
+  listEl.innerHTML = '<div style="padding:16px;text-align:center;"><div class="loading-spinner"></div> Loading…</div>';
+
+  try {
+    let apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+    if (branch) apiUrl += `?ref=${branch}`;
+    const resp = await fetch(apiUrl, { headers: ghHeaders() });
+    if (!resp.ok) throw new Error(`GitHub API ${resp.status}: ${resp.statusText}`);
+    const items = await resp.json();
+
+    if (!Array.isArray(items)) {
+      // Single file was returned — use it
+      await selectRepoFile(owner, repo, path, items);
+      return;
+    }
+
+    // Sort: dirs first, then files
+    items.sort((a, b) => {
+      if (a.type === 'dir' && b.type !== 'dir') return -1;
+      if (a.type !== 'dir' && b.type === 'dir') return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    let html = '<div style="padding:4px;">';
+    if (path) {
+      const parent = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '';
+      html += `<div style="padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);" onclick="browseRepo('${parent}')">⬆️ ..</div>`;
+    }
+    for (const item of items) {
+      const icon = item.type === 'dir' ? '📁' : '📄';
+      const itemPath = path ? `${path}/${item.name}` : item.name;
+      if (item.type === 'dir') {
+        html += `<div style="padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;" onclick="browseRepo('${itemPath}')" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background=''">${icon} <span style="flex:1;">${item.name}</span></div>`;
+      } else {
+        const size = item.size > 1024 ? `${(item.size / 1024).toFixed(1)} KB` : `${item.size} B`;
+        html += `<div style="padding:6px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;" onclick="selectRepoFile('${owner}','${repo}','${itemPath}')" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background=''">${icon} <span style="flex:1;">${item.name}</span> <span style="font-size:10px;color:var(--text-light);">${size}</span></div>`;
+      }
+    }
+    html += '</div>';
+    listEl.innerHTML = html;
+
+  } catch (e) {
+    listEl.innerHTML = `<p style="padding:16px;font-size:12px;color:var(--danger);">❌ ${escHtml(e.message)}</p>`;
+  }
+}
+
+async function selectRepoFile(owner, repo, path, preloadedData) {
+  closeRepoBrowser();
+  document.getElementById('url-input').value = `${owner}/${repo}/${path}`;
+  await generateFromRepoFile(owner, repo, path, preloadedData);
+}
+
+async function generateFromRepoFile(owner, repo, path, preloadedData) {
+  const token = getToken();
+  if (!token) { toast('Sign in with GitHub first', 'warning'); return; }
+
+  document.getElementById('editor-empty').style.display = 'none';
+  document.getElementById('editor-content').style.display = '';
+
+  const body = document.getElementById('module-builder-body');
+  const titleEl = document.getElementById('module-builder-title');
+  titleEl.textContent = `Loading ${path.split('/').pop()}…`;
+  body.innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div> Fetching file from repo…</div>';
+
+  try {
+    let data = preloadedData;
+    if (!data) {
+      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+      const resp = await fetch(apiUrl, { headers: ghHeaders() });
+      if (!resp.ok) throw new Error(`GitHub API ${resp.status}: ${resp.statusText}`);
+      data = await resp.json();
+    }
+
+    let content = '';
+    if (data.content) {
+      content = atob(data.content.replace(/\n/g, ''));
+    } else if (data.download_url) {
+      const dl = await fetch(data.download_url, { headers: ghHeaders() });
+      content = await dl.text();
+    }
+
+    if (!content || content.length < 20) {
+      body.innerHTML = `<div class="empty-state" style="padding:2rem;"><p style="color:var(--danger);">⚠️ File is empty or too small to generate a module.</p></div>`;
+      return;
+    }
+
+    const title = path.split('/').pop().replace(/\.(yml|yaml|md|markdown)$/i, '').replace(/[-_]/g, ' ');
+    toast(`Loaded: "${title}" (${content.length.toLocaleString()} chars) from ${owner}/${repo}`, 'success');
+
+    const extracted = {
+      title,
+      rawText: content,
+      sourceUrl: `https://github.com/${owner}/${repo}/blob/main/${path}`,
+    };
+    await generateFullModule(extracted);
+
+  } catch (e) {
+    body.innerHTML = `<div class="empty-state" style="padding:2rem;"><p style="color:var(--danger);">❌ Failed to load file: ${escHtml(e.message)}</p></div>`;
+    toast('Repo file load failed', 'warning');
   }
 }
 
@@ -4238,6 +4501,18 @@ function openSettings() {
   document.getElementById('ai-model-select').value = localStorage.getItem('gh_models_model') || 'openai/gpt-4.1-mini';
   document.getElementById('cache-ttl-select').value = localStorage.getItem('team_cache_ttl') || '4';
   document.getElementById('display-name-input').value = localStorage.getItem('team_display_name') || '';
+
+  // Show auth status
+  const authStatus = document.getElementById('settings-auth-status');
+  const method = localStorage.getItem('gh_auth_method');
+  if (getToken()) {
+    authStatus.innerHTML = method === 'oauth'
+      ? '<span style="color:var(--success);">✓ Signed in via GitHub OAuth</span> · <a href="#" onclick="logoutGitHub();return false;" style="color:var(--danger);font-size:11px;">Sign out</a>'
+      : '<span style="color:var(--success);">✓ Authenticated via PAT</span>';
+  } else {
+    authStatus.innerHTML = '<span style="color:var(--warning);">⚠ Not authenticated — limited to 60 requests/hr</span>';
+  }
+
   document.getElementById('settings-modal').classList.add('open');
 }
 
@@ -4247,8 +4522,13 @@ function closeSettings() {
 
 function saveSettings() {
   const token = document.getElementById('api-key-input').value.trim();
-  if (token) localStorage.setItem('gh_models_token', token);
-  else localStorage.removeItem('gh_models_token');
+  if (token) {
+    localStorage.setItem('gh_models_token', token);
+    localStorage.setItem('gh_auth_method', 'pat');
+  } else if (!localStorage.getItem('gh_auth_method') || localStorage.getItem('gh_auth_method') === 'pat') {
+    localStorage.removeItem('gh_models_token');
+    localStorage.removeItem('gh_auth_method');
+  }
 
   localStorage.setItem('gh_models_model', document.getElementById('ai-model-select').value);
   localStorage.setItem('team_cache_ttl', document.getElementById('cache-ttl-select').value);
