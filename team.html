@@ -1574,45 +1574,50 @@ async function fetchRepoTree(owner, repo) {
 
 function discoverProducts(trees) {
   const products = [];
-  const indexPattern = /^([^/]+)\/([^/]+)\/index\.yml$/;
 
   for (const [repo, paths] of Object.entries(trees)) {
     const folderModules = {};
     for (const p of paths) {
-      // Match paths like folder/module-name/index.yml
-      // Exclude paths/ and achievements/
-      if (p.includes('/index.yml') && !p.startsWith('paths/') && !p.includes('achievements/')) {
+      // Only match: topFolder/moduleName/index.yml (exactly 3 path segments)
+      // Exclude paths/, achievements/, and includes
+      if (!p.startsWith('paths/') && !p.includes('achievements/') && !p.includes('/includes/')) {
         const parts = p.split('/');
-        // We want: topFolder/moduleName/index.yml (3 parts)
-        // or topFolder/subFolder/moduleName/index.yml (4+ parts)
-        if (parts.length >= 3 && parts[parts.length - 1] === 'index.yml') {
+        if (parts.length === 3 && parts[2] === 'index.yml') {
           const topFolder = parts[0];
+          const moduleName = parts[1];
+          if (moduleName === 'includes' || moduleName === 'media') continue;
           if (!folderModules[topFolder]) folderModules[topFolder] = [];
           folderModules[topFolder].push({
             path: p,
-            moduleFolder: parts[parts.length - 2],
+            moduleFolder: moduleName,
             fullPath: p,
           });
         }
       }
     }
 
+    // Include ALL folders that have modules — use FOLDER_PRODUCT_MAP for friendly names only
     for (const [folder, modules] of Object.entries(folderModules)) {
+      if (modules.length === 0) continue;
       const mapping = FOLDER_PRODUCT_MAP[folder];
-      if (mapping && mapping.repo === repo) {
-        products.push({
-          folder,
-          name: mapping.name,
-          service: mapping.service,
-          repo,
-          owner: 'MicrosoftDocs',
-          modules,
-        });
-      }
+      products.push({
+        folder,
+        name: mapping ? mapping.name : formatFolderName(folder),
+        service: mapping ? mapping.service : folder,
+        repo,
+        owner: 'MicrosoftDocs',
+        modules,
+      });
     }
   }
 
   return products.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function formatFolderName(folder) {
+  return folder
+    .replace(/[-_]/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
 }
 
 // ══════════════════════════════════════════════════════════════════════════
