@@ -1578,18 +1578,22 @@ function discoverProducts(trees) {
   for (const [repo, paths] of Object.entries(trees)) {
     const folderModules = {};
     for (const p of paths) {
-      // Only match: topFolder/moduleName/index.yml (exactly 3 path segments)
-      // Exclude paths/, achievements/, and includes
-      if (!p.startsWith('paths/') && !p.includes('achievements/') && !p.includes('/includes/')) {
+      // Match index.yml files, exclude paths/, achievements/, includes
+      if (p.endsWith('/index.yml') && !p.startsWith('paths/') && !p.includes('achievements/') && !p.includes('/includes/')) {
         const parts = p.split('/');
-        if (parts.length === 3 && parts[2] === 'index.yml') {
+        // Need at least topFolder/moduleName/index.yml (3+ parts)
+        if (parts.length >= 3) {
           const topFolder = parts[0];
-          const moduleName = parts[1];
+          const moduleName = parts[parts.length - 2]; // The folder containing index.yml
           if (moduleName === 'includes' || moduleName === 'media') continue;
           if (!folderModules[topFolder]) folderModules[topFolder] = [];
+          // Avoid duplicates for same module (only take the top-level index.yml per module path)
+          const moduleKey = parts.slice(0, 2).join('/');
+          const alreadyAdded = folderModules[topFolder].some(m => m.path.startsWith(moduleKey + '/') || m.path === moduleKey + '/index.yml');
+          if (alreadyAdded) continue;
           folderModules[topFolder].push({
             path: p,
-            moduleFolder: moduleName,
+            moduleFolder: parts[1], // Direct child folder of the top-level folder
             fullPath: p,
           });
         }
