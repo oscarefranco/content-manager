@@ -1201,6 +1201,7 @@ body {
     </div>
     <div class="modal-footer">
       <button class="btn btn-danger btn-sm" onclick="clearAllCache()">🗑 Clear cache</button>
+      <button class="btn btn-sm" style="background:var(--warning);color:#000;" onclick="runDiagnostics()">🔍 Test Connection</button>
       <div style="flex:1;"></div>
       <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
       <button class="btn btn-primary" onclick="saveSettings()">Save</button>
@@ -1808,7 +1809,7 @@ async function init() {
   // Try GitHub Trees API first (rich data), fall back to public Catalog API
   let useGitHub = false;
 
-  if (getToken()) {
+   if (getToken()) {
     try {
       toast('Trying GitHub repo access…', 'info');
       const [bizTree, dynTree] = await Promise.allSettled([
@@ -1818,9 +1819,15 @@ async function init() {
 
       const trees = {};
       if (bizTree.status === 'fulfilled') trees['learn-bizapps-pr'] = bizTree.value;
-      else console.warn('learn-bizapps-pr:', bizTree.reason?.message);
+      else {
+        console.warn('learn-bizapps-pr:', bizTree.reason?.message);
+        toast(`learn-bizapps-pr: ${bizTree.reason?.message || 'access failed'}`, 'error');
+      }
       if (dynTree.status === 'fulfilled') trees['learn-dynamics-pr'] = dynTree.value;
-      else console.warn('learn-dynamics-pr:', dynTree.reason?.message);
+      else {
+        console.warn('learn-dynamics-pr:', dynTree.reason?.message);
+        toast(`learn-dynamics-pr: ${dynTree.reason?.message || 'access failed'}`, 'error');
+      }
 
       if (Object.keys(trees).length > 0) {
         state.trees = trees;
@@ -1829,11 +1836,12 @@ async function init() {
         useGitHub = true;
         const repoNames = Object.keys(trees).join(' + ');
         toast(`GitHub mode: ${state.discoveredProducts.length} products from ${repoNames}`, 'success');
-        if (bizTree.status === 'rejected') toast('⚠️ learn-bizapps-pr not accessible', 'warning');
-        if (dynTree.status === 'rejected') toast('⚠️ learn-dynamics-pr not accessible', 'warning');
+      } else {
+        toast('Could not access either repo. Use Settings → Test Connection to diagnose.', 'error');
       }
     } catch (e) {
       console.warn('GitHub mode failed:', e);
+      toast(`GitHub error: ${e.message}`, 'error');
     }
   }
 
@@ -4579,7 +4587,9 @@ function closeSettings() {
 }
 
 function saveSettings() {
-  const token = document.getElementById('api-key-input').value.trim();
+  let token = document.getElementById('api-key-input').value.trim();
+  // Clean up common mistakes: remove "Bearer " or "token " prefix if user pasted it
+  token = token.replace(/^(Bearer|token)\s+/i, '');
   if (token) {
     localStorage.setItem('gh_models_token', token);
     localStorage.setItem('gh_auth_method', 'pat');
@@ -4608,6 +4618,130 @@ function loadSettings() {
   if (name) {
     document.getElementById('topbar-title').textContent = `Team Content Gap Manager · ${name}`;
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// DIAGNOSTICS — Test Connection
+// ══════════════════════════════════════════════════════════════════════════
+
+async function runDiagnostics() {
+  const token = getToken();
+  const lines = [];
+  const log = (msg) => { lines.push(msg); console.log('[DIAG]', msg); };
+
+  log('=== Connection Diagnostics ===');
+  log(`Token present: ${!!token}`);
+  if (token) {
+    log(`Token prefix: ${token.substring(0, 8)}...`);
+    log(`Token length: ${token.length}`);
+    log(`Auth method: ${localStorage.getItem('gh_auth_method') || 'unknown'}`);
+    if (token.startsWith('ghp_')) log('Token type: Classic PAT ✓');
+    else if (token.startsWith('github_pat_')) log('Token type: Fine-grained PAT (⚠ may not work with SSO orgs)');
+    else if (token.startsWith('gho_')) log('Token type: OAuth token (⚠ may get 403 on SSO-protected orgs)');
+    else log('Token type: Unknown format');
+  } else {
+    log('❌ No token found. Enter a PAT in Settings first.');
+    alert(lines.join('\n'));
+    return;
+  }
+
+  // Test 1: Verify token works at all
+  log('\n--- Test 1: Token validity (GET /user) ---');
+  try {
+    const r = await fetch('https://api.github.com/user', { headers: ghHeaders() });
+    if (r.ok) {
+      const u = await r.json();
+      log(`✅ Token valid. Authenticated as: ${u.login} (${u.name || 'no name'})`);
+      log(`   Scopes: ${r.headers.get('x-oauth-scopes') || '(not returned)'}`);
+    } else {
+      log(`❌ Token invalid (${r.status}). Response: ${await r.text()}`);
+      alert(lines.join('\n'));
+      return;
+    }
+  } catch (e) {
+    log(`❌ Network error: ${e.message}`);
+    alert(lines.join('\n'));
+    return;
+  }
+
+  // Test 2: Check repo access
+  for (const repo of ['learn-bizapps-pr', 'learn-dynamics-pr']) {
+    log(`\n--- Test 2: Repo access (${repo}) ---`);
+    try {
+      const r = await fetch(`https://api.github.com/repos/MicrosoftDocs/${repo}`, { headers: ghHeaders() });
+      if (r.ok) {
+        const info = await r.json();
+        log(`✅ Can access ${repo}. Default branch: ${info.default_branch}, Private: ${info.private}`);
+
+        // Test 3: Try tree API
+        log(`--- Test 3: Tree API (${repo}, branch: ${info.default_branch}) ---`);
+        const tr = await fetch(`https://api.github.com/repos/MicrosoftDocs/${repo}/git/trees/${info.default_branch}?recursive=1`, { headers: ghHeaders() });
+        if (tr.ok) {
+          const td = await tr.json();
+          const allPaths = (td.tree || []).map(n => n.path);
+          const indexPaths = allPaths.filter(p => p.endsWith('/index.yml'));
+          log(`✅ Tree loaded: ${allPaths.length} total paths, ${indexPaths.length} index.yml files, truncated: ${td.truncated}`);
+          // Show top-level folders
+          const topFolders = [...new Set(allPaths.map(p => p.split('/')[0]))].sort();
+          log(`   Top-level folders (${topFolders.length}): ${topFolders.slice(0, 15).join(', ')}${topFolders.length > 15 ? '...' : ''}`);
+          // Show sample index.yml paths
+          log(`   Sample index.yml paths:`);
+          indexPaths.slice(0, 8).forEach(p => log(`     ${p}`));
+
+          // Test folder discovery
+          const testTrees = { [repo]: allPaths };
+          const products = discoverProducts(testTrees);
+          log(`   discoverProducts found: ${products.length} products`);
+          products.forEach(p => log(`     📁 ${p.folder} → "${p.name}" (${p.modules.length} modules)`));
+        } else {
+          log(`❌ Tree API failed (${tr.status}): ${await tr.text()}`);
+        }
+      } else if (r.status === 403) {
+        log(`❌ 403 Forbidden. Your token lacks access.`);
+        log(`   → For MicrosoftDocs org repos, you need a Classic PAT (ghp_...) with "repo" scope`);
+        log(`   → AND you must authorize SSO: github.com/settings/tokens → Configure SSO → Authorize for MicrosoftDocs`);
+        log(`   Response: ${await r.text()}`);
+      } else if (r.status === 404) {
+        log(`❌ 404 Not Found. Repo doesn't exist or token has no access at all.`);
+      } else {
+        log(`❌ Error ${r.status}: ${await r.text()}`);
+      }
+    } catch (e) {
+      log(`❌ Network error: ${e.message}`);
+    }
+  }
+
+  // Test 4: Rate limit check
+  log('\n--- Rate Limit ---');
+  try {
+    const r = await fetch('https://api.github.com/rate_limit', { headers: ghHeaders() });
+    if (r.ok) {
+      const d = await r.json();
+      log(`Core: ${d.resources.core.remaining}/${d.resources.core.limit} remaining (resets ${new Date(d.resources.core.reset * 1000).toLocaleTimeString()})`);
+    }
+  } catch (e) { /* ignore */ }
+
+  log('\n=== End Diagnostics ===');
+
+  // Show results in a modal-like alert (also logged to console)
+  const resultText = lines.join('\n');
+  console.log(resultText);
+
+  // Create a nicer display
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:20000;display:flex;align-items:center;justify-content:center;';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  const box = document.createElement('div');
+  box.style.cssText = 'background:var(--bg-primary,#1e1e2e);color:var(--text-primary,#cdd6f4);border-radius:12px;padding:24px;max-width:700px;max-height:80vh;overflow:auto;font-family:monospace;font-size:12px;white-space:pre-wrap;line-height:1.6;box-shadow:0 8px 32px rgba(0,0,0,0.5);';
+  box.textContent = resultText;
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'Close';
+  closeBtn.style.cssText = 'margin-top:16px;padding:8px 24px;background:var(--primary,#89b4fa);color:#000;border:none;border-radius:6px;cursor:pointer;font-size:13px;';
+  closeBtn.onclick = () => overlay.remove();
+  box.appendChild(document.createElement('br'));
+  box.appendChild(closeBtn);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
