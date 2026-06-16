@@ -1333,6 +1333,10 @@ const PRODUCT_DOC_TOC = {
   'Dynamics 365 Human Resources': '/en-us/dynamics365/human-resources/toc.json',
   'Dynamics 365 Project Operations': '/en-us/dynamics365/project-operations/toc.json',
   'Dynamics 365 Contact Center': '/en-us/dynamics365/contact-center/toc.json',
+  'Industry Solutions': '/en-us/industry/toc.json',
+  'Healthcare': '/en-us/industry/healthcare/toc.json',
+  'Dynamics 365 Fraud Protection': '/en-us/dynamics365/fraud-protection/toc.json',
+  'Power Platform': '/en-us/power-platform/toc.json',
 };
 
 const CORS_PROXIES = [
@@ -1580,33 +1584,45 @@ function discoverProducts(trees) {
 
   for (const [repo, paths] of Object.entries(trees)) {
     const folderModules = {};
-    // Track which topFolder/directChild combos we've already counted
     const seen = new Set();
-    
+
+    // Detect if the repo has a top-level folder matching the repo name
+    // e.g. learn-bizapps-pr/power-virtual-agents/module/index.yml
+    // In that case, product folder is at depth 1, module at depth 2
+    const repoFolderCount = paths.filter(p => p.startsWith(repo + '/')).length;
+    const hasRepoFolder = repoFolderCount > paths.length * 0.5;
+    const offset = hasRepoFolder ? 1 : 0;
+
     for (const p of paths) {
-      // Match index.yml files, exclude paths/, achievements/, includes
-      if (p.endsWith('/index.yml') && !p.startsWith('paths/') && !p.includes('achievements/') && !p.includes('/includes/')) {
-        const parts = p.split('/');
-        // Need at least topFolder/moduleName/index.yml (3+ parts)
-        if (parts.length >= 3) {
-          const topFolder = parts[0];
-          const directChild = parts[1]; // The direct subfolder = the module
-          if (directChild === 'includes' || directChild === 'media') continue;
-          // Only count one index.yml per direct child folder
-          const moduleKey = `${topFolder}/${directChild}`;
-          if (seen.has(moduleKey)) continue;
-          seen.add(moduleKey);
-          if (!folderModules[topFolder]) folderModules[topFolder] = [];
-          folderModules[topFolder].push({
-            path: `${topFolder}/${directChild}/index.yml`, // Normalize to the module-level index
-            moduleFolder: directChild,
-            fullPath: p,
-          });
-        }
-      }
+      if (!p.endsWith('/index.yml')) continue;
+      // Skip non-content paths
+      if (p.includes('/includes/') || p.includes('/media/') || p.includes('achievements/')) continue;
+
+      const parts = p.split('/');
+      // Need: [repoFolder?]/productFolder/moduleFolder/index.yml
+      const minParts = offset + 3; // e.g. 4 if repo folder present
+      if (parts.length < minParts) continue;
+
+      const productFolder = parts[offset];     // e.g. 'power-virtual-agents'
+      const moduleFolder = parts[offset + 1];  // e.g. 'build-chatbot'
+
+      // Skip utility folders
+      if (productFolder === 'includes' || productFolder === 'media' || productFolder === 'paths') continue;
+      if (moduleFolder === 'includes' || moduleFolder === 'media') continue;
+
+      // Only count one index.yml per product/module combo
+      const moduleKey = `${productFolder}/${moduleFolder}`;
+      if (seen.has(moduleKey)) continue;
+      seen.add(moduleKey);
+
+      if (!folderModules[productFolder]) folderModules[productFolder] = [];
+      folderModules[productFolder].push({
+        path: p,
+        moduleFolder,
+        fullPath: p,
+      });
     }
 
-    // Include ALL folders that have modules — use FOLDER_PRODUCT_MAP for friendly names only
     for (const [folder, modules] of Object.entries(folderModules)) {
       if (modules.length === 0) continue;
       const mapping = FOLDER_PRODUCT_MAP[folder];
@@ -1808,13 +1824,6 @@ async function init() {
 
       if (Object.keys(trees).length > 0) {
         state.trees = trees;
-        // Debug: log sample paths to understand repo structure
-        for (const [repo, paths] of Object.entries(trees)) {
-          const indexPaths = paths.filter(p => p.includes('index.yml')).slice(0, 10);
-          console.log(`[DEBUG] ${repo} - ${paths.length} total paths. Sample index.yml paths:`, indexPaths);
-          const topFolders = [...new Set(paths.map(p => p.split('/')[0]))].sort();
-          console.log(`[DEBUG] ${repo} - Top-level folders:`, topFolders.slice(0, 20));
-        }
         state.discoveredProducts = discoverProducts(trees);
         dataSourceMode = 'github';
         useGitHub = true;
