@@ -1688,14 +1688,16 @@ function parseModuleYaml(text, path, repo) {
           keyIndent = line.search(/\S/);
         }
       } else {
-        // Check if this line is a list item (starts with - at deeper indent)
+        // Check if this line is a list item
         const itemMatch = line.match(/^(\s*)-\s+(.+)/);
-        if (itemMatch && itemMatch[1].length > keyIndent) {
+        if (itemMatch && itemMatch[1].length >= keyIndent) {
           items.push(itemMatch[2].trim());
         } else if (line.trim() === '' || line.trim().startsWith('#')) {
           continue; // skip blank lines and comments
+        } else if (/^\s*\S+:/.test(line)) {
+          break; // hit another YAML key — stop collecting
         } else {
-          break; // different key or section — stop collecting
+          break;
         }
       }
     }
