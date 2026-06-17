@@ -1658,36 +1658,88 @@ function formatFolderName(folder) {
 // ══════════════════════════════════════════════════════════════════════════
 
 function parseModuleYaml(text, path, repo) {
-  // Allow optional leading whitespace for fields that may be nested under metadata:
-  const get = (pattern) => {
-    const m = text.match(pattern);
-    return m ? m[1].trim() : '';
+  // Normalize line endings
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const lines = normalized.split('\n');
+
+  // Simple key-value extractor: finds first occurrence of "key: value" at any indentation
+  const get = (key) => {
+    const escaped = key.replace(/\./g, '\\.');
+    const re = new RegExp(`^\\s*${escaped}:\\s*(.+)$`);
+    for (const line of lines) {
+      const m = line.match(re);
+      if (m) return m[1].trim();
+    }
+    return '';
   };
 
+  // List extractor: finds "key:" then collects all "- value" lines until next non-list line
   const getList = (key) => {
-    // Match key: followed by indented list items (allow optional leading whitespace on key)
-    const pattern = new RegExp(`^\\s*${key}:\\s*\\n((?:\\s+-\\s+.+\\n?)*)`, 'm');
-    const m = text.match(pattern);
-    if (!m) return [];
-    return m[1].split('\n').map(l => l.replace(/^\s*-\s*/, '').trim()).filter(Boolean);
+    const escaped = key.replace(/\./g, '\\.');
+    const keyRe = new RegExp(`^\\s*${escaped}:\\s*$`);
+    let collecting = false;
+    let keyIndent = -1;
+    const items = [];
+    for (const line of lines) {
+      if (!collecting) {
+        const km = line.match(keyRe);
+        if (km) {
+          collecting = true;
+          keyIndent = line.search(/\S/);
+        }
+      } else {
+        // Check if this line is a list item (starts with - at deeper indent)
+        const itemMatch = line.match(/^(\s*)-\s+(.+)/);
+        if (itemMatch && itemMatch[1].length > keyIndent) {
+          items.push(itemMatch[2].trim());
+        } else if (line.trim() === '' || line.trim().startsWith('#')) {
+          continue; // skip blank lines and comments
+        } else {
+          break; // different key or section — stop collecting
+        }
+      }
+    }
+    return items;
   };
 
-  const title = get(/^\s*title:\s*(.+)$/m);
-  const msDate = get(/^\s*ms\.date:\s*(.+)$/m);
-  const msService = get(/^\s*ms\.service:\s*(.+)$/m);
-  const updateCycle = get(/^\s*ms\.update-cycle:\s*(.+)$/m);
-  const author = get(/^\s*author:\s*(.+)$/m);
-  const msAuthor = get(/^\s*ms\.author:\s*(.+)$/m);
-  const uid = get(/^\s*uid:\s*(.+)$/m);
+  const title = get('title');
+  const msDate = get('ms.date');
+  const msService = get('ms.service');
+  const updateCycle = get('ms.update-cycle');
+  const author = get('author');
+  const msAuthor = get('ms.author');
+  const uid = get('uid');
 
-  // Summary: multiline block scalar
+  // Summary: collect lines after "summary:" — handle both inline and block scalar (|)
   let summary = '';
-  const sumMatch = text.match(/^\s*summary:\s*\|\s*\n([\s\S]*?)(?=\n\s*[a-zA-Z])/m);
-  if (sumMatch) {
-    summary = sumMatch[1].replace(/^\s{2,}/gm, '').trim();
+  const sumInline = get('summary');
+  if (sumInline && sumInline !== '|' && sumInline !== '>') {
+    summary = sumInline;
   } else {
-    summary = get(/^\s*summary:\s*(.+)$/m);
+    // Block scalar: find summary: then collect indented lines
+    let collecting = false;
+    let sumIndent = -1;
+    const sumLines = [];
+    for (const line of lines) {
+      if (!collecting) {
+        if (/^\s*summary:\s*[|>]?\s*$/.test(line)) {
+          collecting = true;
+          sumIndent = line.search(/\S/);
+        }
+      } else {
+        if (line.trim() === '') { sumLines.push(''); continue; }
+        const indent = line.search(/\S/);
+        if (indent > sumIndent) {
+          sumLines.push(line.trim());
+        } else {
+          break;
+        }
+      }
+    }
+    summary = sumLines.join(' ').trim();
   }
+  // Remove module-banner include lines
+  summary = summary.replace(/\[!include\[.*?\]\(.*?\)\]/gi, '').trim();
 
   const products = getList('products');
   const units = getList('units');
@@ -1747,7 +1799,14 @@ async function fetchModuleData(product, onProgress) {
       const raw = json.content.replace(/\n/g, '');
       const bytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0));
       const text = new TextDecoder('utf-8').decode(bytes);
-      if (loaded === 0) console.log('[SAMPLE YAML]', mod.path, '\n', text.substring(0, 800));
+      if (loaded === 0) {
+        console.log('[SAMPLE YAML]', mod.path, '\n', text.substring(0, 600));
+        const parsed = parseModuleYaml(text, mod.path, product.repo);
+        console.log('[PARSED]', { title: parsed.title, msAuthor: parsed.msAuthor, msDate: parsed.msDate, unitCount: parsed.unitCount, units: parsed.units.slice(0, 3), summary: parsed.summary?.substring(0, 100) });
+        loaded++;
+        if (onProgress) onProgress(loaded, total);
+        return parsed;
+      }
       loaded++;
       if (onProgress) onProgress(loaded, total);
       return parseModuleYaml(text, mod.path, product.repo);
