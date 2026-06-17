@@ -4348,6 +4348,95 @@ function selectSuggestion(idx) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// CONTENT GENERATION FOR GAP-DRIVEN SUGGESTIONS
+// ══════════════════════════════════════════════════════════════════════════
+
+async function generateContentForSuggestion(globalIdx) {
+  const suggestion = state.editorSuggestions[globalIdx];
+  if (!suggestion) {
+    console.error('Suggestion not found:', globalIdx);
+    toast('Suggestion not found', 'error');
+    return;
+  }
+
+  console.log('Generating content for suggestion:', suggestion);
+
+  // Mark as generating
+  suggestion.status = 'generating';
+  renderEditorView();
+
+  try {
+    // Build source from gap data
+    const source = buildSourceFromGapSuggestion(suggestion);
+    
+    console.log('Built source:', source);
+    
+    // Generate full module using existing pipeline
+    await generateFullModule(source);
+    
+    // Mark as generated
+    suggestion.status = 'generated';
+    suggestion.generatedContent = editorState.generatedModule; // Store reference
+    
+    toast(`Content generated for: ${suggestion.gap.docTopic.title}`, 'success');
+    
+  } catch (err) {
+    console.error('Generation failed:', err);
+    suggestion.status = 'pending';
+    toast(`Generation failed: ${err.message}`, 'error');
+  }
+  
+  renderEditorView();
+}
+
+function buildSourceFromGapSuggestion(suggestion) {
+  const productName = state.selectedProduct?.name || 'Unknown Product';
+  const gap = suggestion.gap;
+  const docTopic = gap.docTopic;
+  
+  let title = docTopic.title;
+  let description = `Training content for "${docTopic.title}"`;
+  let rawText = '';
+  
+  // Build context based on action type
+  switch (suggestion.actionType) {
+    case ACTION_TYPES.EDIT_EXISTING:
+      title = `Update: ${suggestion.targetModule}`;
+      description = `Edit existing unit "${suggestion.targetUnit}" to better cover "${docTopic.title}"`;
+      rawText = `Product: ${productName}\n\n# Action: EDIT EXISTING UNIT\n\nTarget Module: ${suggestion.targetModule}\nTarget Unit: ${suggestion.targetUnit}\n\n# Documentation Topic to Cover\nTitle: ${docTopic.title}\nPath: ${docTopic.path}\n\n# Current Coverage\n${gap.explanation}\n\n# AI Recommendation\n${suggestion.reasoning}\n\nConfidence: ${suggestion.confidence}%\nEffort: ${suggestion.estimatedEffort}`;
+      break;
+      
+    case ACTION_TYPES.ADD_TO_UNIT:
+      title = `Expand: ${suggestion.targetUnit}`;
+      description = `Add new section to unit "${suggestion.targetUnit}" covering "${docTopic.title}"`;
+      rawText = `Product: ${productName}\n\n# Action: ADD TO EXISTING UNIT\n\nTarget Module: ${suggestion.targetModule}\nTarget Unit: ${suggestion.targetUnit}\n\n# New Content Needed\nTitle: ${docTopic.title}\nPath: ${docTopic.path}\n\n# Context\n${gap.explanation}\n\n# AI Recommendation\n${suggestion.reasoning}\n\nConfidence: ${suggestion.confidence}%\nEffort: ${suggestion.estimatedEffort}`;
+      break;
+      
+    case ACTION_TYPES.NEW_UNIT:
+      title = `New Unit: ${docTopic.title}`;
+      description = `Create new unit for module "${suggestion.targetModule}" covering "${docTopic.title}"`;
+      rawText = `Product: ${productName}\n\n# Action: CREATE NEW UNIT\n\nTarget Module: ${suggestion.targetModule}\n\n# Documentation Topic\nTitle: ${docTopic.title}\nPath: ${docTopic.path}\n\n# Context\n${gap.explanation}\n\n# AI Recommendation\n${suggestion.reasoning}\n\nConfidence: ${suggestion.confidence}%\nEffort: ${suggestion.estimatedEffort}`;
+      break;
+      
+    case ACTION_TYPES.NEW_MODULE:
+      title = `New Module: ${docTopic.title}`;
+      description = `Create entirely new module for "${docTopic.title}"`;
+      rawText = `Product: ${productName}\n\n# Action: CREATE NEW MODULE\n\n# Documentation Topic\nTitle: ${docTopic.title}\nPath: ${docTopic.path}\n\n# Why New Module is Needed\n${gap.explanation}\n\n# AI Recommendation\n${suggestion.reasoning}\n\nConfidence: ${suggestion.confidence}%\nEffort: ${suggestion.estimatedEffort}`;
+      break;
+  }
+  
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'module';
+  
+  return {
+    title,
+    description,
+    rawText,
+    slug,
+    sourceUrl: docTopic.path || ''
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════════
 // RELEASE PLANNER
 // ══════════════════════════════════════════════════════════════════════════
 
