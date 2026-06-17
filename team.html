@@ -1855,17 +1855,24 @@ async function fetchModuleData(product, onProgress) {
 // ══════════════════════════════════════════════════════════════════════════
 
 async function fetchWithCorsProxy(url) {
-  try {
-    const resp = await fetch(url);
-    if (resp.ok) return await resp.json();
-  } catch {}
+  // Skip direct fetch — learn.microsoft.com has no CORS headers
+  // Go straight to proxy
   for (const makeProxy of CORS_PROXIES) {
     try {
       const proxyUrl = makeProxy(url);
       const resp = await fetch(proxyUrl);
-      if (resp.ok) return await resp.json();
-    } catch {}
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && (data.items || data.children)) return data;
+        // If proxy returned non-TOC data (e.g. error object), try next
+        if (data && !data.error) return data;
+      }
+      console.warn(`[fetchWithCorsProxy] Proxy returned ${resp.status} for ${url}`);
+    } catch (e) {
+      console.warn(`[fetchWithCorsProxy] Proxy error for ${url}:`, e.message);
+    }
   }
+  console.warn(`[fetchWithCorsProxy] All proxies failed for ${url}`);
   return null;
 }
 
