@@ -2356,7 +2356,8 @@ function renderDocTree() {
   const visible = state.flatDocTopics.filter(d => d.depth <= maxDepth);
 
   const productName = state.selectedProduct?.name || '';
-  const tocPath = PRODUCT_DOC_TOC[productName] || '';
+  const tocEntry = PRODUCT_DOC_TOC[productName] || '';
+  const tocPath = Array.isArray(tocEntry) ? tocEntry[0] : tocEntry;
   const basePath = tocPath.replace(/toc\.json$/, '');
 
   container.innerHTML = `<div class="doc-tree">${visible.map(d => {
