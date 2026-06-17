@@ -1719,23 +1719,37 @@ async function fetchModuleData(product, onProgress) {
 
   let loaded = 0;
   const total = product.modules.length;
+  let failCount = 0;
 
   const results = await asyncPool(CONCURRENCY_LIMIT, product.modules, async (mod) => {
     try {
       const branch = state.repoBranches[product.repo] || 'main';
-      const url = `https://raw.githubusercontent.com/${product.owner}/${product.repo}/${branch}/${mod.path}`;
-      const resp = await fetch(url, { headers: getToken() ? { 'Authorization': `Bearer ${getToken()}` } : {} });
-      if (!resp.ok) return null;
-      const text = await resp.text();
+      // Use Contents API (reliable with PATs) instead of raw.githubusercontent.com
+      const apiUrl = `https://api.github.com/repos/${product.owner}/${product.repo}/contents/${mod.path}?ref=${branch}`;
+      const resp = await fetch(apiUrl, { headers: ghHeaders() });
+      if (!resp.ok) {
+        failCount++;
+        if (failCount <= 3) console.warn(`[fetchModule] ${resp.status} for ${mod.path}`);
+        loaded++;
+        if (onProgress) onProgress(loaded, total);
+        return null;
+      }
+      const json = await resp.json();
+      // Contents API returns base64-encoded content
+      const text = atob(json.content.replace(/\n/g, ''));
       loaded++;
       if (onProgress) onProgress(loaded, total);
       return parseModuleYaml(text, mod.path, product.repo);
-    } catch {
+    } catch (e) {
+      failCount++;
+      if (failCount <= 3) console.warn(`[fetchModule] Error for ${mod.path}:`, e.message);
       loaded++;
       if (onProgress) onProgress(loaded, total);
       return null;
     }
   });
+
+  if (failCount > 0) console.warn(`[fetchModuleData] ${failCount}/${total} modules failed to load for ${product.folder}`);
 
   const modules = results.filter(Boolean);
   setCache(cacheKey, modules);
@@ -1899,7 +1913,7 @@ function renderProductSelector() {
     for (const p of products) {
       const opt = document.createElement('option');
       opt.value = p.folder;
-      opt.textContent = `${p.name} (${p.modules.length} modules)`;
+      opt.textContent = `${p.folder} — ${p.name} (${p.modules.length} modules)`;
       grp.appendChild(opt);
     }
     select.appendChild(grp);
@@ -1922,14 +1936,14 @@ async function onProductChange(folder) {
   state.selectedProduct = product;
   localStorage.setItem('team_selected_product', folder);
 
-  document.getElementById('topbar-title').textContent = `${product.name} — Team Content Gap Manager`;
-  document.getElementById('dashboard-subtitle').textContent = `Content analysis for ${product.name}`;
-  document.getElementById('modules-subtitle').textContent = `Training modules for ${product.name} from ${product.repo}`;
+  document.getElementById('topbar-title').textContent = `${product.folder} — Team Content Gap Manager`;
+  document.getElementById('dashboard-subtitle').textContent = `Content analysis for ${product.folder} (${product.name})`;
+  document.getElementById('modules-subtitle').textContent = `Training modules in ${product.folder}/ from ${product.repo}`;
   document.getElementById('docs-subtitle').textContent = `Documentation TOC for ${product.name}`;
-  document.getElementById('stat-selected').textContent = product.name;
-  document.getElementById('stat-selected').style.fontSize = product.name.length > 20 ? '13px' : '16px';
+  document.getElementById('stat-selected').textContent = product.folder;
+  document.getElementById('stat-selected').style.fontSize = product.folder.length > 20 ? '13px' : '16px';
   const sourceLabel = dataSourceMode === 'github' ? product.repo : 'Catalog API';
-  document.getElementById('stat-selected-sub').textContent = `${product.modules.length} modules via ${sourceLabel}`;
+  document.getElementById('stat-selected-sub').textContent = `${product.name} · ${product.modules.length} modules via ${sourceLabel}`;
 
   // Show progress and fetch modules
   showLoading('health-list');
