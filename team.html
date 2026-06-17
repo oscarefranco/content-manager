@@ -1658,33 +1658,35 @@ function formatFolderName(folder) {
 // ══════════════════════════════════════════════════════════════════════════
 
 function parseModuleYaml(text, path, repo) {
+  // Allow optional leading whitespace for fields that may be nested under metadata:
   const get = (pattern) => {
     const m = text.match(pattern);
     return m ? m[1].trim() : '';
   };
 
   const getList = (key) => {
-    const pattern = new RegExp(`^${key}:\\s*\\n((?:\\s+-\\s+.+\\n?)*)`, 'm');
+    // Match key: followed by indented list items (allow optional leading whitespace on key)
+    const pattern = new RegExp(`^\\s*${key}:\\s*\\n((?:\\s+-\\s+.+\\n?)*)`, 'm');
     const m = text.match(pattern);
     if (!m) return [];
     return m[1].split('\n').map(l => l.replace(/^\s*-\s*/, '').trim()).filter(Boolean);
   };
 
-  const title = get(/^title:\s*(.+)$/m);
-  const msDate = get(/^ms\.date:\s*(.+)$/m);
-  const msService = get(/^ms\.service:\s*(.+)$/m);
-  const updateCycle = get(/^ms\.update-cycle:\s*(.+)$/m);
-  const author = get(/^author:\s*(.+)$/m);
-  const msAuthor = get(/^ms\.author:\s*(.+)$/m);
-  const uid = get(/^uid:\s*(.+)$/m);
+  const title = get(/^\s*title:\s*(.+)$/m);
+  const msDate = get(/^\s*ms\.date:\s*(.+)$/m);
+  const msService = get(/^\s*ms\.service:\s*(.+)$/m);
+  const updateCycle = get(/^\s*ms\.update-cycle:\s*(.+)$/m);
+  const author = get(/^\s*author:\s*(.+)$/m);
+  const msAuthor = get(/^\s*ms\.author:\s*(.+)$/m);
+  const uid = get(/^\s*uid:\s*(.+)$/m);
 
   // Summary: multiline block scalar
   let summary = '';
-  const sumMatch = text.match(/^summary:\s*\|\s*\n([\s\S]*?)(?=\n[a-zA-Z])/m);
+  const sumMatch = text.match(/^\s*summary:\s*\|\s*\n([\s\S]*?)(?=\n\s*[a-zA-Z])/m);
   if (sumMatch) {
-    summary = sumMatch[1].replace(/^\s{2}/gm, '').trim();
+    summary = sumMatch[1].replace(/^\s{2,}/gm, '').trim();
   } else {
-    summary = get(/^summary:\s*(.+)$/m);
+    summary = get(/^\s*summary:\s*(.+)$/m);
   }
 
   const products = getList('products');
@@ -1745,6 +1747,7 @@ async function fetchModuleData(product, onProgress) {
       const raw = json.content.replace(/\n/g, '');
       const bytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0));
       const text = new TextDecoder('utf-8').decode(bytes);
+      if (loaded === 0) console.log('[SAMPLE YAML]', mod.path, '\n', text.substring(0, 800));
       loaded++;
       if (onProgress) onProgress(loaded, total);
       return parseModuleYaml(text, mod.path, product.repo);
