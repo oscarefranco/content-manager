@@ -2398,20 +2398,63 @@ function filterDocs(q) {
 // ══════════════════════════════════════════════════════════════════════════
 
 function extractKeywords(text) {
-  const stopWords = new Set(['the','a','an','and','or','but','in','on','at','to','for','of','with','by','from','is','are','was','were','be','been','being','have','has','had','do','does','did','will','would','could','should','may','might','can','this','that','these','those','i','you','he','she','it','we','they','what','which','who','when','where','why','how','all','each','every','both','few','more','most','other','some','such','no','not','only','own','same','so','than','too','very','your','about','up','out','use','using','get','set','new','overview','introduction']);
-  return [...new Set(
-    text.toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, ' ')
-      .split(/[\s-]+/)
-      .filter(w => w.length > 2 && !stopWords.has(w))
-  )];
+  const stopWords = new Set(['the','a','an','and','or','but','in','on','at','to','for','of','with','by','from','is','are','was','were','be','been','being','have','has','had','do','does','did','will','would','could','should','may','might','can','this','that','these','those','i','you','he','she','it','we','they','what','which','who','when','where','why','how','all','each','every','both','few','more','most','other','some','such','no','not','only','own','same','so','than','too','very','your','about','up','out','use','using','get','set','new','overview','introduction','learn','module','unit','describe','explain','define']);
+  const words = text.toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/[\s-]+/)
+    .filter(w => w.length > 2 && !stopWords.has(w));
+  
+  // Generate bigrams for phrase matching
+  const bigrams = [];
+  for (let i = 0; i < words.length - 1; i++) {
+    bigrams.push(words[i] + ' ' + words[i + 1]);
+  }
+  
+  return { words: [...new Set(words)], bigrams: [...new Set(bigrams)] };
+}
+
+function semanticScore(docKeywords, moduleData) {
+  // Score how well a module covers a doc topic using multiple signals
+  const { words: docWords, bigrams: docBigrams } = docKeywords;
+  if (docWords.length === 0) return 0;
+
+  // Extract module keywords from title + summary + units
+  const moduleText = [
+    moduleData.title,
+    moduleData.summary || '',
+    (moduleData.units || []).join(' '),
+  ].join(' ');
+  const modKw = extractKeywords(moduleText);
+
+  // 1. Word overlap (basic)
+  const modWordSet = new Set(modKw.words);
+  const wordMatches = docWords.filter(w => modWordSet.has(w) || modKw.words.some(mw => (mw.includes(w) && w.length > 3) || (w.includes(mw) && mw.length > 3)));
+  const wordScore = wordMatches.length / Math.max(docWords.length, 1);
+
+  // 2. Bigram overlap (phrase-level)
+  const modBigramSet = new Set(modKw.bigrams);
+  const bigramMatches = docBigrams.filter(bg => modBigramSet.has(bg));
+  const bigramScore = docBigrams.length > 0 ? bigramMatches.length / docBigrams.length : 0;
+
+  // 3. Title direct match (high weight if doc topic appears in module title)
+  const docTitleLower = docWords.join(' ');
+  const modTitleLower = moduleData.title.toLowerCase();
+  const titleContains = modTitleLower.includes(docTitleLower) || docTitleLower.includes(modTitleLower.replace(/[^a-z0-9\s]/g, ''));
+  const titleBonus = titleContains ? 0.3 : 0;
+
+  // Combined score with weights
+  const combined = (wordScore * 0.4) + (bigramScore * 0.35) + titleBonus + Math.min(wordScore * bigramScore * 0.5, 0.25);
+  return Math.min(combined, 1.0);
 }
 
 function keywordOverlap(a, b) {
-  if (a.length === 0 || b.length === 0) return 0;
-  const setB = new Set(b);
-  const matches = a.filter(w => setB.has(w) || b.some(bw => bw.includes(w) || w.includes(bw)));
-  return matches.length / Math.max(a.length, 1);
+  // Legacy compatibility — now unused by main analysis but kept for other callers
+  const aWords = a.words || a;
+  const bWords = b.words || b;
+  if (aWords.length === 0 || bWords.length === 0) return 0;
+  const setB = new Set(bWords);
+  const matches = aWords.filter(w => setB.has(w) || bWords.some(bw => bw.includes(w) || w.includes(bw)));
+  return matches.length / Math.max(aWords.length, 1);
 }
 
 function runClientGapAnalysis() {
@@ -2425,26 +2468,57 @@ function runClientGapAnalysis() {
   btn.textContent = '⏳ Scanning…';
 
   setTimeout(() => {
-    const moduleKeywords = state.modules.map(m => ({
-      ...m,
-      keywords: extractKeywords(m.title + ' ' + m.summary)
-    }));
-
     const results = state.flatDocTopics
       .filter(d => d.depth >= 1 && d.title.length > 3)
       .map(doc => {
-        const docKeywords = extractKeywords(doc.title);
+        const docKeywords = extractKeywords(doc.title + (doc.path ? ' ' + doc.path : ''));
         let bestMatch = null;
         let bestScore = 0;
-        for (const mod of moduleKeywords) {
-          const score = keywordOverlap(docKeywords, mod.keywords);
+        let topMatches = [];
+
+        for (const mod of state.modules) {
+          const score = semanticScore(docKeywords, mod);
           if (score > bestScore) { bestScore = score; bestMatch = mod; }
+          if (score >= 0.15) topMatches.push({ module: mod, score });
         }
+
+        // Sort top matches and keep top 3
+        topMatches = topMatches.sort((a, b) => b.score - a.score).slice(0, 3);
+
+        const coverage = bestScore >= 0.45 ? 'covered' : bestScore >= 0.18 ? 'partial' : 'uncovered';
+
+        // Generate contextual explanation
+        let explanation = '';
+        if (coverage === 'uncovered') {
+          const docWords = docKeywords.words.slice(0, 5).join(', ');
+          explanation = `No training module addresses the concepts of "${doc.title}". Key topics (${docWords}) are not covered in any existing module's title, summary, or units.`;
+        } else if (coverage === 'partial') {
+          const matchedWords = docKeywords.words.filter(w => 
+            bestMatch && (bestMatch.title + ' ' + (bestMatch.summary || '')).toLowerCase().includes(w)
+          );
+          const missingWords = docKeywords.words.filter(w => !matchedWords.includes(w)).slice(0, 4);
+          explanation = `"${bestMatch?.title}" touches on this topic but doesn't fully cover it. `;
+          if (missingWords.length > 0) {
+            explanation += `Missing aspects: ${missingWords.join(', ')}. `;
+          }
+          explanation += `Consider expanding the module or creating supplementary content.`;
+        } else {
+          explanation = `"${bestMatch?.title}" provides good coverage with ${bestMatch?.unitCount || 0} units. `;
+          const ageMonths = bestMatch?.msDate ? Math.floor((Date.now() - new Date(bestMatch.msDate).getTime()) / (30*24*60*60*1000)) : null;
+          if (ageMonths && ageMonths > 12) {
+            explanation += `⚠️ Last updated ${ageMonths} months ago — verify content freshness.`;
+          } else if (ageMonths) {
+            explanation += `Content is recent (${ageMonths} months old).`;
+          }
+        }
+
         return {
           docTopic: doc,
-          bestMatch: bestScore >= 0.3 ? bestMatch : null,
+          bestMatch: bestScore >= 0.15 ? bestMatch : null,
+          topMatches,
           score: bestScore,
-          coverage: bestScore >= 0.5 ? 'covered' : bestScore >= 0.2 ? 'partial' : 'uncovered',
+          coverage,
+          explanation,
         };
       });
 
@@ -2455,9 +2529,8 @@ function runClientGapAnalysis() {
     const coveragePct = total > 0 ? Math.round((covered + partial * 0.5) / total * 100) : 0;
 
     state.gapResults = { results, covered, partial, uncovered, total, coveragePct };
-    moduleGapData = []; // Reset module-centric data on new scan
+    moduleGapData = [];
     document.getElementById('gap-perspective').style.display = '';
-    // Ensure doc perspective is active
     document.getElementById('persp-doc-btn').classList.add('active');
     document.getElementById('persp-module-btn').classList.remove('active');
     document.getElementById('gap-module-view').style.display = 'none';
@@ -2514,9 +2587,13 @@ function renderGapListUI(results, filter) {
   container.innerHTML = filtered.map(r => {
     const i = state.gapResults.results.indexOf(r);
     const score = Math.round(r.score * 100);
+    const matchTitle = r.bestMatch ? r.bestMatch.title : '';
     return `<div class="gap-list-item" data-idx="${i}" onclick="selectGapItem(${i})">
       <div class="dot ${r.coverage}"></div>
-      <div class="item-title">${escHtml(r.docTopic.title)}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="item-title">${escHtml(r.docTopic.title)}</div>
+        ${matchTitle ? `<div style="font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">↳ ${escHtml(matchTitle)}</div>` : ''}
+      </div>
       <div class="item-score">${score}%</div>
     </div>`;
   }).join('');
@@ -2553,14 +2630,36 @@ function selectGapItem(idx) {
   const statusLabel = r.coverage === 'covered' ? 'Covered' : r.coverage === 'partial' ? 'Partially Covered' : 'Not Covered';
   const statusColor = r.coverage === 'covered' ? 'var(--success)' : r.coverage === 'partial' ? 'var(--warning)' : 'var(--danger)';
 
-  let explanation = '';
-  if (r.coverage === 'uncovered') {
-    explanation = `<strong>No matching training module found.</strong> Consider creating a new module covering "${escHtml(r.docTopic.title)}".`;
-  } else if (r.coverage === 'partial') {
-    explanation = `<strong>Weak match:</strong> "${escHtml(r.bestMatch?.title || '—')}" (${score}% overlap). Consider expanding coverage.`;
-  } else {
-    explanation = `<strong>Good coverage:</strong> "${escHtml(r.bestMatch?.title || '—')}" matches with ${score}% overlap. Verify content freshness.`;
+  // Top matches section
+  let matchesHtml = '';
+  if (r.topMatches && r.topMatches.length > 0) {
+    matchesHtml = `
+    <div class="detail-row">
+      <div class="detail-label">Related modules</div>
+      <div class="detail-value">
+        ${r.topMatches.map((tm, i) => {
+          const tmScore = Math.round(tm.score * 100);
+          const tmColor = tm.score >= 0.45 ? 'var(--success)' : tm.score >= 0.18 ? 'var(--warning)' : 'var(--text-muted)';
+          return `<div style="margin-bottom:6px;padding:6px 8px;background:var(--bg);border-radius:6px;border-left:3px solid ${tmColor};">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <strong style="font-size:12px;">${i === 0 ? '🏆 ' : ''}${escHtml(tm.module.title)}</strong>
+              <span style="font-size:11px;color:${tmColor};font-weight:600;">${tmScore}%</span>
+            </div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">
+              ${tm.module.msAuthor ? `👤 ${escHtml(tm.module.msAuthor)}` : ''} · 📅 ${tm.module.msDate || '?'} · 📦 ${tm.module.unitCount} units
+            </div>
+            <div style="margin-top:3px;">
+              <a href="${tm.module.learnUrl}" target="_blank" style="font-size:10px;color:var(--primary);">Learn ↗</a>
+              · <a href="${tm.module.ghUrl}" target="_blank" style="font-size:10px;color:var(--primary);">GitHub ↗</a>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
   }
+
+  // AI explain button
+  const aiExplainBtn = `<button class="btn btn-ghost btn-sm" style="margin-top:8px;font-size:11px;" onclick="aiExplainGap(${idx})">🤖 Get AI explanation</button>`;
 
   panel.innerHTML = `
   <div class="gap-detail-panel">
@@ -2586,21 +2685,13 @@ function selectGapItem(idx) {
         </div>
       </div>
     </div>
-    ${r.bestMatch ? `
-    <div class="detail-row">
-      <div class="detail-label">Best match</div>
-      <div class="detail-value">
-        <div><strong>${escHtml(r.bestMatch.title)}</strong></div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
-          ${r.bestMatch.author ? `👤 ${escHtml(r.bestMatch.author)}` : ''} · 📅 ${r.bestMatch.msDate || '?'} · 📦 ${r.bestMatch.unitCount} units
-        </div>
-        <a href="${r.bestMatch.ghUrl}" target="_blank" style="font-size:11px;color:var(--primary);">GitHub source ↗</a>
-        · <a href="${r.bestMatch.learnUrl}" target="_blank" style="font-size:11px;color:var(--primary);">learn.microsoft.com ↗</a>
-      </div>
-    </div>` : ''}
+    ${matchesHtml}
     <div class="detail-row">
       <div class="detail-label">Analysis</div>
-      <div class="detail-value" style="line-height:1.5;">${explanation}</div>
+      <div class="detail-value" style="line-height:1.6;font-size:12.5px;">${escHtml(r.explanation)}</div>
+    </div>
+    <div class="detail-row" id="gap-ai-explain-${idx}">
+      <div class="detail-value">${aiExplainBtn}</div>
     </div>
   </div>`;
 }
@@ -2609,6 +2700,54 @@ function closeGapDetail() {
   document.getElementById('gap-detail-panel').innerHTML = '';
   document.querySelectorAll('.heatmap-cell.selected').forEach(el => el.classList.remove('selected'));
   document.querySelectorAll('.gap-list-item.selected').forEach(el => el.classList.remove('selected'));
+}
+
+async function aiExplainGap(idx) {
+  const g = state.gapResults;
+  if (!g || !g.results[idx]) return;
+  const r = g.results[idx];
+  const container = document.getElementById(`gap-ai-explain-${idx}`);
+  if (!container) return;
+
+  const { token } = getAIConfig();
+  if (!token) { toast('Add your GitHub token in Settings for AI features', 'warning'); return; }
+
+  container.innerHTML = '<div class="detail-value"><span style="color:var(--text-muted);font-size:12px;">🤖 Analyzing…</span></div>';
+
+  const modulesContext = (r.topMatches || []).map(tm =>
+    `- "${tm.module.title}" (${tm.module.unitCount} units, score: ${Math.round(tm.score*100)}%)\n  Summary: ${(tm.module.summary || 'N/A').substring(0, 150)}\n  Units: ${(tm.module.units || []).slice(0, 5).join(', ')}`
+  ).join('\n');
+
+  const prompt = `You are a Microsoft Learn content strategist. Analyze this specific content gap and provide actionable insights.
+
+DOCUMENTATION TOPIC: "${r.docTopic.title}"
+Topic path: ${r.docTopic.path}
+Coverage status: ${r.coverage} (${Math.round(r.score * 100)}% match)
+
+CLOSEST TRAINING MODULES:
+${modulesContext || 'None found — this topic has no related training content.'}
+
+ALL AVAILABLE MODULES FOR THIS PRODUCT (${state.modules.length} total):
+${state.modules.slice(0, 30).map(m => `- "${m.title}"`).join('\n')}
+
+Provide a brief but insightful analysis (3-5 sentences) covering:
+1. WHY this gap exists (is the topic too new, too niche, or was it overlooked?)
+2. What SPECIFIC content would be needed to fill this gap
+3. Whether existing modules could be EXPANDED vs needing a new module
+4. PRIORITY level (high/medium/low) and reasoning
+
+Respond in plain text, no JSON or markdown formatting.`;
+
+  try {
+    const reply = await callAI([{ role: 'user', content: prompt }], { maxTokens: 500 });
+    container.innerHTML = `
+    <div class="detail-label">🤖 AI Analysis</div>
+    <div class="detail-value" style="line-height:1.6;font-size:12px;background:var(--bg);padding:10px;border-radius:8px;border-left:3px solid var(--primary);">
+      ${escHtml(reply).replace(/\n/g, '<br>')}
+    </div>`;
+  } catch (e) {
+    container.innerHTML = `<div class="detail-value" style="color:var(--danger);font-size:11px;">AI analysis failed: ${escHtml(e.message)}</div>`;
+  }
 }
 
 function renderGapTimeline() {
@@ -2681,43 +2820,54 @@ async function runAIGapAnalysis() {
   btn.disabled = true;
   btn.textContent = '⏳ Analyzing…';
 
-  const moduleSummary = state.modules.slice(0, 50).map(m =>
-    `- "${m.title}" (${m.unitCount} units, author: ${m.author}, ms.date: ${m.msDate || 'unknown'})`
+  // Build rich context including summaries and units
+  const moduleSummary = state.modules.slice(0, 40).map(m =>
+    `- "${m.title}" [${m.unitCount} units, ms.author: ${m.msAuthor || '?'}, ms.date: ${m.msDate || '?'}]\n  Summary: ${(m.summary || 'N/A').substring(0, 120)}\n  Units: ${(m.units || []).slice(0, 4).map(u => u.split('.').pop()).join(', ')}`
   ).join('\n');
 
-  const docSummary = state.flatDocTopics.filter(d => d.depth <= 2).slice(0, 80).map(d =>
-    `${'  '.repeat(d.depth)}- ${d.title}`
+  const docSummary = state.flatDocTopics.filter(d => d.depth <= 2).slice(0, 100).map(d =>
+    `${'  '.repeat(d.depth)}- ${d.title}${d.hasChildren ? ' (has sub-topics)' : ''}`
   ).join('\n');
 
-  const prompt = `You are a content audit specialist for Microsoft Learn. Analyze the training modules and documentation for "${state.selectedProduct.name}" and provide a gap analysis.
+  const prompt = `You are a senior content strategist for Microsoft Learn, specializing in "${state.selectedProduct.name}". Perform a comprehensive gap analysis comparing the training modules against the documentation.
 
-TRAINING MODULES (${state.modules.length} total, showing top 50):
+IMPORTANT: Don't just match words. Analyze whether the CONCEPTS and SKILLS taught in training adequately prepare learners for what the documentation covers. Consider:
+- Is the training teaching the right depth? (conceptual overview vs hands-on implementation)
+- Are there documentation areas that represent NEW features not yet in training?
+- Are modules outdated relative to current documentation?
+- Are there critical user journeys documented but not trained on?
+
+TRAINING MODULES (${state.modules.length} total, showing top 40 with details):
 ${moduleSummary}
 
-DOCUMENTATION TABLE OF CONTENTS (${state.flatDocTopics.length} topics, showing top 80):
+DOCUMENTATION TABLE OF CONTENTS (${state.flatDocTopics.length} topics, top-level structure):
 ${docSummary}
 
-Provide JSON only (no markdown):
+Provide JSON only (no markdown fences):
 {
-  "coverage_score": 65,
-  "summary": "Brief overall assessment",
+  "coverage_score": <0-100>,
+  "summary": "<2-3 sentence executive summary of the content health>",
+  "key_insight": "<1 sentence: the most important finding>",
   "missing_from_training": [
-    { "doc_topic": "Topic name", "priority": "high|medium|low", "reason": "Why" }
+    { "doc_topic": "<topic>", "priority": "high|medium|low", "reason": "<WHY this gap matters — what learners can't do without this>", "suggested_approach": "<expand existing module X OR create new module>" }
   ],
   "outdated_training": [
-    { "module": "Module title", "issue": "Issue", "recommendation": "Fix" }
+    { "module": "<title>", "issue": "<specific problem>", "evidence": "<what in the docs indicates this is outdated>", "recommendation": "<specific fix>" }
   ],
   "recommended_new_modules": [
-    { "title": "Title", "covers": "Topics", "priority": "high|medium|low" }
+    { "title": "<suggested title>", "covers": "<doc topics it would address>", "priority": "high|medium|low", "rationale": "<why this deserves its own module>" }
   ],
-  "strengths": ["Well covered areas"],
+  "depth_gaps": [
+    { "area": "<topic area>", "current_depth": "conceptual|overview|hands-on", "needed_depth": "hands-on|advanced|troubleshooting", "suggestion": "<what to add>" }
+  ],
+  "strengths": ["<specific well-covered areas with explanation>"],
   "quick_wins": [
-    { "action": "What to do", "impact": "Expected benefit" }
+    { "action": "<specific actionable step>", "impact": "<measurable benefit>", "effort": "low|medium|high" }
   ]
 }`;
 
   try {
-    const reply = await callAI([{ role: 'user', content: prompt }], { maxTokens: 3000 });
+    const reply = await callAI([{ role: 'user', content: prompt }], { maxTokens: 4000 });
     try {
       const clean = reply.replace(/```json|```/g, '').trim();
       const analysis = JSON.parse(clean);
@@ -2743,8 +2893,9 @@ function renderAIGapResults(data) {
     <div class="card">
       <div class="card-header"><span>📊</span><h3>AI Analysis Summary</h3><span style="margin-left:auto;font-size:20px;font-weight:600;color:${scoreColor};">${data.coverage_score}%</span></div>
       <div class="card-body">
-        <p style="font-size:13.5px;">${escHtml(data.summary)}</p>
-        ${data.strengths?.length ? `<div style="margin-top:10px;">${data.strengths.map(s => `<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--success);margin-right:12px;">✓ ${escHtml(s)}</span>`).join('')}</div>` : ''}
+        <p style="font-size:13.5px;margin-bottom:8px;">${escHtml(data.summary)}</p>
+        ${data.key_insight ? `<p style="font-size:12.5px;padding:8px 12px;background:var(--primary)10;border-left:3px solid var(--primary);border-radius:4px;margin-bottom:8px;"><strong>Key insight:</strong> ${escHtml(data.key_insight)}</p>` : ''}
+        ${data.strengths?.length ? `<div style="margin-top:10px;">${data.strengths.map(s => `<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--success);margin-right:12px;margin-bottom:4px;">✓ ${escHtml(s)}</span>`).join('')}</div>` : ''}
       </div>
     </div>
   </div>
@@ -2752,25 +2903,63 @@ function renderAIGapResults(data) {
     <div class="gap-card">
       <div class="gap-card-header"><span style="font-size:18px;">🚨</span><h4>Missing from training</h4><span class="tag tag-red">${data.missing_from_training?.length || 0}</span></div>
       <div class="gap-card-body" style="max-height:400px;overflow-y:auto;">
-        ${(data.missing_from_training || []).map(t => `<div class="gap-item"><span class="tag tag-${t.priority==='high'?'red':t.priority==='medium'?'yellow':'blue'}" style="flex-shrink:0;">${t.priority}</span><div class="gap-item-text"><strong>${escHtml(t.doc_topic)}</strong><br>${escHtml(t.reason)}</div></div>`).join('')}
+        ${(data.missing_from_training || []).map(t => `<div class="gap-item" style="flex-direction:column;align-items:stretch;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="tag tag-${t.priority==='high'?'red':t.priority==='medium'?'yellow':'blue'}" style="flex-shrink:0;">${t.priority}</span>
+            <strong style="font-size:12px;">${escHtml(t.doc_topic)}</strong>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.5;">${escHtml(t.reason)}</div>
+          ${t.suggested_approach ? `<div style="font-size:11px;color:var(--primary);margin-top:2px;">→ ${escHtml(t.suggested_approach)}</div>` : ''}
+        </div>`).join('')}
       </div>
     </div>
     <div class="gap-card">
       <div class="gap-card-header"><span style="font-size:18px;">🔄</span><h4>Outdated training</h4><span class="tag tag-yellow">${data.outdated_training?.length || 0}</span></div>
       <div class="gap-card-body" style="max-height:400px;overflow-y:auto;">
-        ${(data.outdated_training || []).map(m => `<div class="gap-item"><div class="gap-item-icon">📄</div><div class="gap-item-text"><strong>${escHtml(m.module)}</strong><br>${escHtml(m.issue)}<br><em style="color:var(--primary);">→ ${escHtml(m.recommendation)}</em></div></div>`).join('')}
+        ${(data.outdated_training || []).map(m => `<div class="gap-item" style="flex-direction:column;align-items:stretch;">
+          <strong style="font-size:12px;">${escHtml(m.module)}</strong>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${escHtml(m.issue)}</div>
+          ${m.evidence ? `<div style="font-size:10px;color:var(--warning);margin-top:2px;">Evidence: ${escHtml(m.evidence)}</div>` : ''}
+          <div style="font-size:11px;color:var(--primary);margin-top:2px;">→ ${escHtml(m.recommendation)}</div>
+        </div>`).join('')}
       </div>
     </div>
     <div class="gap-card">
       <div class="gap-card-header"><span style="font-size:18px;">✨</span><h4>Recommended new modules</h4><span class="tag tag-purple">${data.recommended_new_modules?.length || 0}</span></div>
       <div class="gap-card-body" style="max-height:400px;overflow-y:auto;">
-        ${(data.recommended_new_modules || []).map(m => `<div class="gap-item"><span class="tag tag-${m.priority==='high'?'red':m.priority==='medium'?'yellow':'blue'}" style="flex-shrink:0;">${m.priority}</span><div class="gap-item-text"><strong>${escHtml(m.title)}</strong><br>${escHtml(m.covers)}</div></div>`).join('')}
+        ${(data.recommended_new_modules || []).map(m => `<div class="gap-item" style="flex-direction:column;align-items:stretch;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="tag tag-${m.priority==='high'?'red':m.priority==='medium'?'yellow':'blue'}" style="flex-shrink:0;">${m.priority}</span>
+            <strong style="font-size:12px;">${escHtml(m.title)}</strong>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Covers: ${escHtml(m.covers)}</div>
+          ${m.rationale ? `<div style="font-size:11px;color:var(--text-light);margin-top:2px;">${escHtml(m.rationale)}</div>` : ''}
+        </div>`).join('')}
       </div>
     </div>
+    ${data.depth_gaps?.length ? `
+    <div class="gap-card">
+      <div class="gap-card-header"><span style="font-size:18px;">📐</span><h4>Depth gaps</h4><span class="tag tag-purple">${data.depth_gaps.length}</span></div>
+      <div class="gap-card-body" style="max-height:400px;overflow-y:auto;">
+        ${data.depth_gaps.map(d => `<div class="gap-item" style="flex-direction:column;align-items:stretch;">
+          <strong style="font-size:12px;">${escHtml(d.area)}</strong>
+          <div style="font-size:11px;margin-top:4px;display:flex;gap:8px;align-items:center;">
+            <span class="tag tag-yellow">${escHtml(d.current_depth)}</span> → <span class="tag tag-green">${escHtml(d.needed_depth)}</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${escHtml(d.suggestion)}</div>
+        </div>`).join('')}
+      </div>
+    </div>` : ''}
     <div class="gap-card">
       <div class="gap-card-header"><span style="font-size:18px;">⚡</span><h4>Quick wins</h4><span class="tag tag-green">${data.quick_wins?.length || 0}</span></div>
       <div class="gap-card-body" style="max-height:400px;overflow-y:auto;">
-        ${(data.quick_wins || []).map(q => `<div class="gap-item"><div class="gap-item-icon">✓</div><div class="gap-item-text"><strong>${escHtml(q.action)}</strong><br>${escHtml(q.impact)}</div></div>`).join('')}
+        ${(data.quick_wins || []).map(q => `<div class="gap-item" style="flex-direction:column;align-items:stretch;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            ${q.effort ? `<span class="tag tag-${q.effort==='low'?'green':q.effort==='medium'?'yellow':'red'}" style="flex-shrink:0;">${q.effort} effort</span>` : ''}
+            <strong style="font-size:12px;">${escHtml(q.action)}</strong>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${escHtml(q.impact)}</div>
+        </div>`).join('')}
       </div>
     </div>
   </div>`;
