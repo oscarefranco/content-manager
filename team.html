@@ -5307,6 +5307,34 @@ function renderReleasePlannerView() {
     return;
   }
   
+  // Get changes for highlighting
+  const changes = state.releasePlanner.changesSinceLastRun || [];
+  const changedFeatureIds = new Set(changes.map(c => c.featureId));
+  
+  // Show change summary if there are recent changes
+  let changeSummaryHtml = '';
+  if (changes.length > 0) {
+    const dateChanges = changes.filter(c => c.type === 'date_change').length;
+    const statusChanges = changes.filter(c => c.type === 'status_change').length;
+    const newFeatures = changes.filter(c => c.type === 'added').length;
+    
+    changeSummaryHtml = `
+    <div class="card" style="margin-bottom:16px;background:#fff3cd;border:1px solid #ffc107;">
+      <div class="card-body" style="padding:12px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="font-size:20px;">🔔</span>
+          <strong style="font-size:14px;">Changes Detected Since Last Refresh</strong>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);">
+          ${dateChanges > 0 ? `📅 ${dateChanges} date change(s) ` : ''}
+          ${statusChanges > 0 ? `✅ ${statusChanges} status change(s) ` : ''}
+          ${newFeatures > 0 ? `🆕 ${newFeatures} new feature(s)` : ''}
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="showChangesDetail()" style="margin-top:8px;font-size:11px;">View Details</button>
+      </div>
+    </div>`;
+  }
+  
   // Group features by wave
   const byWave = {};
   features.forEach(f => {
@@ -5318,6 +5346,22 @@ function renderReleasePlannerView() {
     const waveFeatures = byWave[wave];
     
     const tableRows = waveFeatures.map(f => {
+      // Check if this feature has changes
+      const hasChanges = changedFeatureIds.has(f.id);
+      const changeIndicator = hasChanges ? '<span style="color:#ffc107;font-size:14px;margin-right:4px;">🔔</span>' : '';
+      
+      // Get specific changes for this feature
+      const featureChanges = changes.filter(c => c.featureId === f.id);
+      const changeTooltip = hasChanges 
+        ? `title="${featureChanges.map(c => {
+            if (c.type === 'date_change') return `${c.field}: ${c.previous || 'none'} → ${c.current || 'none'}`;
+            if (c.type === 'status_change') return `${c.field}: ${c.previous ? 'completed' : 'pending'} → ${c.current ? 'completed' : 'pending'}`;
+            return c.type;
+          }).join(', ')}"` 
+        : '';
+      
+      const rowStyle = hasChanges ? 'background:#fffbf0;' : '';
+      
       const previewBadge = f.publicPreviewCompleted 
         ? `<span class="tag" style="background:#28a745;color:#fff;font-size:10px;">✓</span>`
         : f.publicPreview 
@@ -5335,8 +5379,8 @@ function renderReleasePlannerView() {
         : `<span class="tag" style="background:#dc3545;color:#fff;font-size:10px;">✗ None</span>`;
       
       return `
-      <tr>
-        <td style="padding:8px;"><a href="${escHtml(f.learnUrl)}" target="_blank" style="color:var(--primary);text-decoration:none;">${escHtml(f.name)}</a></td>
+      <tr style="${rowStyle}" ${changeTooltip}>
+        <td style="padding:8px;">${changeIndicator}<a href="${escHtml(f.learnUrl)}" target="_blank" style="color:var(--primary);text-decoration:none;">${escHtml(f.name)}</a></td>
         <td style="padding:8px;text-align:center;">${previewBadge}</td>
         <td style="padding:8px;text-align:center;">${gaBadge}</td>
         <td style="padding:8px;text-align:center;">${docBadge}</td>
@@ -5385,7 +5429,103 @@ function renderReleasePlannerView() {
       🔄 Refresh
     </button>
   </div>
+  ${changeSummaryHtml}
   ${wavesHtml}`;
+}
+
+function showChangesDetail() {
+  const changes = state.releasePlanner.changesSinceLastRun || [];
+  if (changes.length === 0) {
+    toast('No changes to show', 'info');
+    return;
+  }
+  
+  const changesHtml = changes.map(c => {
+    let icon = '📝';
+    let label = 'Changed';
+    
+    switch(c.type) {
+      case 'date_change':
+        icon = '📅';
+        label = 'Date Changed';
+        break;
+      case 'status_change':
+        icon = '✅';
+        label = 'Status Changed';
+        break;
+      case 'documentation_change':
+        icon = '📚';
+        label = 'Documentation Changed';
+        break;
+      case 'added':
+        icon = '🆕';
+        label = 'New Feature';
+        break;
+      case 'removed':
+        icon = '🗑️';
+        label = 'Removed';
+        break;
+    }
+    
+    let details = '';
+    if (c.type === 'date_change') {
+      const fieldLabel = c.field === 'publicPreview' ? 'Public Preview' : 'GA';
+      details = `${fieldLabel}: ${c.previous || 'none'} → ${c.current || 'none'}`;
+    } else if (c.type === 'status_change') {
+      const fieldLabel = c.field === 'publicPreviewCompleted' ? 'Public Preview' : 'GA';
+      details = `${fieldLabel}: ${c.previous ? '✓ completed' : 'pending'} → ${c.current ? '✓ completed' : 'pending'}`;
+    } else if (c.type === 'documentation_change') {
+      details = c.current ? 'Documentation now available' : 'Documentation removed';
+    }
+    
+    return `
+    <div style="padding:12px;margin:8px 0;background:var(--bg-muted);border-radius:6px;border-left:3px solid #ffc107;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <span style="font-size:18px;">${icon}</span>
+        <strong style="font-size:13px;">${label}</strong>
+      </div>
+      <div style="font-size:12px;margin-left:26px;">${escHtml(c.featureName)}</div>
+      ${details ? `<div style="font-size:11px;color:var(--text-muted);margin-left:26px;margin-top:4px;">${escHtml(details)}</div>` : ''}
+    </div>`;
+  }).join('');
+  
+  const modalHtml = `
+  <div class="modal-overlay" id="changes-modal" style="display:flex;z-index:9999;">
+    <div class="modal" style="max-width:700px;">
+      <div class="modal-header">
+        <h2>🔔 Changes Since Last Refresh</h2>
+        <button class="btn btn-ghost" onclick="closeChangesModal()">✕</button>
+      </div>
+      <div class="modal-body" style="max-height:500px;overflow-y:auto;">
+        <p style="margin:0 0 16px 0;font-size:13px;color:var(--text-muted);">
+          ${changes.length} change(s) detected for ${state.releasePlanner.selectedProduct || 'selected product'}
+        </p>
+        ${changesHtml}
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeChangesModal()">Close</button>
+        <button class="btn btn-primary" onclick="clearChangesHistory()">Clear History</button>
+      </div>
+    </div>
+  </div>`;
+  
+  const existing = document.getElementById('changes-modal');
+  if (existing) existing.remove();
+  
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  window.closeChangesModal = () => {
+    const modal = document.getElementById('changes-modal');
+    if (modal) modal.remove();
+  };
+  
+  window.clearChangesHistory = () => {
+    state.releasePlanner.changesSinceLastRun = [];
+    saveReleasePlannerToCache();
+    toast('Change history cleared', 'info');
+    closeChangesModal();
+    renderReleasePlannerView();
+  };
 }
 
 async function analyzeFeatureGap(featureId) {
