@@ -736,6 +736,10 @@ body {
         <span class="nav-icon">✏️</span> Content Editor
         <span class="nav-count" id="count-suggestions">0</span>
       </a></li>
+      <li><a onclick="switchView('release-planner')" data-view="release-planner">
+        <span class="nav-icon">📅</span> Release Planner
+        <span class="nav-count" id="count-features">0</span>
+      </a></li>
       <li><a onclick="switchView('insights')" data-view="insights">
         <span class="nav-icon">🔗</span> GitHub Insights
       </a></li>
@@ -1180,6 +1184,44 @@ body {
     </div>
   </section>
 
+  <!-- RELEASE PLANNER VIEW -->
+  <section class="view" id="view-release-planner">
+    <div class="page-header">
+      <div class="page-header-text">
+        <h1>📅 Release Planner</h1>
+        <p>Track upcoming product features and their documentation status</p>
+      </div>
+      <div class="page-header-actions">
+        <select id="rp-product-select" class="select" style="width:250px;margin-right:8px;" onchange="updateReleasePlannerProduct()">
+          <option value="">Select a product...</option>
+          <option value="Copilot Studio">Copilot Studio</option>
+          <option value="Supply Chain Management">Supply Chain Management</option>
+          <option value="Power Apps">Power Apps</option>
+          <option value="Power BI">Power BI</option>
+          <option value="Dynamics 365 Sales">Dynamics 365 Sales</option>
+          <option value="Customer Service">Customer Service</option>
+          <option value="Field Service">Field Service</option>
+          <option value="Power Automate">Power Automate</option>
+        </select>
+        <button class="btn btn-primary" onclick="refreshReleasePlanner()">🔄 Load Features</button>
+      </div>
+    </div>
+    <div class="page-body">
+      <div id="release-planner-content">
+        <div class="empty-state" style="padding:3rem;">
+          <div class="empty-state-icon">📅</div>
+          <h3>Welcome to Release Planner</h3>
+          <p>Track upcoming Microsoft product features with their preview dates, GA dates, and documentation status.<br><br>
+          <strong>How to use:</strong><br>
+          1. Select a product from the dropdown above<br>
+          2. Click "Load Features" to fetch the latest release plan<br>
+          3. Review features grouped by release wave<br>
+          4. Click "Analyze" to check if documentation exists for a feature</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
 </div><!-- /main -->
 
 <!-- SETTINGS MODAL -->
@@ -1420,6 +1462,53 @@ const ACTION_TYPES = {
 };
 
 // ══════════════════════════════════════════════════════════════════════════
+// RELEASE PLANNER CONFIGURATION
+// ══════════════════════════════════════════════════════════════════════════
+
+const RELEASE_PLANNER_PRODUCTS = {
+  'Copilot Studio': {
+    learnPath: '/power-platform/release-plan',
+    releasePlanUrl: 'https://releaseplans.microsoft.com/en-US/?app=Microsoft+Copilot+Studio',
+    waves: ['2024wave1', '2024wave2', '2025wave1', '2025wave2']
+  },
+  'Supply Chain Management': {
+    learnPath: '/dynamics365-release-plan',
+    releasePlanUrl: 'https://releaseplans.microsoft.com/en-US/?app=Supply+Chain+Management',
+    waves: ['2024release-wave-1', '2024release-wave-2', '2025release-wave-1', '2025release-wave-2']
+  },
+  'Power Apps': {
+    learnPath: '/power-platform/release-plan',
+    releasePlanUrl: 'https://releaseplans.microsoft.com/en-US/?app=Power+Apps',
+    waves: ['2024wave1', '2024wave2', '2025wave1', '2025wave2']
+  },
+  'Power BI': {
+    learnPath: '/power-platform/release-plan',
+    releasePlanUrl: 'https://releaseplans.microsoft.com/en-US/?app=Power+BI',
+    waves: ['2024wave1', '2024wave2', '2025wave1', '2025wave2']
+  },
+  'Dynamics 365 Sales': {
+    learnPath: '/dynamics365-release-plan',
+    releasePlanUrl: 'https://releaseplans.microsoft.com/en-US/?app=Sales',
+    waves: ['2024release-wave-1', '2024release-wave-2', '2025release-wave-1', '2025release-wave-2']
+  },
+  'Customer Service': {
+    learnPath: '/dynamics365-release-plan',
+    releasePlanUrl: 'https://releaseplans.microsoft.com/en-US/?app=Customer+Service',
+    waves: ['2024release-wave-1', '2024release-wave-2', '2025release-wave-1', '2025release-wave-2']
+  },
+  'Field Service': {
+    learnPath: '/dynamics365-release-plan',
+    releasePlanUrl: 'https://releaseplans.microsoft.com/en-US/?app=Field+Service',
+    waves: ['2024release-wave-1', '2024release-wave-2', '2025release-wave-1', '2025release-wave-2']
+  },
+  'Power Automate': {
+    learnPath: '/power-platform/release-plan',
+    releasePlanUrl: 'https://releaseplans.microsoft.com/en-US/?app=Power+Automate',
+    waves: ['2024wave1', '2024wave2', '2025wave1', '2025wave2']
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════════════════════
 
@@ -1434,6 +1523,14 @@ let state = {
   gapResults: null,
   editorSuggestions: [],  // Content editor suggestions from gap analysis
   editorCache: {},     // Cache for AI action recommendations
+  releasePlanner: {
+    features: [],      // Array of feature objects from release plans
+    lastFetch: null,   // Timestamp of last successful fetch
+    products: [],      // List of products we're tracking
+    history: [],       // Change history for tracking date shifts
+    selectedProduct: null,  // Filter by product
+    changesSinceLastRun: []  // Features that changed since last fetch
+  }
 };
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -1990,6 +2087,9 @@ async function init() {
   
   loadSettings();
   updateAuthBadge();
+  
+  // Load cached release planner data
+  loadReleasePlannerFromCache();
 
   // Try GitHub Trees API first (rich data), fall back to public Catalog API
   let useGitHub = false;
@@ -4248,6 +4348,309 @@ function selectSuggestion(idx) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// RELEASE PLANNER
+// ══════════════════════════════════════════════════════════════════════════
+
+async function fetchReleaseFeatures(productKey) {
+  console.log(`Fetching release features for ${productKey}...`);
+  
+  const config = RELEASE_PLANNER_PRODUCTS[productKey];
+  if (!config) {
+    toast(`Unknown product: ${productKey}`, 'error');
+    return [];
+  }
+
+  const allFeatures = [];
+  
+  // Fetch for all configured waves
+  for (const wave of config.waves) {
+    try {
+      const url = `https://learn.microsoft.com/en-us${config.learnPath}/${wave}/microsoft-copilot-studio/planned-features`;
+      console.log(`Fetching ${wave}: ${url}`);
+      
+      const proxyUrl = CORS_PROXIES[0](url);
+      const response = await fetch(proxyUrl);
+      const html = await response.text();
+      
+      // Parse HTML to extract features from markdown tables
+      const features = parseReleasePlanHTML(html, productKey, wave, url, config.releasePlanUrl);
+      allFeatures.push(...features);
+      
+      console.log(`Found ${features.length} features in ${wave}`);
+      
+      // Rate limiting to avoid overwhelming servers
+      await new Promise(r => setTimeout(r, 1000));
+      
+    } catch (err) {
+      console.warn(`Failed to fetch ${wave}:`, err);
+      toast(`Warning: Could not fetch ${wave} data`, 'warning');
+    }
+  }
+  
+  return allFeatures;
+}
+
+function parseReleasePlanHTML(html, productKey, wave, learnUrl, releasePlanUrl) {
+  const features = [];
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  
+  // Find all tables in the document
+  const tables = doc.querySelectorAll('table');
+  
+  tables.forEach(table => {
+    const rows = table.querySelectorAll('tbody tr');
+    
+    rows.forEach(row => {
+      try {
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 4) return; // Not a feature row
+        
+        // Column structure: Feature | Enabled for | Public preview | General availability
+        const featureCell = cells[0];
+        const enabledFor = cells[1]?.textContent.trim() || '';
+        const publicPreview = cells[2]?.textContent.trim() || '';
+        const ga = cells[3]?.textContent.trim() || '';
+        
+        // Extract feature name and URL from first column
+        const featureLink = featureCell.querySelector('a');
+        if (!featureLink) return;
+        
+        const featureName = featureLink.textContent.trim();
+        const featureUrl = featureLink.getAttribute('href');
+        const fullFeatureUrl = featureUrl.startsWith('http') 
+          ? featureUrl 
+          : `https://learn.microsoft.com${featureUrl}`;
+        
+        // Check for green checkmarks (completed features)
+        const previewCheckmark = cells[2]?.querySelector('img[src*="green-checkmark"]') !== null;
+        const gaCheckmark = cells[3]?.querySelector('img[src*="green-checkmark"]') !== null;
+        
+        // Create feature object
+        const feature = {
+          id: `${productKey}-${wave}-${featureName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+          product: productKey,
+          wave: wave,
+          name: featureName,
+          enabledFor: enabledFor,
+          publicPreview: parseDate(publicPreview),
+          publicPreviewCompleted: previewCheckmark,
+          ga: parseDate(ga),
+          gaCompleted: gaCheckmark,
+          learnUrl: fullFeatureUrl,
+          releasePlanUrl: releasePlanUrl,
+          hasDocumentation: false, // Will be checked later
+          documentationUrl: null,
+          lastFetched: Date.now()
+        };
+        
+        features.push(feature);
+        
+      } catch (err) {
+        console.warn('Error parsing feature row:', err);
+      }
+    });
+  });
+  
+  return features;
+}
+
+function parseDate(dateStr) {
+  if (!dateStr || dateStr === '-') return null;
+  
+  // Remove checkmark images
+  const cleaned = dateStr.replace(/\[.*?\]/g, '').trim();
+  if (!cleaned || cleaned === '-') return null;
+  
+  try {
+    // Try parsing common date formats
+    const parsed = new Date(cleaned);
+    return isNaN(parsed.getTime()) ? cleaned : parsed.toISOString().split('T')[0];
+  } catch {
+    return cleaned; // Return as-is if parsing fails
+  }
+}
+
+async function loadReleasePlannerData(productKey) {
+  if (!productKey) {
+    toast('Please select a product', 'warning');
+    return;
+  }
+  
+  toast(`Loading release features for ${productKey}...`, 'info');
+  
+  try {
+    const features = await fetchReleaseFeatures(productKey);
+    
+    // Store in state
+    state.releasePlanner.features = state.releasePlanner.features.filter(f => f.product !== productKey);
+    state.releasePlanner.features.push(...features);
+    state.releasePlanner.lastFetch = Date.now();
+    state.releasePlanner.selectedProduct = productKey;
+    
+    if (!state.releasePlanner.products.includes(productKey)) {
+      state.releasePlanner.products.push(productKey);
+    }
+    
+    // Save to localStorage for persistence
+    saveReleasePlannerToCache();
+    
+    toast(`Loaded ${features.length} features for ${productKey}`, 'success');
+    
+    // Render the view
+    renderReleasePlannerView();
+    
+  } catch (err) {
+    console.error('Failed to load release planner data:', err);
+    toast('Failed to load release plan data', 'error');
+  }
+}
+
+function saveReleasePlannerToCache() {
+  try {
+    const data = {
+      features: state.releasePlanner.features,
+      lastFetch: state.releasePlanner.lastFetch,
+      products: state.releasePlanner.products
+    };
+    localStorage.setItem('release_planner_data', JSON.stringify(data));
+  } catch (err) {
+    console.warn('Failed to cache release planner data:', err);
+  }
+}
+
+function loadReleasePlannerFromCache() {
+  try {
+    const cached = localStorage.getItem('release_planner_data');
+    if (cached) {
+      const data = JSON.parse(cached);
+      state.releasePlanner.features = data.features || [];
+      state.releasePlanner.lastFetch = data.lastFetch;
+      state.releasePlanner.products = data.products || [];
+      console.log(`Loaded ${state.releasePlanner.features.length} cached features`);
+    }
+  } catch (err) {
+    console.warn('Failed to load cached release planner data:', err);
+  }
+}
+
+function renderReleasePlannerView() {
+  const container = document.getElementById('release-planner-content');
+  if (!container) return;
+  
+  const selectedProduct = state.releasePlanner.selectedProduct;
+  const features = selectedProduct 
+    ? state.releasePlanner.features.filter(f => f.product === selectedProduct)
+    : state.releasePlanner.features;
+  
+  if (features.length === 0) {
+    container.innerHTML = `
+    <div class="empty-state" style="padding:3rem;">
+      <div class="empty-state-icon">📅</div>
+      <h3>No Release Features Loaded</h3>
+      <p>Select a product above and click "Load Features" to get started.</p>
+    </div>`;
+    return;
+  }
+  
+  // Group features by wave
+  const byWave = {};
+  features.forEach(f => {
+    if (!byWave[f.wave]) byWave[f.wave] = [];
+    byWave[f.wave].push(f);
+  });
+  
+  const wavesHtml = Object.keys(byWave).sort().reverse().map(wave => {
+    const waveFeatures = byWave[wave];
+    
+    const tableRows = waveFeatures.map(f => {
+      const previewBadge = f.publicPreviewCompleted 
+        ? `<span class="tag" style="background:#28a745;color:#fff;font-size:10px;">✓</span>`
+        : f.publicPreview 
+          ? `<span class="tag tag-yellow" style="font-size:10px;">${f.publicPreview}</span>`
+          : `<span style="color:var(--text-muted);font-size:10px;">-</span>`;
+      
+      const gaBadge = f.gaCompleted
+        ? `<span class="tag" style="background:#28a745;color:#fff;font-size:10px;">✓</span>`
+        : f.ga
+          ? `<span class="tag tag-blue" style="font-size:10px;">${f.ga}</span>`
+          : `<span style="color:var(--text-muted);font-size:10px;">-</span>`;
+      
+      const docBadge = f.hasDocumentation
+        ? `<a href="${escHtml(f.documentationUrl)}" target="_blank" class="tag" style="background:#28a745;color:#fff;font-size:10px;text-decoration:none;">✓ View</a>`
+        : `<span class="tag" style="background:#dc3545;color:#fff;font-size:10px;">✗ None</span>`;
+      
+      return `
+      <tr>
+        <td style="padding:8px;"><a href="${escHtml(f.learnUrl)}" target="_blank" style="color:var(--primary);text-decoration:none;">${escHtml(f.name)}</a></td>
+        <td style="padding:8px;text-align:center;">${previewBadge}</td>
+        <td style="padding:8px;text-align:center;">${gaBadge}</td>
+        <td style="padding:8px;text-align:center;">${docBadge}</td>
+        <td style="padding:8px;text-align:center;">
+          <button class="btn btn-ghost btn-sm" onclick="analyzeFeatureGap('${escHtml(f.id)}')" style="font-size:10px;padding:4px 8px;">🔍 Analyze</button>
+        </td>
+      </tr>`;
+    }).join('');
+    
+    return `
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header">
+        <h3 style="margin:0;font-size:14px;text-transform:capitalize;">${wave.replace(/-/g, ' ')}</h3>
+        <span class="tag tag-blue">${waveFeatures.length} features</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="background:var(--bg-muted);border-bottom:1px solid var(--border);">
+              <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;">Feature</th>
+              <th style="padding:8px;text-align:center;font-size:11px;font-weight:600;">Public Preview</th>
+              <th style="padding:8px;text-align:center;font-size:11px;font-weight:600;">GA</th>
+              <th style="padding:8px;text-align:center;font-size:11px;font-weight:600;">Documentation</th>
+              <th style="padding:8px;text-align:center;font-size:11px;font-weight:600;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+  
+  const lastFetch = state.releasePlanner.lastFetch 
+    ? new Date(state.releasePlanner.lastFetch).toLocaleString()
+    : 'Never';
+  
+  container.innerHTML = `
+  <div style="margin-bottom:16px;padding:12px;background:var(--bg-muted);border-radius:8px;display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <div style="font-size:12px;color:var(--text-muted);">Last updated: ${lastFetch}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Showing ${features.length} features for ${selectedProduct || 'all products'}</div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="loadReleasePlannerData('${selectedProduct || ''}')">
+      🔄 Refresh
+    </button>
+  </div>
+  ${wavesHtml}`;
+}
+
+async function analyzeFeatureGap(featureId) {
+  const feature = state.releasePlanner.features.find(f => f.id === featureId);
+  if (!feature) {
+    toast('Feature not found', 'error');
+    return;
+  }
+  
+  toast(`Analyzing gap for: ${feature.name}...`, 'info');
+  
+  // TODO: Implement gap analysis for specific feature
+  // This will cross-reference with loaded documentation and suggest content updates
+  console.log('Feature gap analysis:', feature);
+  
+  toast('Gap analysis coming soon!', 'info');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
 // MODULE GENERATION PIPELINE (ported from generate_training.py)
 // ══════════════════════════════════════════════════════════════════════════
 
@@ -5072,6 +5475,33 @@ function switchView(name) {
   if (name === 'editor' && editorState.suggestions.length === 0 && state.modules.length > 0) {
     buildEditorSuggestions();
   }
+
+  // Load Release Planner from cache on first visit
+  if (name === 'release-planner') {
+    const featuresCount = state.releasePlanner.features.length;
+    const countEl = document.getElementById('count-features');
+    if (countEl) countEl.textContent = featuresCount || '';
+    if (featuresCount > 0) {
+      renderReleasePlannerView();
+    }
+  }
+}
+
+function updateReleasePlannerProduct() {
+  const select = document.getElementById('rp-product-select');
+  state.releasePlanner.selectedProduct = select.value;
+  if (state.releasePlanner.features.length > 0) {
+    renderReleasePlannerView();
+  }
+}
+
+function refreshReleasePlanner() {
+  const productKey = state.releasePlanner.selectedProduct || document.getElementById('rp-product-select').value;
+  if (!productKey) {
+    toast('Please select a product first', 'warning');
+    return;
+  }
+  loadReleasePlannerData(productKey);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
