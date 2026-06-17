@@ -1,1216 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Team Content Gap Manager — BizApps &amp; Dynamics</title>
-<link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-<style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-:root {
-  --primary: #0078d4;
-  --primary-dark: #005a9e;
-  --primary-light: #deecf9;
-  --teal: #00b4d8;
-  --purple: #5c2d91;
-  --purple-light: #ede8f3;
-  --bg: #f3f4f8;
-  --surface: #ffffff;
-  --surface2: #f8f9fb;
-  --border: #e1e4ec;
-  --text: #1a1c2e;
-  --text-muted: #6b7280;
-  --text-light: #9ca3af;
-  --success: #107c10;
-  --success-bg: #dff6dd;
-  --warning: #f59e0b;
-  --warning-bg: #fff4ce;
-  --danger: #a4262c;
-  --danger-bg: #fde7e9;
-  --sidebar-bg: #1a1c2e;
-  --sidebar-text: #c8cad0;
-  --sidebar-active: rgba(0,120,212,0.2);
-  --radius: 10px;
-  --radius-lg: 16px;
-  --shadow: 0 1px 4px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.05);
-}
-
-body {
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  display: flex;
-}
-
-/* ── Sidebar ── */
-.sidebar {
-  width: 220px;
-  flex-shrink: 0;
-  background: var(--sidebar-bg);
-  color: var(--sidebar-text);
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  position: fixed;
-  left: 0;
-  top: 0;
-  z-index: 50;
-  overflow-y: auto;
-}
-.sidebar-brand {
-  padding: 1.25rem 1rem;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-.sidebar-brand svg { flex-shrink: 0; }
-.sidebar-brand-text { font-size: 13px; font-weight: 600; color: #fff; line-height: 1.3; }
-.sidebar-brand-text small { display: block; font-size: 10px; font-weight: 400; color: var(--sidebar-text); opacity: 0.7; }
-
-.sidebar-section { padding: 1rem 0.75rem 0.5rem; }
-.sidebar-label {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  color: rgba(255,255,255,0.35);
-  text-transform: uppercase;
-  padding: 0 0.5rem;
-  margin-bottom: 6px;
-}
-.sidebar-nav { list-style: none; }
-.sidebar-nav li { margin-bottom: 1px; }
-.sidebar-nav a {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  color: var(--sidebar-text);
-  text-decoration: none;
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s;
-}
-.sidebar-nav a:hover { background: rgba(255,255,255,0.06); color: #fff; }
-.sidebar-nav a.active { background: var(--sidebar-active); color: #fff; font-weight: 500; }
-.sidebar-nav .nav-icon { font-size: 15px; width: 20px; text-align: center; }
-.sidebar-nav .nav-count {
-  margin-left: auto;
-  background: rgba(255,255,255,0.12);
-  border-radius: 100px;
-  padding: 1px 7px;
-  font-size: 10px;
-  color: rgba(255,255,255,0.6);
-  font-family: 'JetBrains Mono', monospace;
-}
-.sidebar-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 0.5rem 0.75rem; }
-
-.sidebar-footer {
-  margin-top: auto;
-  padding: 1rem;
-  border-top: 1px solid rgba(255,255,255,0.06);
-  font-size: 11px;
-}
-.sidebar-footer a { color: var(--sidebar-text); text-decoration: none; opacity: 0.6; display: flex; align-items: center; gap: 6px; }
-.sidebar-footer a:hover { opacity: 1; color: #fff; }
-
-.sidebar-product-select {
-  width: 100%;
-  padding: 7px 10px;
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 8px;
-  font-family: 'Segoe UI', sans-serif;
-  font-size: 11.5px;
-  color: #fff;
-  background: rgba(255,255,255,0.06);
-  outline: none;
-  cursor: pointer;
-  margin-top: 6px;
-}
-.sidebar-product-select option { background: var(--sidebar-bg); color: #fff; }
-.sidebar-product-select optgroup { font-weight: 600; font-size: 11px; color: #aaa; }
-
-/* ── Main content ── */
-.main {
-  flex: 1;
-  margin-left: 220px;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-/* ── Top bar ── */
-.topbar {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 0 2rem;
-  height: 52px;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  position: sticky;
-  top: 0;
-  z-index: 40;
-}
-.topbar-title { font-size: 14px; font-weight: 600; }
-.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-.badge-model {
-  background: var(--purple-light);
-  color: var(--purple);
-  font-size: 10px;
-  font-weight: 500;
-  padding: 3px 10px;
-  border-radius: 100px;
-  font-family: 'JetBrains Mono', monospace;
-}
-.badge-warn {
-  background: var(--warning-bg);
-  color: #92400e;
-  font-size: 10px;
-  font-weight: 500;
-  padding: 3px 10px;
-  border-radius: 100px;
-}
-.btn-settings {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 5px 12px;
-  font-size: 12px;
-  font-family: 'Segoe UI', sans-serif;
-  color: var(--text-muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: background 0.15s;
-}
-.btn-settings:hover { background: var(--bg); }
-
-/* ── Views ── */
-.view { display: none; flex: 1; flex-direction: column; }
-.view.active { display: flex; }
-
-/* ── Page header ── */
-.page-header {
-  padding: 1.5rem 2rem 1rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-.page-header-text h1 { font-size: 20px; font-weight: 600; }
-.page-header-text p { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
-.page-header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
-
-/* ── Buttons ── */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
-  font-size: 13px;
-  font-family: 'Segoe UI', sans-serif;
-  font-weight: 500;
-  border-radius: var(--radius);
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.15s, background 0.15s;
-  white-space: nowrap;
-}
-.btn:disabled { opacity: 0.45; pointer-events: none; }
-.btn-primary { background: var(--primary); color: #fff; }
-.btn-primary:hover { background: var(--primary-dark); }
-.btn-secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
-.btn-secondary:hover { background: var(--bg); }
-.btn-ghost { background: none; border: none; color: var(--text-muted); padding: 6px 10px; }
-.btn-ghost:hover { background: var(--bg); color: var(--text); }
-.btn-danger { background: var(--danger-bg); border: 1px solid #f5c6cb; color: var(--danger); }
-.btn-sm { padding: 4px 10px; font-size: 12px; }
-
-/* ── Page body ── */
-.page-body { padding: 1.5rem 2rem; flex: 1; overflow-y: auto; }
-
-/* ── Cards ── */
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-}
-.card-header {
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.card-header h3 { font-size: 14px; font-weight: 500; }
-.card-body { padding: 1.25rem; }
-
-/* ── Stat cards ── */
-.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
-.stat-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1rem 1.25rem;
-}
-.stat-card-label { font-size: 11px; font-weight: 500; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
-.stat-card-value { font-size: 28px; font-weight: 600; line-height: 1; font-family: 'JetBrains Mono', monospace; }
-.stat-card-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-
-/* ── Tags ── */
-.tag {
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: 100px;
-  font-weight: 500;
-  display: inline-block;
-}
-.tag-blue { background: var(--primary-light); color: var(--primary-dark); }
-.tag-green { background: var(--success-bg); color: var(--success); }
-.tag-yellow { background: var(--warning-bg); color: #92400e; }
-.tag-red { background: var(--danger-bg); color: var(--danger); }
-.tag-purple { background: var(--purple-light); color: var(--purple); }
-
-/* ── Module list ── */
-.module-list { display: flex; flex-direction: column; gap: 10px; }
-.module-item {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1rem 1.25rem;
-  cursor: pointer;
-  transition: box-shadow 0.15s, border-color 0.15s;
-}
-.module-item:hover { border-color: var(--primary); box-shadow: var(--shadow); }
-.module-item-header { display: flex; align-items: flex-start; gap: 12px; }
-.module-item-icon {
-  width: 40px; height: 40px; border-radius: 10px;
-  background: var(--primary-light);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px; flex-shrink: 0;
-}
-.module-item-meta { flex: 1; min-width: 0; }
-.module-item-meta h4 { font-size: 13.5px; font-weight: 500; }
-.module-item-meta p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-.module-tags { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
-.module-expand { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12.5px; line-height: 1.6; color: var(--text-muted); }
-.module-item.expanded .module-expand { display: block; }
-
-/* ── Coverage bar ── */
-.coverage-bar { display: flex; height: 8px; border-radius: 100px; overflow: hidden; background: var(--border); }
-.coverage-bar .covered { background: var(--success); }
-.coverage-bar .partial { background: var(--warning); }
-.coverage-bar .uncovered { background: var(--danger); }
-
-/* ── Heatmap ── */
-.heatmap { display: flex; flex-wrap: wrap; gap: 3px; padding: 8px 0; }
-.heatmap-cell {
-  width: 14px; height: 14px; border-radius: 3px; cursor: pointer;
-  transition: transform 0.1s, box-shadow 0.1s; position: relative;
-}
-.heatmap-cell:hover { transform: scale(1.6); z-index: 2; }
-.heatmap-cell.selected { box-shadow: 0 0 0 2px var(--text); transform: scale(1.5); z-index: 3; }
-.heatmap-cell.covered { background: var(--success); }
-.heatmap-cell.partial { background: var(--warning); }
-.heatmap-cell.uncovered { background: var(--danger); opacity: 0.7; }
-.heatmap-cell.uncovered.selected { opacity: 1; }
-
-/* ── Gap detail panel ── */
-.gap-detail-panel {
-  margin-top: 12px; padding: 14px 16px;
-  background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
-  font-size: 13px; animation: fadeIn 0.15s ease;
-}
-.gap-detail-panel .detail-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.gap-detail-panel .detail-header h4 { font-size: 14px; margin: 0; flex: 1; }
-.gap-detail-panel .detail-close { cursor: pointer; font-size: 18px; color: var(--text-muted); background: none; border: none; padding: 0 4px; }
-.gap-detail-panel .detail-close:hover { color: var(--text); }
-.gap-detail-panel .detail-row { display: flex; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); }
-.gap-detail-panel .detail-row:last-child { border-bottom: none; }
-.gap-detail-panel .detail-label { font-weight: 600; color: var(--text-muted); font-size: 11px; text-transform: uppercase; width: 110px; flex-shrink: 0; }
-.gap-detail-panel .detail-value { flex: 1; }
-.gap-detail-panel .score-bar { height: 8px; border-radius: 100px; background: var(--border); overflow: hidden; margin-top: 3px; }
-.gap-detail-panel .score-fill { height: 100%; border-radius: 100px; }
-
-/* ── Gap selectable list ── */
-.gap-list { max-height: 340px; overflow-y: auto; }
-.gap-list-filter { display: flex; gap: 6px; margin-bottom: 8px; }
-.gap-list-filter button {
-  padding: 3px 10px; font-size: 10px; font-weight: 600; border-radius: 100px;
-  border: 1px solid var(--border); background: var(--bg); cursor: pointer;
-  transition: all 0.15s; color: var(--text-muted); font-family: 'Segoe UI', sans-serif;
-}
-.gap-list-filter button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-.gap-list-filter button:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
-.gap-list-item {
-  display: flex; align-items: center; gap: 8px; padding: 6px 8px;
-  border-radius: 6px; cursor: pointer; font-size: 12px;
-  transition: background 0.1s; border: 1px solid transparent;
-}
-.gap-list-item:hover { background: var(--bg); }
-.gap-list-item.selected { background: var(--primary-light); border-color: var(--primary); }
-.gap-list-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.gap-list-item .dot.covered { background: var(--success); }
-.gap-list-item .dot.partial { background: var(--warning); }
-.gap-list-item .dot.uncovered { background: var(--danger); opacity: 0.7; }
-.gap-list-item .item-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gap-list-item .item-score { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; width: 36px; text-align: right; }
-
-/* ── Timeline ── */
-.timeline { display: flex; flex-direction: column; gap: 2px; }
-.timeline-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 11px; }
-.timeline-bar-wrap { flex: 1; height: 14px; background: var(--border); border-radius: 100px; overflow: hidden; position: relative; }
-.timeline-bar { height: 100%; border-radius: 100px; min-width: 2px; }
-.timeline-label { width: 200px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-muted); }
-.timeline-date { width: 70px; flex-shrink: 0; text-align: right; color: var(--text-light); font-family: 'JetBrains Mono', monospace; font-size: 10px; }
-
-/* ── Doc tree ── */
-.doc-tree { font-size: 12.5px; }
-.doc-tree-item {
-  display: flex; align-items: flex-start; gap: 8px;
-  padding: 5px 8px; border-radius: 6px; transition: background 0.1s; cursor: pointer;
-}
-.doc-tree-item:hover { background: var(--bg); }
-.doc-tree-toggle { cursor: pointer; user-select: none; font-size: 11px; width: 16px; text-align: center; flex-shrink: 0; }
-
-/* ── Progress bar ── */
-.progress-bar-wrap { background: var(--border); border-radius: 100px; height: 6px; overflow: hidden; }
-.progress-bar-fill { height: 100%; border-radius: 100px; background: var(--primary); transition: width 0.4s ease; }
-.progress-text { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-
-/* ── Modal ── */
-.modal-overlay {
-  display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,0.35); z-index: 200;
-  align-items: center; justify-content: center;
-}
-.modal-overlay.open { display: flex; }
-.modal {
-  background: var(--surface); border-radius: var(--radius-lg);
-  width: 480px; max-width: 95vw;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2); overflow: hidden;
-}
-.modal-header {
-  padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 10px;
-}
-.modal-header h2 { font-size: 16px; font-weight: 600; flex: 1; }
-.modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 16px; }
-.modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
-.field label { display: block; font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 5px; }
-.field input, .field select {
-  width: 100%; padding: 8px 12px;
-  border: 1px solid var(--border); border-radius: var(--radius);
-  font-family: 'Segoe UI', sans-serif; font-size: 13px;
-  color: var(--text); background: var(--bg); outline: none;
-  transition: border-color 0.15s;
-}
-.field input:focus, .field select:focus { border-color: var(--primary); background: #fff; }
-.field-hint { font-size: 11px; color: var(--text-light); margin-top: 3px; }
-
-/* ── Toasts ── */
-.toast-container { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
-.toast {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 10px 16px; font-size: 13px; display: flex; align-items: center; gap: 8px;
-  box-shadow: var(--shadow); animation: slideIn 0.2s ease; min-width: 220px; max-width: 420px;
-}
-.toast.success { border-left: 3px solid var(--success); }
-.toast.info { border-left: 3px solid var(--primary); }
-.toast.warning { border-left: 3px solid var(--warning); }
-
-/* ── Loading ── */
-.loading-spinner {
-  display: inline-block; width: 16px; height: 16px;
-  border: 2px solid var(--border); border-top: 2px solid var(--primary);
-  border-radius: 50%; animation: spin 0.8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.loading-overlay {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  padding: 3rem; color: var(--text-muted); font-size: 13px;
-}
-
-/* ── Gap grid / cards ── */
-.gap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
-.gap-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-.gap-card-header { padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); }
-.gap-card-header h4 { font-size: 13px; font-weight: 500; flex: 1; }
-.gap-card-body { padding: 12px 16px; }
-.gap-item { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
-.gap-item:last-child { border-bottom: none; }
-.gap-item-icon { flex-shrink: 0; margin-top: 1px; }
-.gap-item-text { color: var(--text-muted); line-height: 1.5; }
-.gap-item-text strong { color: var(--text); font-weight: 500; }
-
-/* ── Animations ── */
-@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
-
-/* ── Utility ── */
-.flex { display: flex; }
-.items-center { align-items: center; }
-.gap-2 { gap: 8px; }
-.gap-3 { gap: 12px; }
-.ml-auto { margin-left: auto; }
-.text-sm { font-size: 13px; }
-.text-xs { font-size: 11px; }
-.text-muted { color: var(--text-muted); }
-.mt-2 { margin-top: 8px; }
-.mt-3 { margin-top: 12px; }
-.empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
-.empty-state-icon { font-size: 36px; margin-bottom: 8px; }
-.empty-state p { font-size: 13px; }
-
-/* ── Content Editor ── */
-.editor-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; min-height: 60vh; }
-@media (max-width: 1100px) { .editor-layout { grid-template-columns: 1fr; } }
-
-.editor-tabs { display: flex; gap: 4px; margin-bottom: 12px; }
-.editor-tab {
-  padding: 6px 14px; font-size: 12px; font-weight: 500; border-radius: 100px;
-  border: 1px solid var(--border); background: var(--bg); cursor: pointer;
-  transition: all 0.15s; color: var(--text-muted); font-family: 'Segoe UI', sans-serif;
-}
-.editor-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-.editor-tab:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
-.editor-tab .tab-count { font-size: 10px; margin-left: 4px; opacity: 0.8; }
-
-.suggestion-list { display: flex; flex-direction: column; gap: 10px; max-height: 70vh; overflow-y: auto; padding-right: 4px; }
-
-.suggestion-card {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-  padding: 14px 16px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
-}
-.suggestion-card:hover { border-color: var(--primary); box-shadow: var(--shadow); }
-.suggestion-card.selected { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-light); }
-.suggestion-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.suggestion-card-header h4 { font-size: 13px; font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.suggestion-card > p { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
-.suggestion-meta { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
-.generate-btn {
-  margin-left: auto; padding: 4px 12px; font-size: 11px; font-weight: 500;
-  border-radius: 6px; border: 1px solid var(--primary); background: var(--primary-light);
-  color: var(--primary-dark); cursor: pointer; transition: all 0.15s;
-  font-family: 'Segoe UI', sans-serif; white-space: nowrap;
-}
-.generate-btn:hover { background: var(--primary); color: #fff; }
-
-/* ── URL Input Section ── */
-.url-input-section {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
-  padding: 16px 20px; margin-bottom: 16px;
-}
-.url-input-header { margin-bottom: 10px; }
-.url-input-header h3 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
-.url-input-header p { font-size: 12px; color: var(--text-muted); }
-.url-input-row { display: flex; gap: 8px; align-items: center; }
-.url-input-row input {
-  flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius);
-  font-size: 13px; font-family: 'Segoe UI', sans-serif; outline: none; background: var(--bg);
-}
-.url-input-row input:focus { border-color: var(--primary); background: #fff; }
-.url-input-row .merge-toggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); white-space: nowrap; }
-.url-input-row .merge-toggle input[type="checkbox"] { accent-color: var(--primary); }
-
-/* ── Module Builder Panel ── */
-.module-builder-panel {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-  display: flex; flex-direction: column; max-height: 80vh; position: sticky; top: 70px;
-}
-.module-builder-header {
-  padding: 12px 16px; border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 8px;
-}
-.module-builder-header h3 { font-size: 14px; font-weight: 500; flex: 1; }
-.module-builder-body { padding: 16px; overflow-y: auto; flex: 1; }
-.module-builder-footer { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; }
-
-/* ── Generation Progress ── */
-.generation-progress { padding: 12px 16px; }
-.progress-step {
-  display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 12px;
-}
-.progress-step .step-icon {
-  width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-size: 11px; flex-shrink: 0; border: 2px solid var(--border); color: var(--text-muted); background: var(--bg);
-}
-.progress-step.active .step-icon { border-color: var(--primary); color: var(--primary); background: var(--primary-light); animation: pulse-step 1.2s infinite; }
-.progress-step.done .step-icon { border-color: var(--success); color: #fff; background: var(--success); }
-.progress-step.error .step-icon { border-color: var(--danger); color: #fff; background: var(--danger); }
-.progress-step .step-label { flex: 1; color: var(--text-muted); }
-.progress-step.active .step-label { color: var(--text); font-weight: 500; }
-.progress-step.done .step-label { color: var(--success); }
-.progress-step .step-chars { font-size: 10px; color: var(--text-light); font-family: 'JetBrains Mono', monospace; }
-@keyframes pulse-step { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-
-/* ── Unit Tabs ── */
-.unit-tabs-bar {
-  display: flex; gap: 2px; padding: 8px 16px; border-bottom: 1px solid var(--border);
-  overflow-x: auto; flex-wrap: nowrap;
-}
-.unit-tab {
-  padding: 5px 12px; font-size: 11px; font-weight: 500; border-radius: 6px 6px 0 0;
-  border: 1px solid transparent; border-bottom: none; background: transparent; cursor: pointer;
-  color: var(--text-muted); font-family: 'Segoe UI', sans-serif; white-space: nowrap;
-  transition: all 0.12s;
-}
-.unit-tab:hover { background: var(--bg); color: var(--text); }
-.unit-tab.active { background: var(--surface); color: var(--primary); border-color: var(--border); font-weight: 600; position: relative; }
-.unit-tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--primary); }
-
-.draft-content { font-size: 13px; line-height: 1.7; color: var(--text); }
-.draft-content h1 { font-size: 18px; font-weight: 700; margin: 0 0 12px; color: var(--text); }
-.draft-content h2 { font-size: 16px; font-weight: 600; margin: 18px 0 8px; color: var(--primary-dark); border-bottom: 1px solid var(--border); padding-bottom: 4px; }
-.draft-content h3 { font-size: 14px; font-weight: 600; margin: 14px 0 6px; }
-.draft-content pre {
-  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-  padding: 12px 16px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px;
-  overflow-x: auto; white-space: pre-wrap; margin: 8px 0;
-}
-.draft-content ul, .draft-content ol { margin-left: 1.5rem; margin-bottom: 8px; }
-.draft-content li { margin-bottom: 4px; }
-.draft-content strong { color: var(--text); }
-.draft-content blockquote {
-  border-left: 3px solid var(--primary); padding: 8px 12px; margin: 8px 0;
-  background: var(--primary-light); border-radius: 0 6px 6px 0; font-size: 12px;
-}
-
-/* ── Module Gap View ── */
-.mgap-layout { display: grid; grid-template-columns: 380px 1fr; gap: 16px; }
-@media (max-width: 1100px) { .mgap-layout { grid-template-columns: 1fr; } }
-.mgap-search {
-  width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius);
-  font-size: 12px; font-family: 'Segoe UI', sans-serif; outline: none; background: var(--bg);
-}
-.mgap-search:focus { border-color: var(--primary); background: #fff; }
-.mgap-module-item {
-  display: flex; align-items: center; gap: 8px; padding: 9px 10px;
-  border-radius: 8px; cursor: pointer; font-size: 12px;
-  transition: background 0.1s; border: 1px solid transparent;
-}
-.mgap-module-item:hover { background: var(--bg); }
-.mgap-module-item.selected { background: var(--primary-light); border-color: var(--primary); }
-.mgap-module-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.mgap-module-item .item-title { flex: 1; min-width: 0; }
-.mgap-module-item .item-title h5 { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
-.mgap-module-item .item-title p { font-size: 10px; color: var(--text-muted); margin: 1px 0 0; }
-.mgap-module-item .item-score { font-size: 10px; font-family: 'JetBrains Mono', monospace; width: 36px; text-align: right; flex-shrink: 0; }
-
-.mgap-detail-section { margin-bottom: 14px; }
-.mgap-detail-section h4 { font-size: 12px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
-.mgap-topic-row {
-  padding: 5px 8px; border-radius: 6px; font-size: 12px;
-  display: flex; align-items: center; gap: 6px;
-}
-.mgap-topic-row.strong { background: var(--bg); }
-.mgap-gap-box {
-  margin-top: 14px; padding: 12px; border-radius: 8px; border: 1px solid;
-}
-.mgap-gap-box.has-gaps { background: var(--danger-bg); border-color: #f5c6cb; }
-.mgap-gap-box.no-gaps { background: var(--success-bg); border-color: #c3e6cb; }
-.mgap-gap-box h4 { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
-.mgap-gap-box ul { font-size: 12px; margin-left: 1rem; line-height: 1.8; }
-.mgap-gap-box li { display: flex; align-items: center; gap: 6px; }
-.mgap-gap-box li > span:first-child { flex: 1; min-width: 0; }
-
-.mgap-edit-btn {
-  flex-shrink: 0; padding: 2px 8px; font-size: 10px; font-weight: 500;
-  border-radius: 4px; border: 1px solid var(--border); background: var(--bg);
-  cursor: pointer; transition: all 0.15s; color: var(--text-muted);
-  font-family: 'Segoe UI', sans-serif; white-space: nowrap; opacity: 0;
-}
-.mgap-topic-row:hover .mgap-edit-btn,
-.mgap-gap-box li:hover .mgap-edit-btn { opacity: 1; }
-.mgap-edit-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
-
-.mgap-fix-all-btn {
-  display: flex; align-items: center; justify-content: center; gap: 6px;
-  margin-top: 10px; padding: 8px 16px; font-size: 12px; font-weight: 600;
-  border-radius: 8px; border: none; background: var(--primary); color: #fff;
-  cursor: pointer; transition: all 0.15s; width: 100%;
-  font-family: 'Segoe UI', sans-serif;
-}
-.mgap-fix-all-btn:hover { background: var(--primary-dark); box-shadow: var(--shadow); }
-
-/* ── Perspective toggle ── */
-.gap-perspective-bar {
-  display: flex; gap: 4px; margin-bottom: 14px; padding: 3px; background: var(--bg);
-  border-radius: 10px; border: 1px solid var(--border); width: fit-content;
-}
-.gap-perspective-btn {
-  padding: 6px 16px; font-size: 12px; font-weight: 500; border-radius: 8px;
-  border: none; background: transparent; cursor: pointer;
-  transition: all 0.15s; color: var(--text-muted); font-family: 'Segoe UI', sans-serif;
-}
-.gap-perspective-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.08); font-weight: 600; }
-.gap-perspective-btn:hover:not(.active) { color: var(--text); }
-
-/* ── Insights ── */
-.commit-item {
-  padding: 10px 0; border-bottom: 1px solid var(--border);
-  display: flex; align-items: flex-start; gap: 10px; font-size: 12.5px;
-}
-.commit-item:last-child { border-bottom: none; }
-.commit-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--primary-light); display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
-.commit-meta { flex: 1; min-width: 0; }
-.commit-msg { font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.commit-info { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-
-/* ── Responsive ── */
-@media (max-width: 900px) {
-  .sidebar { width: 60px; }
-  .sidebar-brand-text, .sidebar-label, .sidebar-nav a span:not(.nav-icon),
-  .sidebar-nav .nav-count, .sidebar-footer, .sidebar-product-select { display: none; }
-  .sidebar-nav a { justify-content: center; padding: 10px; }
-  .main { margin-left: 60px; }
-}
-</style>
-</head>
-<body>
-<!-- SIDEBAR -->
-<aside class="sidebar">
-  <div class="sidebar-brand">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-      <rect width="11" height="11" x="1" y="1" fill="#f35325"/>
-      <rect width="11" height="11" x="13" y="1" fill="#81bc06"/>
-      <rect width="11" height="11" x="1" y="13" fill="#05a6f0"/>
-      <rect width="11" height="11" x="13" y="13" fill="#ffba08"/>
-    </svg>
-    <div class="sidebar-brand-text">
-      Microsoft Learn
-      <small>BizApps &amp; Dynamics</small>
-    </div>
-  </div>
-
-  <div class="sidebar-section">
-    <p class="sidebar-label">Product</p>
-    <select class="sidebar-product-select" id="product-select" onchange="onProductChange(this.value)">
-      <option value="">— Select a product —</option>
-    </select>
-  </div>
-
-  <div class="sidebar-divider"></div>
-  <div class="sidebar-section">
-    <p class="sidebar-label">Overview</p>
-    <ul class="sidebar-nav">
-      <li><a class="active" onclick="switchView('dashboard')" data-view="dashboard">
-        <span class="nav-icon">📊</span> Dashboard
-      </a></li>
-    </ul>
-  </div>
-  <div class="sidebar-divider"></div>
-  <div class="sidebar-section">
-    <p class="sidebar-label">Content</p>
-    <ul class="sidebar-nav">
-      <li><a onclick="switchView('modules')" data-view="modules">
-        <span class="nav-icon">📚</span> Training Modules
-        <span class="nav-count" id="count-modules">0</span>
-      </a></li>
-      <li><a onclick="switchView('docs')" data-view="docs">
-        <span class="nav-icon">📖</span> Documentation
-        <span class="nav-count" id="count-docs">0</span>
-      </a></li>
-    </ul>
-  </div>
-  <div class="sidebar-divider"></div>
-  <div class="sidebar-section">
-    <p class="sidebar-label">Analysis</p>
-    <ul class="sidebar-nav">
-      <li><a onclick="switchView('gap-analysis')" data-view="gap-analysis">
-        <span class="nav-icon">🔍</span> Gap Analysis
-      </a></li>
-      <li><a onclick="switchView('editor')" data-view="editor">
-        <span class="nav-icon">✏️</span> Content Editor
-        <span class="nav-count" id="count-suggestions">0</span>
-      </a></li>
-      <li><a onclick="switchView('insights')" data-view="insights">
-        <span class="nav-icon">🔗</span> GitHub Insights
-      </a></li>
-    </ul>
-  </div>
-  <div class="sidebar-footer">
-    <a href="index.html" title="Archive version (Catalog API)">← Archive version</a>
-  </div>
-</aside>
-
-<!-- MAIN -->
-<div class="main">
-
-  <!-- TOP BAR -->
-  <header class="topbar">
-    <span class="topbar-title" id="topbar-title">Team Content Gap Manager</span>
-    <div class="topbar-right">
-      <span class="badge-warn" id="auth-badge" style="display:none;">⚠ Unauthenticated (60 req/hr)</span>
-      <button class="btn-settings" id="github-login-btn" onclick="initiateGitHubLogin()" style="display:none;">🔑 Sign in with GitHub</button>
-      <button class="btn-settings" id="github-logout-btn" onclick="logoutGitHub()" style="display:none;">🚪 Sign out</button>
-      <span class="badge-model" id="model-badge">gpt-4.1-mini</span>
-      <button class="btn-settings" onclick="openSettings()">⚙ Settings</button>
-    </div>
-  </header>
-
-  <!-- DASHBOARD VIEW -->
-  <section class="view active" id="view-dashboard">
-    <div class="page-header">
-      <div class="page-header-text">
-        <h1>Dashboard</h1>
-        <p id="dashboard-subtitle">Select a product above to begin analyzing content</p>
-      </div>
-      <div class="page-header-actions">
-        <button class="btn btn-secondary" onclick="refreshData()">🔄 Refresh</button>
-      </div>
-    </div>
-    <div class="page-body" id="dashboard-body">
-      <div class="stat-grid" id="stat-grid">
-        <div class="stat-card">
-          <div class="stat-card-label">BizApps Repo Modules</div>
-          <div class="stat-card-value" id="stat-bizapps">—</div>
-          <div class="stat-card-sub">learn-bizapps-pr</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-label">Dynamics Repo Modules</div>
-          <div class="stat-card-value" id="stat-dynamics" style="color:var(--primary);">—</div>
-          <div class="stat-card-sub">learn-dynamics-pr</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-label">Products Discovered</div>
-          <div class="stat-card-value" id="stat-products" style="color:var(--purple);">—</div>
-          <div class="stat-card-sub">Across both repos</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-label">Selected Product</div>
-          <div class="stat-card-value" id="stat-selected" style="font-size:16px;">—</div>
-          <div class="stat-card-sub" id="stat-selected-sub">Select a product</div>
-        </div>
-      </div>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
-        <div class="card">
-          <div class="card-header">
-            <span>📦</span>
-            <h3>Source Repos</h3>
-          </div>
-          <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
-            <a href="https://github.com/MicrosoftDocs/learn-bizapps-pr" target="_blank" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);padding:8px 12px;border:1px solid var(--border);border-radius:8px;transition:border-color 0.15s;">
-              <span style="font-size:20px;">📘</span>
-              <div>
-                <div style="font-size:13px;font-weight:500;">learn-bizapps-pr</div>
-                <div style="font-size:11px;color:var(--text-muted);">Power Platform / Copilot Studio training</div>
-              </div>
-            </a>
-            <a href="https://github.com/MicrosoftDocs/learn-dynamics-pr" target="_blank" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);padding:8px 12px;border:1px solid var(--border);border-radius:8px;transition:border-color 0.15s;">
-              <span style="font-size:20px;">📗</span>
-              <div>
-                <div style="font-size:13px;font-weight:500;">learn-dynamics-pr</div>
-                <div style="font-size:11px;color:var(--text-muted);">Dynamics 365 training</div>
-              </div>
-            </a>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-header">
-            <span>📊</span>
-            <h3>Product Quick Stats</h3>
-            <span class="tag tag-blue ml-auto" id="quick-stats-product"></span>
-          </div>
-          <div class="card-body" id="quick-stats-body">
-            <div class="empty-state" style="padding:1.5rem;"><p>Select a product to see stats</p></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <span>⚠️</span>
-          <h3>Health Check — Oldest Modules</h3>
-          <span class="text-xs text-muted ml-auto">Sorted by ms.date ascending</span>
-        </div>
-        <div class="card-body" style="padding:0; max-height:420px; overflow-y:auto;">
-          <div id="health-list">
-            <div class="empty-state" style="padding:2rem;"><p>Select a product to load modules</p></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- MODULES VIEW -->
-  <section class="view" id="view-modules">
-    <div class="page-header">
-      <div class="page-header-text">
-        <h1>Training Modules</h1>
-        <p id="modules-subtitle">Select a product to view modules from GitHub</p>
-      </div>
-      <div class="page-header-actions">
-        <input type="text" id="module-search" placeholder="Search modules…" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Segoe UI',sans-serif;outline:none;width:200px;background:var(--bg);" oninput="filterModules(this.value)" />
-        <select id="module-author-filter" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:'Segoe UI',sans-serif;background:var(--bg);" onchange="filterByAuthor(this.value)">
-          <option value="">All authors</option>
-        </select>
-        <select id="module-sort" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;font-family:'Segoe UI',sans-serif;background:var(--bg);" onchange="sortModules(this.value)">
-          <option value="title">Sort: Title</option>
-          <option value="date">Sort: Date (newest)</option>
-          <option value="units">Sort: Unit count</option>
-        </select>
-      </div>
-    </div>
-    <div class="page-body">
-      <div id="module-progress" style="display:none;margin-bottom:16px;">
-        <div class="progress-bar-wrap"><div class="progress-bar-fill" id="module-progress-bar" style="width:0%;"></div></div>
-        <div class="progress-text" id="module-progress-text">Loading modules…</div>
-      </div>
-      <div class="module-list" id="module-list">
-        <div class="empty-state"><div class="empty-state-icon">📚</div><p>Select a product to load training modules</p></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- DOCUMENTATION VIEW -->
-  <section class="view" id="view-docs">
-    <div class="page-header">
-      <div class="page-header-text">
-        <h1>Documentation</h1>
-        <p id="docs-subtitle">Documentation TOC for the selected product</p>
-      </div>
-      <div class="page-header-actions">
-        <input type="text" placeholder="Search topics…" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:'Segoe UI',sans-serif;outline:none;width:200px;background:var(--bg);" oninput="filterDocs(this.value)" />
-        <span class="text-xs text-muted" id="doc-topic-total"></span>
-      </div>
-    </div>
-    <div class="page-body">
-      <div id="doc-tree-container">
-        <div class="empty-state"><div class="empty-state-icon">📖</div><p>Select a product to load documentation topics</p></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- GAP ANALYSIS VIEW -->
-  <section class="view" id="view-gap-analysis">
-    <div class="page-header">
-      <div class="page-header-text">
-        <h1>Gap Analysis</h1>
-        <p>Compare training content against documentation to find coverage gaps</p>
-      </div>
-      <div class="page-header-actions">
-        <button class="btn btn-ghost btn-sm" onclick="exportGapCSV()" id="export-csv-btn" style="display:none;">📥 CSV</button>
-        <button class="btn btn-ghost btn-sm" onclick="exportGapHTML()" id="export-html-btn" style="display:none;">📄 Report</button>
-        <button class="btn btn-secondary" onclick="runClientGapAnalysis()" id="client-gap-btn">⚡ Quick scan</button>
-        <button class="btn btn-primary" onclick="runAIGapAnalysis()" id="ai-gap-btn">🤖 AI deep analysis</button>
-      </div>
-    </div>
-    <div class="page-body">
-      <div class="gap-perspective-bar" id="gap-perspective" style="display:none;">
-        <button class="gap-perspective-btn active" id="persp-doc-btn" onclick="toggleGapPerspective('doc')">📄 By Doc Topic</button>
-        <button class="gap-perspective-btn" id="persp-module-btn" onclick="toggleGapPerspective('module')">📦 By Module</button>
-      </div>
-      <div id="gap-summary" style="margin-bottom:16px;display:none;">
-        <div class="stat-grid">
-          <div class="stat-card">
-            <div class="stat-card-label">Doc Topics</div>
-            <div class="stat-card-value" id="gap-total-docs">0</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card-label">Covered</div>
-            <div class="stat-card-value" style="color:var(--success);" id="gap-covered">0</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card-label">Partial</div>
-            <div class="stat-card-value" style="color:var(--warning);" id="gap-partial">0</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card-label">Uncovered</div>
-            <div class="stat-card-value" style="color:var(--danger);" id="gap-uncovered">0</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-card-label">Coverage</div>
-            <div class="stat-card-value" id="gap-pct" style="color:var(--primary);">0%</div>
-          </div>
-        </div>
-        <div class="coverage-bar" id="gap-coverage-bar" style="margin-top:8px;"></div>
-      </div>
-      <div id="gap-visuals" style="display:none;margin-bottom:16px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-          <div class="card">
-            <div class="card-header"><span>🗺️</span><h3>Coverage heatmap</h3><span class="text-xs text-muted ml-auto">Click cell for details</span></div>
-            <div class="card-body">
-              <div style="display:flex;gap:12px;margin-bottom:8px;font-size:10px;color:var(--text-muted);">
-                <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--success);"></span> Covered</span>
-                <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--warning);"></span> Partial</span>
-                <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--danger);opacity:0.7;"></span> Uncovered</span>
-              </div>
-              <div class="heatmap" id="gap-heatmap"></div>
-              <div id="gap-detail-panel"></div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-header"><span>📋</span><h3>Topic list</h3><span class="text-xs text-muted ml-auto">Click to inspect</span></div>
-            <div class="card-body">
-              <div class="gap-list-filter" id="gap-list-filter">
-                <button class="active" onclick="filterGapList('all')">All</button>
-                <button onclick="filterGapList('uncovered')">🔴 Uncovered</button>
-                <button onclick="filterGapList('partial')">🟡 Partial</button>
-                <button onclick="filterGapList('covered')">🟢 Covered</button>
-              </div>
-              <div class="gap-list" id="gap-list"></div>
-            </div>
-          </div>
-        </div>
-        <div style="margin-top:16px;">
-          <div class="card">
-            <div class="card-header"><span>📅</span><h3>Training freshness</h3><span class="text-xs text-muted ml-auto">By ms.date</span></div>
-            <div class="card-body" style="max-height:260px;overflow-y:auto;">
-              <div class="timeline" id="gap-timeline"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div id="gap-results">
-        <div class="empty-state">
-          <div class="empty-state-icon">🔍</div>
-          <p>Load a product first, then click Quick scan or AI deep analysis.</p>
-        </div>
-      </div>
-      <!-- MODULE-CENTRIC GAP VIEW -->
-      <div id="gap-module-view" style="display:none;">
-        <div class="mgap-layout">
-          <div>
-            <div class="card">
-              <div class="card-header">
-                <span>📦</span><h3>Training Modules</h3>
-                <span class="text-xs text-muted ml-auto" id="mgap-count"></span>
-              </div>
-              <div class="card-body" style="padding:10px;">
-                <input type="text" class="mgap-search" placeholder="Search modules…" id="mgap-search" oninput="filterModuleGapList(this.value)" />
-                <div class="gap-list-filter" id="mgap-filter" style="margin-top:8px;">
-                  <button class="active" onclick="filterModuleGapStatus('all')">All</button>
-                  <button onclick="filterModuleGapStatus('has-gaps')">🔴 Has Gaps</button>
-                  <button onclick="filterModuleGapStatus('good')">🟢 Good Coverage</button>
-                </div>
-                <div id="mgap-list" style="max-height:58vh;overflow-y:auto;margin-top:8px;"></div>
-              </div>
-            </div>
-          </div>
-          <div>
-            <div class="card" id="mgap-detail-card">
-              <div class="card-header">
-                <span>🔍</span><h3 id="mgap-detail-title">Module Gap Details</h3>
-              </div>
-              <div class="card-body" id="mgap-detail-body" style="max-height:68vh;overflow-y:auto;">
-                <div class="empty-state" style="padding:2rem;">
-                  <div class="empty-state-icon">📦</div>
-                  <p>Select a module from the list to see which documentation topics it covers and where gaps exist.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- CONTENT EDITOR VIEW -->
-  <section class="view" id="view-editor">
-    <div class="page-header">
-      <div class="page-header-text">
-        <h1>✏️ Content Editor</h1>
-        <p id="editor-subtitle">AI-powered module generation from gaps or URLs</p>
-      </div>
-      <div class="page-header-actions">
-        <button class="btn btn-secondary" id="refresh-suggestions-btn" onclick="buildEditorSuggestions()">🔄 Refresh</button>
-        <button class="btn btn-primary" id="generate-plan-btn" onclick="generateContentPlan()">📋 Content Plan</button>
-        <button class="btn btn-secondary" id="export-plan-btn" onclick="exportContentPlan()" style="display:none;">⬇ Export Plan</button>
-      </div>
-    </div>
-    <div class="page-body">
-      <!-- URL Input Section -->
-      <div class="url-input-section" id="url-input-section">
-        <div class="url-input-header">
-          <h3>📎 Generate from URL or Repo</h3>
-          <p>Paste a documentation URL, or browse a private repo to pull source content</p>
-        </div>
-        <div class="url-input-row">
-          <input type="text" id="url-input" placeholder="https://learn.microsoft.com/... or owner/repo/path/to/file.yml" />
-          <button class="btn btn-primary" onclick="generateFromUrl()">🚀 Generate Module</button>
-          <button class="btn btn-secondary" onclick="openRepoBrowser()">📂 Browse Repo</button>
-        </div>
-      </div>
-
-      <!-- Repo Browser Panel -->
-      <div class="url-input-section" id="repo-browser-panel" style="display:none;">
-        <div class="url-input-header" style="display:flex;align-items:center;gap:8px;">
-          <h3 style="flex:1;">📂 Repository Browser</h3>
-          <button class="btn btn-ghost btn-sm" onclick="closeRepoBrowser()">✕ Close</button>
-        </div>
-        <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">
-          <input type="text" id="repo-browser-input" placeholder="owner/repo (e.g. MicrosoftDocs/learn-bizapps-pr)" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--bg);" />
-          <input type="text" id="repo-browser-branch" placeholder="main" style="width:100px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--bg);" />
-          <button class="btn btn-primary btn-sm" onclick="browseRepo()">Load</button>
-        </div>
-        <div id="repo-browser-breadcrumb" style="font-size:12px;color:var(--text-muted);margin-bottom:8px;"></div>
-        <div id="repo-browser-list" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);"></div>
-      </div>
-
-      <div id="editor-empty" class="empty-state">
-        <div class="empty-state-icon">✏️</div>
-        <p>Run a gap analysis first (Gap Analysis → Quick scan), then come here for content suggestions.<br>
-        Or paste a URL above to generate a training module directly.</p>
-      </div>
-      <div id="editor-content" style="display:none;">
-        <div class="editor-tabs" id="editor-tabs">
-          <button class="editor-tab active" onclick="switchEditorTab('new')">📝 New Content <span class="tab-count" id="tab-count-new">0</span></button>
-          <button class="editor-tab" onclick="switchEditorTab('update')">🔄 Updates Needed <span class="tab-count" id="tab-count-update">0</span></button>
-          <button class="editor-tab" onclick="switchEditorTab('outdated')">⏰ Outdated <span class="tab-count" id="tab-count-outdated">0</span></button>
-        </div>
-        <div class="editor-layout">
-          <div>
-            <div class="suggestion-list" id="suggestion-list"></div>
-          </div>
-          <div>
-            <div class="module-builder-panel" id="module-builder-panel">
-              <div class="module-builder-header">
-                <span>🏗️</span>
-                <h3 id="module-builder-title">Module Builder</h3>
-                <button class="btn btn-ghost btn-sm" onclick="copyModuleContent()" id="copy-module-btn" style="display:none;">📋 Copy</button>
-              </div>
-              <div id="module-builder-progress" style="display:none;">
-                <div class="generation-progress" id="progress-steps"></div>
-              </div>
-              <div class="unit-tabs-bar" id="unit-tabs-bar" style="display:none;"></div>
-              <div class="module-builder-body" id="module-builder-body">
-                <div class="empty-state" style="padding:2rem;">
-                  <div class="empty-state-icon">🏗️</div>
-                  <p>Select a suggestion and click <strong>Generate Module</strong> to build a full training module with Overview, Introduction, Areas, Knowledge Check &amp; Summary.<br><br>Or paste a URL above to generate from documentation.</p>
-                </div>
-              </div>
-              <div class="module-builder-footer" id="module-builder-footer" style="display:none;">
-                <button class="btn btn-primary btn-sm" onclick="exportModule('bundle')">📦 Export Module</button>
-                <button class="btn btn-secondary btn-sm" onclick="exportModule('md')">⬇ Current .md</button>
-                <button class="btn btn-secondary btn-sm" onclick="exportModule('yaml')">⬇ YAML</button>
-                <button class="btn btn-secondary btn-sm" onclick="exportModule('json')">⬇ JSON</button>
-                <div style="flex:1;"></div>
-                <button class="btn btn-primary btn-sm" onclick="regenerateCurrentUnit()">🔄 Regenerate Unit</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- GITHUB INSIGHTS VIEW -->
-  <section class="view" id="view-insights">
-    <div class="page-header">
-      <div class="page-header-text">
-        <h1>GitHub Insights</h1>
-        <p>Recent activity and contributor data from both repos</p>
-      </div>
-      <div class="page-header-actions">
-        <button class="btn btn-secondary" onclick="loadInsights()">🔄 Refresh</button>
-      </div>
-    </div>
-    <div class="page-body">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
-        <div class="card">
-          <div class="card-header"><span>📘</span><h3>Recent Commits — learn-bizapps-pr</h3></div>
-          <div class="card-body" style="max-height:400px;overflow-y:auto;" id="commits-bizapps">
-            <div class="loading-overlay"><div class="loading-spinner"></div> Loading…</div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-header"><span>📗</span><h3>Recent Commits — learn-dynamics-pr</h3></div>
-          <div class="card-body" style="max-height:400px;overflow-y:auto;" id="commits-dynamics">
-            <div class="loading-overlay"><div class="loading-spinner"></div> Loading…</div>
-          </div>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
-        <div class="card">
-          <div class="card-header"><span>👥</span><h3>Modules by Author</h3></div>
-          <div class="card-body" style="max-height:400px;overflow-y:auto;" id="modules-by-author">
-            <div class="empty-state" style="padding:1rem;"><p>Load a product first</p></div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-header"><span>🔄</span><h3>Update Cycle Distribution</h3></div>
-          <div class="card-body" id="update-cycle-dist">
-            <div class="empty-state" style="padding:1rem;"><p>Load a product first</p></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-</div><!-- /main -->
-
-<!-- SETTINGS MODAL -->
-<div class="modal-overlay" id="settings-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>⚙️ Settings</h2>
-      <button class="btn btn-ghost" onclick="closeSettings()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="field">
-        <label>GitHub Authentication</label>
-        <div id="settings-auth-status" style="margin-bottom:8px;font-size:12px;"></div>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-          <button class="btn btn-primary btn-sm" onclick="initiateGitHubLogin()">🔑 Sign in with GitHub (SSO)</button>
-          <span style="font-size:11px;color:var(--text-muted);">Recommended — uses OAuth for private repo access</span>
-        </div>
-        <details style="margin-top:6px;">
-          <summary style="font-size:12px;color:var(--text-muted);cursor:pointer;">Or use a Personal Access Token instead</summary>
-          <div style="margin-top:8px;">
-            <input type="password" id="api-key-input" placeholder="ghp_… or github_pat_…" autocomplete="off" />
-            <p class="field-hint">Used for GitHub API auth &amp; GitHub Models AI. Generate at <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--primary);">github.com/settings/tokens</a>. Stored in localStorage as <code>gh_models_token</code>.</p>
-          </div>
-        </details>
-      </div>
-      <div class="field">
-        <label>AI Model</label>
-        <select id="ai-model-select">
-          <option value="openai/gpt-4.1-mini">GPT-4.1 Mini (fast, 150 req/day)</option>
-          <option value="openai/gpt-4.1-nano">GPT-4.1 Nano (fastest, 150 req/day)</option>
-          <option value="openai/gpt-4.1">GPT-4.1 (powerful, 50 req/day)</option>
-          <option value="meta/llama-4-scout-17b-16e-instruct">Llama 4 Scout 17B (150 req/day)</option>
-          <option value="mistralai/mistral-small-2503">Mistral Small (150 req/day)</option>
-          <option value="deepseek/deepseek-r1">DeepSeek R1 (50 req/day)</option>
-        </select>
-        <p class="field-hint">Powered by <a href="https://github.com/marketplace/models" target="_blank" style="color:var(--primary);">GitHub Models</a>.</p>
-      </div>
-      <div class="field">
-        <label>Cache TTL</label>
-        <select id="cache-ttl-select">
-          <option value="1">1 hour</option>
-          <option value="4" selected>4 hours</option>
-          <option value="12">12 hours</option>
-          <option value="24">24 hours</option>
-          <option value="72">72 hours</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Display Name</label>
-        <input type="text" id="display-name-input" placeholder="e.g. Jane Smith" />
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-danger btn-sm" onclick="clearAllCache()">🗑 Clear cache</button>
-      <button class="btn btn-sm" style="background:var(--warning);color:#000;" onclick="runDiagnostics()">🔍 Test Connection</button>
-      <div style="flex:1;"></div>
-      <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveSettings()">Save</button>
-    </div>
-  </div>
-</div>
-
-<div class="toast-container" id="toasts"></div>
-<script>
 // ══════════════════════════════════════════════════════════════════════════
 // GITHUB OAUTH SSO
 // ══════════════════════════════════════════════════════════════════════════
@@ -1320,55 +108,43 @@ const FOLDER_PRODUCT_MAP = {
 
 const PRODUCT_DOC_TOC = {
   'Microsoft Copilot Studio': '/en-us/microsoft-copilot-studio/toc.json',
-  'Power Apps': [
-    '/en-us/power-apps/maker/toc.json',
-  ],
+  'Power Apps': '/en-us/power-apps/toc.json',
   'Power Automate': '/en-us/power-automate/toc.json',
-  'Power BI': [
-    '/en-us/power-bi/fundamentals/toc.json',
-    '/en-us/power-bi/transform-model/toc.json',
-    '/en-us/power-bi/create-reports/toc.json',
-    '/en-us/power-bi/guidance/toc.json',
-  ],
+  'Power BI': '/en-us/power-bi/toc.json',
   'AI Builder': '/en-us/ai-builder/toc.json',
   'Dynamics 365 Finance': '/en-us/dynamics365/finance/toc.json',
   'Dynamics 365 Supply Chain Management': '/en-us/dynamics365/supply-chain/toc.json',
   'Dynamics 365 Sales': '/en-us/dynamics365/sales/toc.json',
-  'Dynamics 365 Customer Service': [
-    '/en-us/dynamics365/customer-service/implement/toc.json',
-    '/en-us/dynamics365/customer-service/administer/toc.json',
-    '/en-us/dynamics365/customer-service/use/toc.json',
-    '/en-us/dynamics365/customer-service/develop/toc.json',
-  ],
+  'Dynamics 365 Customer Service': '/en-us/dynamics365/customer-service/toc.json',
   'Dynamics 365 Commerce': '/en-us/dynamics365/commerce/toc.json',
   'Dynamics 365 Field Service': '/en-us/dynamics365/field-service/toc.json',
   'Dynamics 365 Business Central': '/en-us/dynamics365/business-central/toc.json',
   'Dynamics 365 Human Resources': '/en-us/dynamics365/human-resources/toc.json',
   'Dynamics 365 Project Operations': '/en-us/dynamics365/project-operations/toc.json',
   'Dynamics 365 Contact Center': '/en-us/dynamics365/contact-center/toc.json',
-  'Industry Solutions': [
-    '/en-us/industry/healthcare/toc.json',
-    '/en-us/industry/financial-services/toc.json',
-    '/en-us/industry/nonprofit/toc.json',
-    '/en-us/industry/sustainability/toc.json',
-    '/en-us/industry/mobility/toc.json',
-  ],
-  'Healthcare': '/en-us/industry/healthcare/toc.json',
-  'Dynamics 365 Fraud Protection': '/en-us/dynamics365/fraud-protection/toc.json',
-  'Power Platform': [
-    '/en-us/power-platform/admin/toc.json',
-    '/en-us/power-platform/guidance/toc.json',
-  ],
-  'Copilot for Finance': '/en-us/copilot/finance/toc.json',
-  'Copilot for Sales': '/en-us/microsoft-sales-copilot/toc.json',
-  'Copilot for Service': '/en-us/microsoft-copilot-service/toc.json',
-  'Customer Insights - Data': '/en-us/dynamics365/customer-insights/data/toc.json',
-  'Customer Insights - Journeys': '/en-us/dynamics365/customer-insights/journeys/toc.json',
-  'Intelligent Order Management': '/en-us/dynamics365/intelligent-order-management/toc.json',
+};
+
+// ms.service value → doc TOC path (allows dynamic service-based lookup)
+const SERVICE_DOC_TOC = {
+  'copilot-studio': '/en-us/microsoft-copilot-studio/toc.json',
+  'power-apps': '/en-us/power-apps/toc.json',
+  'power-automate': '/en-us/power-automate/toc.json',
+  'power-bi': '/en-us/power-bi/toc.json',
+  'ai-builder': '/en-us/ai-builder/toc.json',
+  'dynamics-finance': '/en-us/dynamics365/finance/toc.json',
+  'dynamics-scm': '/en-us/dynamics365/supply-chain/toc.json',
+  'dynamics-sales': '/en-us/dynamics365/sales/toc.json',
+  'dynamics-customer-service': '/en-us/dynamics365/customer-service/toc.json',
+  'dynamics-commerce': '/en-us/dynamics365/commerce/toc.json',
+  'dynamics-field-service': '/en-us/dynamics365/field-service/toc.json',
+  'dynamics-business-central': '/en-us/dynamics365/business-central/toc.json',
+  'dynamics-human-resources': '/en-us/dynamics365/human-resources/toc.json',
+  'dynamics-project-operations': '/en-us/dynamics365/project-operations/toc.json',
+  'dynamics-contact-center': '/en-us/dynamics365/contact-center/toc.json',
+  'power-platform': '/en-us/power-platform/toc.json',
 };
 
 const CORS_PROXIES = [
-  url => `https://github-oauth-proxy.oscarfranco.workers.dev/proxy?url=${encodeURIComponent(url)}`,
   url => `https://api.codetabs.com/v1/proxy/?quest=${url}`,
   url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
 ];
@@ -1609,59 +385,59 @@ async function fetchRepoTree(owner, repo) {
 }
 
 function discoverProducts(trees) {
+  // Discover products by folder — each top-level folder = one product
   const products = [];
 
   for (const [repo, paths] of Object.entries(trees)) {
     const folderModules = {};
-    const seen = new Set();
-
-    // Detect if the repo has a top-level folder matching the repo name
-    // e.g. learn-bizapps-pr/power-virtual-agents/module/index.yml
-    // In that case, product folder is at depth 1, module at depth 2
-    const repoFolderCount = paths.filter(p => p.startsWith(repo + '/')).length;
-    const hasRepoFolder = repoFolderCount > paths.length * 0.5;
-    const offset = hasRepoFolder ? 1 : 0;
+    const EXCLUDED_SUBFOLDERS = new Set(['includes', 'media', 'shared', 'resources', '_shared', 'zone-pivot-groups']);
+    
+    // Build a set of folders that contain unit yml files (hallmark of real modules)
+    const foldersWithUnits = new Set();
+    for (const p of paths) {
+      // Unit files are typically: topFolder/moduleName/unitName.yml or topFolder/moduleName/unitName/content.yml
+      const parts = p.split('/');
+      if (parts.length >= 3 && parts[parts.length - 1].endsWith('.yml') && parts[parts.length - 1] !== 'index.yml') {
+        // This folder has yml files besides index.yml — likely a real module
+        const key = parts.slice(0, 2).join('/');
+        foldersWithUnits.add(key);
+      }
+    }
 
     for (const p of paths) {
-      if (!p.endsWith('/index.yml')) continue;
-      // Skip non-content paths
-      if (p.includes('/includes/') || p.includes('/media/') || p.includes('achievements/')) continue;
-
-      const parts = p.split('/');
-      // Need: [repoFolder?]/productFolder/moduleFolder/index.yml
-      const minParts = offset + 3; // e.g. 4 if repo folder present
-      if (parts.length < minParts) continue;
-
-      const productFolder = parts[offset];     // e.g. 'power-virtual-agents'
-      const moduleFolder = parts[offset + 1];  // e.g. 'build-chatbot'
-
-      // Skip utility folders
-      if (productFolder === 'includes' || productFolder === 'media' || productFolder === 'paths') continue;
-      if (moduleFolder === 'includes' || moduleFolder === 'media') continue;
-
-      // Only count one index.yml per product/module combo
-      const moduleKey = `${productFolder}/${moduleFolder}`;
-      if (seen.has(moduleKey)) continue;
-      seen.add(moduleKey);
-
-      if (!folderModules[productFolder]) folderModules[productFolder] = [];
-      folderModules[productFolder].push({
-        path: p,
-        moduleFolder,
-        fullPath: p,
-      });
+      if (p.includes('/index.yml') && !p.startsWith('paths/') && !p.includes('achievements/') && !p.includes('/includes/')) {
+        const parts = p.split('/');
+        // Only match direct module folders: topFolder/moduleName/index.yml (exactly 3 parts)
+        if (parts.length === 3 && parts[2] === 'index.yml') {
+          const topFolder = parts[0];
+          const moduleName = parts[1];
+          // Skip non-module subfolders
+          if (EXCLUDED_SUBFOLDERS.has(moduleName)) continue;
+          // Only include folders that also contain unit yml files
+          const folderKey = `${topFolder}/${moduleName}`;
+          if (!foldersWithUnits.has(folderKey)) continue;
+          if (!folderModules[topFolder]) folderModules[topFolder] = [];
+          folderModules[topFolder].push({
+            path: p,
+            moduleFolder: moduleName,
+            fullPath: p,
+          });
+        }
+      }
     }
 
     for (const [folder, modules] of Object.entries(folderModules)) {
       if (modules.length === 0) continue;
+      // Use FOLDER_PRODUCT_MAP for friendly name if available
       const mapping = FOLDER_PRODUCT_MAP[folder];
       products.push({
         folder,
-        name: mapping ? mapping.name : formatFolderName(folder),
+        name: mapping ? mapping.name : formatServiceName(folder),
         service: mapping ? mapping.service : folder,
         repo,
         owner: 'MicrosoftDocs',
         modules,
+        folders: [{ name: folder, modules: [...modules] }],
       });
     }
   }
@@ -1669,10 +445,12 @@ function discoverProducts(trees) {
   return products.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function formatFolderName(folder) {
-  return folder
+function formatServiceName(service) {
+  return service
     .replace(/[-_]/g, ' ')
-    .replace(/\b\w/g, c => c.toUpperCase());
+    .replace(/\b\w/g, c => c.toUpperCase())
+    .replace(/\bDyn365\b/i, 'Dynamics 365')
+    .replace(/\bPower\s/i, 'Power ');
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -1680,90 +458,34 @@ function formatFolderName(folder) {
 // ══════════════════════════════════════════════════════════════════════════
 
 function parseModuleYaml(text, path, repo) {
-  // Normalize line endings
-  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const lines = normalized.split('\n');
-
-  // Simple key-value extractor: finds first occurrence of "key: value" at any indentation
-  const get = (key) => {
-    const escaped = key.replace(/\./g, '\\.');
-    const re = new RegExp(`^\\s*${escaped}:\\s*(.+)$`);
-    for (const line of lines) {
-      const m = line.match(re);
-      if (m) return m[1].trim();
-    }
-    return '';
+  const get = (pattern) => {
+    const m = text.match(pattern);
+    return m ? m[1].trim() : '';
   };
 
-  // List extractor: finds "key:" then collects all "- value" lines until next non-list line
   const getList = (key) => {
-    const escaped = key.replace(/\./g, '\\.');
-    const keyRe = new RegExp(`^\\s*${escaped}:\\s*$`);
-    let collecting = false;
-    let keyIndent = -1;
-    const items = [];
-    for (const line of lines) {
-      if (!collecting) {
-        const km = line.match(keyRe);
-        if (km) {
-          collecting = true;
-          keyIndent = line.search(/\S/);
-        }
-      } else {
-        // Check if this line is a list item
-        const itemMatch = line.match(/^(\s*)-\s+(.+)/);
-        if (itemMatch && itemMatch[1].length >= keyIndent) {
-          items.push(itemMatch[2].trim());
-        } else if (line.trim() === '' || line.trim().startsWith('#')) {
-          continue; // skip blank lines and comments
-        } else if (/^\s*\S+:/.test(line)) {
-          break; // hit another YAML key — stop collecting
-        } else {
-          break;
-        }
-      }
-    }
-    return items;
+    const pattern = new RegExp(`^${key}:\\s*\\n((?:\\s+-\\s+.+\\n?)*)`, 'm');
+    const m = text.match(pattern);
+    if (!m) return [];
+    return m[1].split('\n').map(l => l.replace(/^\s*-\s*/, '').trim()).filter(Boolean);
   };
 
-  const title = get('title');
-  const msDate = get('ms.date');
-  const msService = get('ms.service');
-  const updateCycle = get('ms.update-cycle');
-  const author = get('author');
-  const msAuthor = get('ms.author');
-  const uid = get('uid');
+  const title = get(/^title:\s*(.+)$/m);
+  const msDate = get(/^ms\.date:\s*(.+)$/m);
+  const msService = get(/^ms\.service:\s*(.+)$/m);
+  const updateCycle = get(/^ms\.update-cycle:\s*(.+)$/m);
+  const author = get(/^author:\s*(.+)$/m);
+  const msAuthor = get(/^ms\.author:\s*(.+)$/m);
+  const uid = get(/^uid:\s*(.+)$/m);
 
-  // Summary: collect lines after "summary:" — handle both inline and block scalar (|)
+  // Summary: multiline block scalar
   let summary = '';
-  const sumInline = get('summary');
-  if (sumInline && sumInline !== '|' && sumInline !== '>') {
-    summary = sumInline;
+  const sumMatch = text.match(/^summary:\s*\|\s*\n([\s\S]*?)(?=\n[a-zA-Z])/m);
+  if (sumMatch) {
+    summary = sumMatch[1].replace(/^\s{2}/gm, '').trim();
   } else {
-    // Block scalar: find summary: then collect indented lines
-    let collecting = false;
-    let sumIndent = -1;
-    const sumLines = [];
-    for (const line of lines) {
-      if (!collecting) {
-        if (/^\s*summary:\s*[|>]?\s*$/.test(line)) {
-          collecting = true;
-          sumIndent = line.search(/\S/);
-        }
-      } else {
-        if (line.trim() === '') { sumLines.push(''); continue; }
-        const indent = line.search(/\S/);
-        if (indent > sumIndent) {
-          sumLines.push(line.trim());
-        } else {
-          break;
-        }
-      }
-    }
-    summary = sumLines.join(' ').trim();
+    summary = get(/^summary:\s*(.+)$/m);
   }
-  // Remove module-banner include lines
-  summary = summary.replace(/\[!include\[.*?\]\(.*?\)\]/gi, '').trim();
 
   const products = getList('products');
   const units = getList('units');
@@ -1797,53 +519,29 @@ function parseModuleYaml(text, path, repo) {
 }
 
 async function fetchModuleData(product, onProgress) {
-  const cacheKey = `modules_${product.folder}`;
+  const cacheKey = `modules_${product.service || product.folder}`;
   const cached = getCached(cacheKey);
   if (cached) return cached;
 
   let loaded = 0;
   const total = product.modules.length;
-  let failCount = 0;
 
   const results = await asyncPool(CONCURRENCY_LIMIT, product.modules, async (mod) => {
     try {
       const branch = state.repoBranches[product.repo] || 'main';
-      // Use Contents API (reliable with PATs) instead of raw.githubusercontent.com
-      const apiUrl = `https://api.github.com/repos/${product.owner}/${product.repo}/contents/${mod.path}?ref=${branch}`;
-      const resp = await fetch(apiUrl, { headers: ghHeaders() });
-      if (!resp.ok) {
-        failCount++;
-        if (failCount <= 3) console.warn(`[fetchModule] ${resp.status} for ${mod.path}`);
-        loaded++;
-        if (onProgress) onProgress(loaded, total);
-        return null;
-      }
-      const json = await resp.json();
-      // Contents API returns base64-encoded content — decode as UTF-8
-      const raw = json.content.replace(/\n/g, '');
-      const bytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0));
-      const text = new TextDecoder('utf-8').decode(bytes);
-      if (loaded === 0) {
-        console.log('[SAMPLE YAML]', mod.path, '\n', text.substring(0, 600));
-        const parsed = parseModuleYaml(text, mod.path, product.repo);
-        console.log('[PARSED]', { title: parsed.title, msAuthor: parsed.msAuthor, msDate: parsed.msDate, unitCount: parsed.unitCount, units: parsed.units.slice(0, 3), summary: parsed.summary?.substring(0, 100) });
-        loaded++;
-        if (onProgress) onProgress(loaded, total);
-        return parsed;
-      }
+      const url = `https://raw.githubusercontent.com/${product.owner}/${product.repo}/${branch}/${mod.path}`;
+      const resp = await fetch(url, { headers: getToken() ? { 'Authorization': `Bearer ${getToken()}` } : {} });
+      if (!resp.ok) return null;
+      const text = await resp.text();
       loaded++;
       if (onProgress) onProgress(loaded, total);
       return parseModuleYaml(text, mod.path, product.repo);
-    } catch (e) {
-      failCount++;
-      if (failCount <= 3) console.warn(`[fetchModule] Error for ${mod.path}:`, e.message);
+    } catch {
       loaded++;
       if (onProgress) onProgress(loaded, total);
       return null;
     }
   });
-
-  if (failCount > 0) console.warn(`[fetchModuleData] ${failCount}/${total} modules failed to load for ${product.folder}`);
 
   const modules = results.filter(Boolean);
   setCache(cacheKey, modules);
@@ -1874,37 +572,24 @@ async function fetchDocToc(productName) {
   const cached = getCached(cacheKey);
   if (cached) return cached;
 
-  const tocEntry = PRODUCT_DOC_TOC[productName];
-  if (!tocEntry) return null;
+  const tocPath = PRODUCT_DOC_TOC[productName];
+  if (!tocPath) return null;
 
-  // Support single path or array of paths (for products with multiple sub-TOCs)
-  const tocPaths = Array.isArray(tocEntry) ? tocEntry : [tocEntry];
-  const allItems = [];
+  const url = `https://learn.microsoft.com${tocPath}`;
+  const data = await fetchWithCorsProxy(url);
+  if (data) setCache(cacheKey, data);
+  return data;
+}
 
-  for (const tocPath of tocPaths) {
-    const url = `https://learn.microsoft.com${tocPath}`;
-    const data = await fetchWithCorsProxy(url);
-    if (data) {
-      // Wrap sub-TOC items under a section name derived from the path
-      if (tocPaths.length > 1) {
-        const sectionName = tocPath.split('/').filter(Boolean).slice(-2, -1)[0] || 'Section';
-        const prettyName = sectionName.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        allItems.push({
-          toc_title: prettyName,
-          children: data.items || data.children || [],
-        });
-      } else {
-        // Single TOC — return as-is
-        setCache(cacheKey, data);
-        return data;
-      }
-    }
-  }
+async function fetchDocTocByPath(tocPath, cacheLabel) {
+  const cacheKey = `toc_${(cacheLabel || tocPath).replace(/[\s\/]+/g, '_')}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
 
-  if (allItems.length === 0) return null;
-  const merged = { items: allItems };
-  setCache(cacheKey, merged);
-  return merged;
+  const url = `https://learn.microsoft.com${tocPath}`;
+  const data = await fetchWithCorsProxy(url);
+  if (data) setCache(cacheKey, data);
+  return data;
 }
 
 function flattenToc(toc, depth = 0, parentPath = '') {
@@ -1941,7 +626,7 @@ async function init() {
   // Try GitHub Trees API first (rich data), fall back to public Catalog API
   let useGitHub = false;
 
-   if (getToken()) {
+  if (getToken()) {
     try {
       toast('Trying GitHub repo access…', 'info');
       const [bizTree, dynTree] = await Promise.allSettled([
@@ -1951,15 +636,9 @@ async function init() {
 
       const trees = {};
       if (bizTree.status === 'fulfilled') trees['learn-bizapps-pr'] = bizTree.value;
-      else {
-        console.warn('learn-bizapps-pr:', bizTree.reason?.message);
-        toast(`learn-bizapps-pr: ${bizTree.reason?.message || 'access failed'}`, 'error');
-      }
+      else console.warn('learn-bizapps-pr:', bizTree.reason?.message);
       if (dynTree.status === 'fulfilled') trees['learn-dynamics-pr'] = dynTree.value;
-      else {
-        console.warn('learn-dynamics-pr:', dynTree.reason?.message);
-        toast(`learn-dynamics-pr: ${dynTree.reason?.message || 'access failed'}`, 'error');
-      }
+      else console.warn('learn-dynamics-pr:', dynTree.reason?.message);
 
       if (Object.keys(trees).length > 0) {
         state.trees = trees;
@@ -1967,13 +646,12 @@ async function init() {
         dataSourceMode = 'github';
         useGitHub = true;
         const repoNames = Object.keys(trees).join(' + ');
-        toast(`GitHub mode: ${state.discoveredProducts.length} products from ${repoNames}`, 'success');
-      } else {
-        toast('Could not access either repo. Use Settings → Test Connection to diagnose.', 'error');
+        toast(`GitHub mode: ${state.discoveredProducts.length} folders from ${repoNames}`, 'success');
+        if (bizTree.status === 'rejected') toast('⚠️ learn-bizapps-pr not accessible', 'warning');
+        if (dynTree.status === 'rejected') toast('⚠️ learn-dynamics-pr not accessible', 'warning');
       }
     } catch (e) {
       console.warn('GitHub mode failed:', e);
-      toast(`GitHub error: ${e.message}`, 'error');
     }
   }
 
@@ -2030,8 +708,8 @@ function renderProductSelector() {
     grp.label = `${r.repo} — ${r.label}`;
     for (const p of products) {
       const opt = document.createElement('option');
-      opt.value = p.folder;
-      opt.textContent = `${p.folder} — ${p.name} (${p.modules.length} modules)`;
+      opt.value = p.folder; // Each folder is its own entry
+      opt.textContent = `${p.name} (${p.modules.length} modules) · ${p.folder}`;
       grp.appendChild(opt);
     }
     select.appendChild(grp);
@@ -2048,20 +726,22 @@ function renderDashboardTreeStats() {
 
 async function onProductChange(folder) {
   if (!folder) return;
-  const product = state.discoveredProducts.find(p => p.folder === folder);
+  // Find by folder (primary) or service (fallback for saved preferences)
+  const product = state.discoveredProducts.find(p => p.folder === folder) 
+    || state.discoveredProducts.find(p => p.service === folder);
   if (!product) { toast('Product not found', 'warning'); return; }
 
   state.selectedProduct = product;
-  localStorage.setItem('team_selected_product', folder);
+  localStorage.setItem('team_selected_product', product.folder);
 
-  document.getElementById('topbar-title').textContent = `${product.folder} — Team Content Gap Manager`;
-  document.getElementById('dashboard-subtitle').textContent = `Content analysis for ${product.folder} (${product.name})`;
-  document.getElementById('modules-subtitle').textContent = `Training modules in ${product.folder}/ from ${product.repo}`;
+  document.getElementById('topbar-title').textContent = `${product.name} — Team Content Gap Manager`;
+  document.getElementById('dashboard-subtitle').textContent = `Content analysis for ${product.name}`;
+  document.getElementById('modules-subtitle').textContent = `Training modules for ${product.name} from ${product.repo}`;
   document.getElementById('docs-subtitle').textContent = `Documentation TOC for ${product.name}`;
-  document.getElementById('stat-selected').textContent = product.folder;
-  document.getElementById('stat-selected').style.fontSize = product.folder.length > 20 ? '13px' : '16px';
+  document.getElementById('stat-selected').textContent = product.name;
+  document.getElementById('stat-selected').style.fontSize = product.name.length > 20 ? '13px' : '16px';
   const sourceLabel = dataSourceMode === 'github' ? product.repo : 'Catalog API';
-  document.getElementById('stat-selected-sub').textContent = `${product.name} · ${product.modules.length} modules via ${sourceLabel}`;
+  document.getElementById('stat-selected-sub').textContent = `${product.modules.length} modules via ${sourceLabel}`;
 
   // Show progress and fetch modules
   showLoading('health-list');
@@ -2091,15 +771,15 @@ async function onProductChange(folder) {
 
     state.modules = modules;
     progressEl.style.display = 'none';
-    populateAuthorFilter();
 
-    // Load doc TOC
+    // Load doc TOC — try service-based lookup first, then name-based
     state.docTopics = null;
     state.flatDocTopics = [];
-    if (PRODUCT_DOC_TOC[product.name]) {
+    const tocPath = SERVICE_DOC_TOC[product.service] || PRODUCT_DOC_TOC[product.name];
+    if (tocPath) {
       toast(`Loading documentation TOC for ${product.name}…`, 'info');
       try {
-        const toc = await fetchDocToc(product.name);
+        const toc = await fetchDocTocByPath(tocPath, product.name);
         if (toc) {
           state.docTopics = toc;
           state.flatDocTopics = flattenToc(toc);
@@ -2234,40 +914,93 @@ function renderModuleList(modules) {
     return;
   }
 
-  list.innerHTML = modules.map((m, i) => {
-    const now = Date.now();
-    const date = m.msDate ? new Date(m.msDate) : null;
-    const ageMonths = date ? Math.floor((now - date.getTime()) / (30*24*60*60*1000)) : 99;
-    const tagClass = ageMonths <= 3 ? 'tag-green' : ageMonths <= 12 ? 'tag-yellow' : 'tag-red';
-    const dateStr = date ? date.toLocaleDateString('en-US', { month:'short', year:'numeric' }) : 'Unknown';
+  // Group modules by their source folder
+  const product = state.selectedProduct;
+  const folders = product && product.folders ? product.folders : null;
 
-    return `
-    <div class="module-item" onclick="toggleModuleExpand(this)" data-idx="${i}">
-      <div class="module-item-header">
-        <div class="module-item-icon">📄</div>
-        <div class="module-item-meta">
-          <h4>${escHtml(m.title)}</h4>
-          <p>${m.unitCount} units · ${m.msAuthor ? `<strong>${escHtml(m.msAuthor)}</strong>` : '<em>no author</em>'} · Updated ${dateStr}  <span class="tag ${tagClass}">${dateStr}</span></p>
-          <div class="module-tags">
-            ${m.products.slice(0, 3).map(p => `<span class="tag tag-blue">${escHtml(p)}</span>`).join('')}
-            ${m.msService ? `<span class="tag tag-purple">${escHtml(m.msService)}</span>` : ''}
-            ${m.levels.map(l => `<span class="tag tag-green">${escHtml(l)}</span>`).join('')}
-          </div>
+  let html = '';
+  if (folders && folders.length > 1) {
+    // Multi-folder grouping
+    for (const folder of folders) {
+      const folderModules = modules.filter(m => {
+        // Match module to folder by checking its path
+        return m.path && m.path.startsWith(folder.name + '/');
+      });
+      if (folderModules.length === 0) continue;
+      html += `<div class="module-folder-group">
+        <div class="module-folder-header" onclick="this.parentElement.classList.toggle('collapsed')">
+          <span class="module-folder-icon">📁</span>
+          <span class="module-folder-name">${escHtml(folder.name)}</span>
+          <span class="module-folder-count">${folderModules.length} modules</span>
+          <span class="module-folder-toggle">▾</span>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
-          <a href="${m.learnUrl}" target="_blank" class="btn btn-secondary btn-sm" onclick="event.stopPropagation();">Learn ↗</a>
-          <a href="${m.ghUrl}" target="_blank" class="btn btn-ghost btn-sm" onclick="event.stopPropagation();" style="font-size:11px;">GitHub ↗</a>
+        <div class="module-folder-body">
+          ${folderModules.map((m, i) => renderModuleItem(m, modules.indexOf(m))).join('')}
+        </div>
+      </div>`;
+    }
+    // Any modules not matched to a folder
+    const allFolderNames = folders.map(f => f.name);
+    const ungrouped = modules.filter(m => !m.path || !allFolderNames.some(f => m.path.startsWith(f + '/')));
+    if (ungrouped.length > 0) {
+      html += `<div class="module-folder-group">
+        <div class="module-folder-header" onclick="this.parentElement.classList.toggle('collapsed')">
+          <span class="module-folder-icon">📁</span>
+          <span class="module-folder-name">Other</span>
+          <span class="module-folder-count">${ungrouped.length} modules</span>
+          <span class="module-folder-toggle">▾</span>
+        </div>
+        <div class="module-folder-body">
+          ${ungrouped.map((m, i) => renderModuleItem(m, modules.indexOf(m))).join('')}
+        </div>
+      </div>`;
+    }
+  } else {
+    // Single folder or no folder info — flat list with folder label
+    const folderName = folders && folders.length === 1 ? folders[0].name : '';
+    if (folderName) {
+      html += `<div style="padding:8px 12px;font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);background:var(--surface2);border-radius:var(--radius) var(--radius) 0 0;">📁 ${escHtml(folderName)}</div>`;
+    }
+    html += modules.map((m, i) => renderModuleItem(m, i)).join('');
+  }
+
+  list.innerHTML = html;
+}
+
+function renderModuleItem(m, i) {
+  const now = Date.now();
+  const date = m.msDate ? new Date(m.msDate) : null;
+  const ageMonths = date ? Math.floor((now - date.getTime()) / (30*24*60*60*1000)) : 99;
+  const tagClass = ageMonths <= 3 ? 'tag-green' : ageMonths <= 12 ? 'tag-yellow' : 'tag-red';
+  const dateStr = date ? date.toLocaleDateString('en-US', { month:'short', year:'numeric' }) : 'Unknown';
+
+  return `
+  <div class="module-item" onclick="toggleModuleExpand(this)" data-idx="${i}">
+    <div class="module-item-header">
+      <div class="module-item-icon">📄</div>
+      <div class="module-item-meta">
+        <h4>${escHtml(m.title)}</h4>
+        <p>${m.unitCount} units · ${m.author || '?'} · Updated ${dateStr}  <span class="tag ${tagClass}">${dateStr}</span></p>
+        <div class="module-tags">
+          ${m.products.slice(0, 3).map(p => `<span class="tag tag-blue">${escHtml(p)}</span>`).join('')}
+          ${m.msService ? `<span class="tag tag-purple">${escHtml(m.msService)}</span>` : ''}
+          ${m.levels.map(l => `<span class="tag tag-green">${escHtml(l)}</span>`).join('')}
         </div>
       </div>
-      <div class="module-expand">
-        ${m.summary ? `<p style="margin-bottom:8px;"><strong>Summary:</strong> ${escHtml(m.summary)}</p>` : ''}
-        <p><strong>UID:</strong> <code style="font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg);padding:2px 6px;border-radius:4px;">${escHtml(m.uid)}</code></p>
-        <p><strong>Author:</strong> ${escHtml(m.author)} (ms.author: ${escHtml(m.msAuthor)})</p>
-        <p><strong>ms.service:</strong> ${escHtml(m.msService)} · <strong>ms.update-cycle:</strong> ${escHtml(m.updateCycle || 'not set')}</p>
-        ${m.units.length > 0 ? `<p style="margin-top:8px;"><strong>Units (${m.unitCount}):</strong></p><ol style="margin-left:1.5rem;font-size:11.5px;color:var(--text-muted);">${m.units.map(u => `<li>${escHtml(u)}</li>`).join('')}</ol>` : ''}
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+        <a href="${m.learnUrl}" target="_blank" class="btn btn-secondary btn-sm" onclick="event.stopPropagation();">Learn ↗</a>
+        <a href="${m.ghUrl}" target="_blank" class="btn btn-ghost btn-sm" onclick="event.stopPropagation();" style="font-size:11px;">GitHub ↗</a>
       </div>
-    </div>`;
-  }).join('');
+    </div>
+    <div class="module-expand">
+      ${m.summary ? `<p style="margin-bottom:8px;"><strong>Summary:</strong> ${escHtml(m.summary)}</p>` : ''}
+      <p><strong>UID:</strong> <code style="font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg);padding:2px 6px;border-radius:4px;">${escHtml(m.uid)}</code></p>
+      <p><strong>Author:</strong> ${escHtml(m.author)} (ms.author: ${escHtml(m.msAuthor)})</p>
+      <p><strong>ms.service:</strong> ${escHtml(m.msService)} · <strong>ms.update-cycle:</strong> ${escHtml(m.updateCycle || 'not set')}</p>
+      <p><strong>Folder:</strong> <code style="font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg);padding:2px 6px;border-radius:4px;">${escHtml(m.path || '')}</code></p>
+      ${m.units.length > 0 ? `<p style="margin-top:8px;"><strong>Units (${m.unitCount}):</strong></p><ol style="margin-left:1.5rem;font-size:11.5px;color:var(--text-muted);">${m.units.map(u => `<li>${escHtml(u)}</li>`).join('')}</ol>` : ''}
+    </div>
+  </div>`;
 }
 
 function toggleModuleExpand(el) {
@@ -2275,9 +1008,8 @@ function toggleModuleExpand(el) {
 }
 
 function filterModules(q) {
-  if (!q) { renderModuleList(getAuthorFilteredModules()); return; }
-  const base = getAuthorFilteredModules();
-  const filtered = base.filter(m =>
+  if (!q) { renderModuleList(state.modules); return; }
+  const filtered = state.modules.filter(m =>
     m.title.toLowerCase().includes(q.toLowerCase()) ||
     m.summary.toLowerCase().includes(q.toLowerCase()) ||
     m.author.toLowerCase().includes(q.toLowerCase())
@@ -2285,44 +1017,8 @@ function filterModules(q) {
   renderModuleList(filtered);
 }
 
-function filterByAuthor(author) {
-  document.getElementById('module-search').value = '';
-  renderModuleList(getAuthorFilteredModules(author));
-}
-
-function getAuthorFilteredModules(author) {
-  const selected = author !== undefined ? author : document.getElementById('module-author-filter').value;
-  if (!selected) return state.modules;
-  return state.modules.filter(m => m.msAuthor === selected);
-}
-
-function populateAuthorFilter() {
-  const select = document.getElementById('module-author-filter');
-  const currentVal = select.value;
-  while (select.options.length > 1) select.remove(1);
-  
-  // Collect unique ms.author values and count
-  const authors = {};
-  for (const m of state.modules) {
-    const a = m.msAuthor || 'unknown';
-    authors[a] = (authors[a] || 0) + 1;
-  }
-  
-  // Sort by count descending
-  const sorted = Object.entries(authors).sort((a, b) => b[1] - a[1]);
-  for (const [author, count] of sorted) {
-    const opt = document.createElement('option');
-    opt.value = author;
-    opt.textContent = `${author} (${count})`;
-    select.appendChild(opt);
-  }
-  
-  // Restore selection if still valid
-  if (currentVal) select.value = currentVal;
-}
-
 function sortModules(by) {
-  const sorted = [...getAuthorFilteredModules()];
+  const sorted = [...state.modules];
   switch (by) {
     case 'title': sorted.sort((a, b) => a.title.localeCompare(b.title)); break;
     case 'date': sorted.sort((a, b) => new Date(b.msDate || 0) - new Date(a.msDate || 0)); break;
@@ -4719,9 +3415,7 @@ function closeSettings() {
 }
 
 function saveSettings() {
-  let token = document.getElementById('api-key-input').value.trim();
-  // Clean up common mistakes: remove "Bearer " or "token " prefix if user pasted it
-  token = token.replace(/^(Bearer|token)\s+/i, '');
+  const token = document.getElementById('api-key-input').value.trim();
   if (token) {
     localStorage.setItem('gh_models_token', token);
     localStorage.setItem('gh_auth_method', 'pat');
@@ -4753,134 +3447,8 @@ function loadSettings() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// DIAGNOSTICS — Test Connection
-// ══════════════════════════════════════════════════════════════════════════
-
-async function runDiagnostics() {
-  const token = getToken();
-  const lines = [];
-  const log = (msg) => { lines.push(msg); console.log('[DIAG]', msg); };
-
-  log('=== Connection Diagnostics ===');
-  log(`Token present: ${!!token}`);
-  if (token) {
-    log(`Token prefix: ${token.substring(0, 8)}...`);
-    log(`Token length: ${token.length}`);
-    log(`Auth method: ${localStorage.getItem('gh_auth_method') || 'unknown'}`);
-    if (token.startsWith('ghp_')) log('Token type: Classic PAT ✓');
-    else if (token.startsWith('github_pat_')) log('Token type: Fine-grained PAT (⚠ may not work with SSO orgs)');
-    else if (token.startsWith('gho_')) log('Token type: OAuth token (⚠ may get 403 on SSO-protected orgs)');
-    else log('Token type: Unknown format');
-  } else {
-    log('❌ No token found. Enter a PAT in Settings first.');
-    alert(lines.join('\n'));
-    return;
-  }
-
-  // Test 1: Verify token works at all
-  log('\n--- Test 1: Token validity (GET /user) ---');
-  try {
-    const r = await fetch('https://api.github.com/user', { headers: ghHeaders() });
-    if (r.ok) {
-      const u = await r.json();
-      log(`✅ Token valid. Authenticated as: ${u.login} (${u.name || 'no name'})`);
-      log(`   Scopes: ${r.headers.get('x-oauth-scopes') || '(not returned)'}`);
-    } else {
-      log(`❌ Token invalid (${r.status}). Response: ${await r.text()}`);
-      alert(lines.join('\n'));
-      return;
-    }
-  } catch (e) {
-    log(`❌ Network error: ${e.message}`);
-    alert(lines.join('\n'));
-    return;
-  }
-
-  // Test 2: Check repo access
-  for (const repo of ['learn-bizapps-pr', 'learn-dynamics-pr']) {
-    log(`\n--- Test 2: Repo access (${repo}) ---`);
-    try {
-      const r = await fetch(`https://api.github.com/repos/MicrosoftDocs/${repo}`, { headers: ghHeaders() });
-      if (r.ok) {
-        const info = await r.json();
-        log(`✅ Can access ${repo}. Default branch: ${info.default_branch}, Private: ${info.private}`);
-
-        // Test 3: Try tree API
-        log(`--- Test 3: Tree API (${repo}, branch: ${info.default_branch}) ---`);
-        const tr = await fetch(`https://api.github.com/repos/MicrosoftDocs/${repo}/git/trees/${info.default_branch}?recursive=1`, { headers: ghHeaders() });
-        if (tr.ok) {
-          const td = await tr.json();
-          const allPaths = (td.tree || []).map(n => n.path);
-          const indexPaths = allPaths.filter(p => p.endsWith('/index.yml'));
-          log(`✅ Tree loaded: ${allPaths.length} total paths, ${indexPaths.length} index.yml files, truncated: ${td.truncated}`);
-          // Show top-level folders
-          const topFolders = [...new Set(allPaths.map(p => p.split('/')[0]))].sort();
-          log(`   Top-level folders (${topFolders.length}): ${topFolders.slice(0, 15).join(', ')}${topFolders.length > 15 ? '...' : ''}`);
-          // Show sample index.yml paths
-          log(`   Sample index.yml paths:`);
-          indexPaths.slice(0, 8).forEach(p => log(`     ${p}`));
-
-          // Test folder discovery
-          const testTrees = { [repo]: allPaths };
-          const products = discoverProducts(testTrees);
-          log(`   discoverProducts found: ${products.length} products`);
-          products.forEach(p => log(`     📁 ${p.folder} → "${p.name}" (${p.modules.length} modules)`));
-        } else {
-          log(`❌ Tree API failed (${tr.status}): ${await tr.text()}`);
-        }
-      } else if (r.status === 403) {
-        log(`❌ 403 Forbidden. Your token lacks access.`);
-        log(`   → For MicrosoftDocs org repos, you need a Classic PAT (ghp_...) with "repo" scope`);
-        log(`   → AND you must authorize SSO: github.com/settings/tokens → Configure SSO → Authorize for MicrosoftDocs`);
-        log(`   Response: ${await r.text()}`);
-      } else if (r.status === 404) {
-        log(`❌ 404 Not Found. Repo doesn't exist or token has no access at all.`);
-      } else {
-        log(`❌ Error ${r.status}: ${await r.text()}`);
-      }
-    } catch (e) {
-      log(`❌ Network error: ${e.message}`);
-    }
-  }
-
-  // Test 4: Rate limit check
-  log('\n--- Rate Limit ---');
-  try {
-    const r = await fetch('https://api.github.com/rate_limit', { headers: ghHeaders() });
-    if (r.ok) {
-      const d = await r.json();
-      log(`Core: ${d.resources.core.remaining}/${d.resources.core.limit} remaining (resets ${new Date(d.resources.core.reset * 1000).toLocaleTimeString()})`);
-    }
-  } catch (e) { /* ignore */ }
-
-  log('\n=== End Diagnostics ===');
-
-  // Show results in a modal-like alert (also logged to console)
-  const resultText = lines.join('\n');
-  console.log(resultText);
-
-  // Create a nicer display
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:20000;display:flex;align-items:center;justify-content:center;';
-  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
-  const box = document.createElement('div');
-  box.style.cssText = 'background:var(--bg-primary,#1e1e2e);color:var(--text-primary,#cdd6f4);border-radius:12px;padding:24px;max-width:700px;max-height:80vh;overflow:auto;font-family:monospace;font-size:12px;white-space:pre-wrap;line-height:1.6;box-shadow:0 8px 32px rgba(0,0,0,0.5);';
-  box.textContent = resultText;
-  const closeBtn = document.createElement('button');
-  closeBtn.textContent = 'Close';
-  closeBtn.style.cssText = 'margin-top:16px;padding:8px 24px;background:var(--primary,#89b4fa);color:#000;border:none;border-radius:6px;cursor:pointer;font-size:13px;';
-  closeBtn.onclick = () => overlay.remove();
-  box.appendChild(document.createElement('br'));
-  box.appendChild(closeBtn);
-  overlay.appendChild(box);
-  document.body.appendChild(overlay);
-}
-
-// ══════════════════════════════════════════════════════════════════════════
 // BOOT
 // ══════════════════════════════════════════════════════════════════════════
 
 window.addEventListener('DOMContentLoaded', init);
-</script>
-</body>
-</html>
+
