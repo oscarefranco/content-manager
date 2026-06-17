@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<meta name="version" content="20260617-1130" />
 <title>Team Content Gap Manager — BizApps &amp; Dynamics</title>
 <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
@@ -1023,7 +1027,7 @@ body {
         <p id="editor-subtitle">AI-powered module generation from gaps or URLs</p>
       </div>
       <div class="page-header-actions">
-        <button class="btn btn-secondary" id="refresh-suggestions-btn" onclick="buildEditorSuggestions()">🔄 Refresh</button>
+        <button class="btn btn-secondary" id="refresh-suggestions-btn" onclick="refreshEditorSuggestions()">🔄 Generate Suggestions</button>
         <button class="btn btn-primary" id="generate-plan-btn" onclick="generateContentPlan()">📋 Content Plan</button>
         <button class="btn btn-secondary" id="export-plan-btn" onclick="exportContentPlan()" style="display:none;">⬇ Export Plan</button>
       </div>
@@ -1057,50 +1061,79 @@ body {
         <div id="repo-browser-list" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);"></div>
       </div>
 
-      <div id="editor-empty" class="empty-state">
-        <div class="empty-state-icon">✏️</div>
-        <p>Run a gap analysis first (Gap Analysis → Quick scan), then come here for content suggestions.<br>
-        Or paste a URL above to generate a training module directly.</p>
-      </div>
-      <div id="editor-content" style="display:none;">
-        <div class="editor-tabs" id="editor-tabs">
-          <button class="editor-tab active" onclick="switchEditorTab('new')">📝 New Content <span class="tab-count" id="tab-count-new">0</span></button>
-          <button class="editor-tab" onclick="switchEditorTab('update')">🔄 Updates Needed <span class="tab-count" id="tab-count-update">0</span></button>
-          <button class="editor-tab" onclick="switchEditorTab('outdated')">⏰ Outdated <span class="tab-count" id="tab-count-outdated">0</span></button>
-        </div>
-        <div class="editor-layout">
-          <div>
-            <div class="suggestion-list" id="suggestion-list"></div>
+      <!-- Gap-Driven Suggestions Section -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header" style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:20px;">🎯</span>
+          <div style="flex:1;">
+            <h3 style="margin:0;font-size:14px;">Content Suggestions from Gap Analysis</h3>
+            <p style="margin:0;font-size:11px;color:var(--text-muted);">AI-powered recommendations for closing documentation gaps</p>
           </div>
-          <div>
-            <div class="module-builder-panel" id="module-builder-panel">
-              <div class="module-builder-header">
-                <span>🏗️</span>
-                <h3 id="module-builder-title">Module Builder</h3>
-                <button class="btn btn-ghost btn-sm" onclick="copyModuleContent()" id="copy-module-btn" style="display:none;">📋 Copy</button>
-              </div>
-              <div id="module-builder-progress" style="display:none;">
-                <div class="generation-progress" id="progress-steps"></div>
-              </div>
-              <div class="unit-tabs-bar" id="unit-tabs-bar" style="display:none;"></div>
-              <div class="module-builder-body" id="module-builder-body">
-                <div class="empty-state" style="padding:2rem;">
-                  <div class="empty-state-icon">🏗️</div>
-                  <p>Select a suggestion and click <strong>Generate Module</strong> to build a full training module with Overview, Introduction, Areas, Knowledge Check &amp; Summary.<br><br>Or paste a URL above to generate from documentation.</p>
-                </div>
-              </div>
-              <div class="module-builder-footer" id="module-builder-footer" style="display:none;">
-                <button class="btn btn-primary btn-sm" onclick="exportModule('bundle')">📦 Export Module</button>
-                <button class="btn btn-secondary btn-sm" onclick="exportModule('md')">⬇ Current .md</button>
-                <button class="btn btn-secondary btn-sm" onclick="exportModule('yaml')">⬇ YAML</button>
-                <button class="btn btn-secondary btn-sm" onclick="exportModule('json')">⬇ JSON</button>
-                <div style="flex:1;"></div>
-                <button class="btn btn-primary btn-sm" onclick="regenerateCurrentUnit()">🔄 Regenerate Unit</button>
-              </div>
+          <span class="tag tag-blue" id="count-suggestions">0</span>
+        </div>
+        <div class="card-body">
+          <div id="editor-suggestions-container">
+            <div class="empty-state" style="padding:2rem;">
+              <div class="empty-state-icon">✨</div>
+              <p><strong>Step 1:</strong> Run Gap Analysis for your selected product<br>
+              <strong>Step 2:</strong> Click "🔄 Refresh" above to generate AI-powered content suggestions<br><br>
+              The AI will analyze each gap and recommend the best action (edit existing, add section, create unit, or new module).</p>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Legacy URL-based Module Generation -->
+      <details style="margin-bottom:16px;">
+        <summary style="cursor:pointer;padding:12px;background:var(--bg-muted);border-radius:8px;font-weight:500;">
+          📎 Legacy: Generate from URL (old workflow)
+        </summary>
+        <div style="padding:12px;">
+          <div id="editor-empty" class="empty-state">
+            <div class="empty-state-icon">✏️</div>
+            <p>Paste a URL above to generate a training module directly (old workflow).</p>
+          </div>
+          <div id="editor-content" style="display:none;">
+            <div class="editor-tabs" id="editor-tabs">
+              <button class="editor-tab active" onclick="switchEditorTab('new')">📝 New Content <span class="tab-count" id="tab-count-new">0</span></button>
+              <button class="editor-tab" onclick="switchEditorTab('update')">🔄 Updates Needed <span class="tab-count" id="tab-count-update">0</span></button>
+              <button class="editor-tab" onclick="switchEditorTab('outdated')">⏰ Outdated <span class="tab-count" id="tab-count-outdated">0</span></button>
+            </div>
+            <div class="editor-layout">
+              <div>
+                <div class="suggestion-list" id="suggestion-list"></div>
+              </div>
+              <div>
+                <div class="module-builder-panel" id="module-builder-panel">
+                  <div class="module-builder-header">
+                    <span>🏗️</span>
+                    <h3 id="module-builder-title">Module Builder</h3>
+                    <button class="btn btn-ghost btn-sm" onclick="copyModuleContent()" id="copy-module-btn" style="display:none;">📋 Copy</button>
+                  </div>
+                  <div id="module-builder-progress" style="display:none;">
+                    <div class="generation-progress" id="progress-steps"></div>
+                  </div>
+                  <div class="unit-tabs-bar" id="unit-tabs-bar" style="display:none;"></div>
+                  <div class="module-builder-body" id="module-builder-body">
+                    <div class="empty-state" style="padding:2rem;">
+                      <div class="empty-state-icon">🏗️</div>
+                      <p>Select a suggestion and click <strong>Generate Module</strong> to build a full training module with Overview, Introduction, Areas, Knowledge Check &amp; Summary.<br><br>Or paste a URL above to generate from documentation.</p>
+                    </div>
+                  </div>
+                  <div class="module-builder-footer" id="module-builder-footer" style="display:none;">
+                    <button class="btn btn-primary btn-sm" onclick="exportModule('bundle')">📦 Export Module</button>
+                    <button class="btn btn-secondary btn-sm" onclick="exportModule('md')">⬇ Current .md</button>
+                    <button class="btn btn-secondary btn-sm" onclick="exportModule('yaml')">⬇ YAML</button>
+                    <button class="btn btn-secondary btn-sm" onclick="exportModule('json')">⬇ JSON</button>
+                    <div style="flex:1;"></div>
+                    <button class="btn btn-primary btn-sm" onclick="regenerateCurrentUnit()">🔄 Regenerate Unit</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
     </div>
   </section>
 
@@ -1376,6 +1409,17 @@ const CORS_PROXIES = [
 const CONCURRENCY_LIMIT = 8;
 
 // ══════════════════════════════════════════════════════════════════════════
+// CONTENT EDITOR ACTION TYPES
+// ══════════════════════════════════════════════════════════════════════════
+
+const ACTION_TYPES = {
+  EDIT_EXISTING: 'EDIT_EXISTING',   // Modify existing unit content (highest priority)
+  ADD_TO_UNIT: 'ADD_TO_UNIT',       // Append new section to existing unit
+  NEW_UNIT: 'NEW_UNIT',             // Create new unit in existing module
+  NEW_MODULE: 'NEW_MODULE'          // Create entirely new module (last resort)
+};
+
+// ══════════════════════════════════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════════════════════════════════
 
@@ -1388,6 +1432,8 @@ let state = {
   docTopics: null,
   flatDocTopics: [],
   gapResults: null,
+  editorSuggestions: [],  // Content editor suggestions from gap analysis
+  editorCache: {},     // Cache for AI action recommendations
 };
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -2750,6 +2796,112 @@ Respond in plain text, no JSON or markdown formatting.`;
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// CONTENT EDITOR - AI ACTION RECOMMENDATION
+// ══════════════════════════════════════════════════════════════════════════
+
+async function analyzeGapAction(gap, modules) {
+  // Check cache first
+  const cacheKey = `action_${gap.docTopic.title}_${modules.length}`;
+  if (state.editorCache[cacheKey]) {
+    return state.editorCache[cacheKey];
+  }
+
+  const { token } = getAIConfig();
+  if (!token) throw new Error('NO_TOKEN');
+
+  // Build modules context (include ALL modules for better decision making)
+  const modulesContext = modules.map(m => 
+    `- Module: "${m.title}"
+  Summary: ${(m.summary || 'No summary').substring(0, 200)}
+  Units (${m.unitCount}): ${(m.units || []).slice(0, 6).join(', ')}${m.units.length > 6 ? '...' : ''}
+  Path: ${m.path}`
+  ).join('\n\n');
+
+  const prompt = `You are a Microsoft Learn content strategist. Analyze this content gap and recommend the best action to address it.
+
+GAP DETAILS:
+- Documentation Topic: "${gap.docTopic.title}"
+- Description: ${gap.docTopic.description || gap.docTopic.path || 'No description'}
+- Current Coverage: ${gap.coverage} (score: ${Math.round((gap.score || 0) * 100)}%)
+- Best Matching Module: ${gap.bestMatch ? `"${gap.bestMatch.title}" (${Math.round((gap.bestScore || 0) * 100)}% match)` : 'None'}
+
+AVAILABLE MODULES (${modules.length} total):
+${modulesContext}
+
+ACTION TYPE PRIORITY ORDER:
+1. EDIT_EXISTING - Modify existing unit content (MOST EFFICIENT - prefer if possible)
+   Use when: Gap can be covered by updating/expanding an existing unit in a related module
+   
+2. ADD_TO_UNIT - Append new section to existing unit
+   Use when: Gap needs distinct new section but fits within scope of existing unit
+   
+3. NEW_UNIT - Create new unit in existing module
+   Use when: Gap needs standalone unit treatment but fits module's overall theme
+   
+4. NEW_MODULE - Create entirely new module (LAST RESORT - avoid if possible)
+   Use when: No existing module is appropriate for this content
+
+INSTRUCTIONS:
+Recommend ONE action. Prefer actions higher in the priority order when possible.
+Consider:
+- Can existing content be expanded to cover this gap? → EDIT_EXISTING
+- Does this fit naturally into an existing unit as a new section? → ADD_TO_UNIT
+- Does this need its own unit but fits a module? → NEW_UNIT
+- Is this completely unrelated to all existing modules? → NEW_MODULE
+
+Return ONLY a JSON object with this exact structure:
+{
+  "actionType": "EDIT_EXISTING" | "ADD_TO_UNIT" | "NEW_UNIT" | "NEW_MODULE",
+  "targetModule": "Module title here" or null,
+  "targetUnit": "Unit title here" or null,
+  "reasoning": "2-3 sentence explanation of why this action",
+  "confidence": 0.0 to 1.0,
+  "estimatedEffort": "low" | "medium" | "high"
+}`;
+
+  try {
+    const reply = await callAI([{ role: 'user', content: prompt }], { 
+      maxTokens: 600,
+      temperature: 0.2  // Lower temperature for more consistent JSON output
+    });
+    
+    // Parse JSON response
+    let parsed;
+    try {
+      // Try to extract JSON if wrapped in markdown code blocks
+      const jsonMatch = reply.match(/\{[\s\S]*\}/);
+      parsed = JSON.parse(jsonMatch ? jsonMatch[0] : reply);
+    } catch (parseErr) {
+      console.error('JSON parse failed:', reply);
+      throw new Error('AI returned invalid JSON');
+    }
+
+    // Validate required fields
+    if (!parsed.actionType || !ACTION_TYPES[parsed.actionType]) {
+      throw new Error('Invalid actionType in AI response');
+    }
+
+    // Find actual module objects if targetModule is specified
+    if (parsed.targetModule) {
+      const foundModule = modules.find(m => 
+        m.title.toLowerCase() === parsed.targetModule.toLowerCase()
+      );
+      if (foundModule) {
+        parsed.targetModuleObject = foundModule;
+      }
+    }
+
+    // Cache the result
+    state.editorCache[cacheKey] = parsed;
+    
+    return parsed;
+  } catch (e) {
+    console.error('analyzeGapAction error:', e);
+    throw new Error(`AI recommendation failed: ${e.message}`);
+  }
+}
+
 function renderGapTimeline() {
   const container = document.getElementById('gap-timeline');
   if (state.modules.length === 0) return;
@@ -3787,197 +3939,232 @@ let editorState = {
   isGenerating: false,
 };
 
-function buildEditorSuggestions() {
+async function buildEditorSuggestions() {
   if (!state.selectedProduct) { toast('Select a product first', 'warning'); return; }
   if (state.modules.length === 0) { toast('Load modules first', 'warning'); return; }
 
   // Auto-run gap analysis if not done
   if (!state.gapResults && state.flatDocTopics.length > 0) {
+    toast('Running gap analysis first...', 'info');
     runClientGapAnalysis();
+    // Wait a bit for gap analysis to complete
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+
+  if (!state.gapResults) {
+    toast('Run Gap Analysis first', 'warning');
+    return;
+  }
+
+  // Show progress indicator
+  const progressContainer = document.getElementById('editor-suggestions-container');
+  if (progressContainer) {
+    progressContainer.innerHTML = '<div style="padding:2rem;text-align:center;"><div class="spinner"></div><p style="margin-top:1rem;color:var(--text-muted);">Analyzing gaps with AI...</p></div>';
   }
 
   const suggestions = [];
-  const now = Date.now();
+  
+  // Filter for uncovered and partial gaps (ignore covered)
+  const gapsToProcess = state.gapResults.results.filter(r => 
+    r.coverage === 'uncovered' || r.coverage === 'partial'
+  );
 
-  // ── 1. THOROUGH 3-TIER GAP CLASSIFICATION ──
-  if (state.gapResults) {
-    const uncovered = state.gapResults.results.filter(r => r.coverage === 'uncovered');
+  toast(`Analyzing ${gapsToProcess.length} gaps with AI...`, 'info');
 
-    const moduleCache = state.modules.map(mod => {
-      const modKeywords = extractKeywords(mod.title + ' ' + (mod.summary || ''));
-      const unitCache = (mod.units || []).map((unitTitle, idx) => ({
-        title: unitTitle, index: idx, keywords: extractKeywords(unitTitle),
-      }));
-      return { mod, keywords: modKeywords, units: unitCache };
-    });
+  // Process each gap with AI recommendation
+  let processed = 0;
+  for (const gap of gapsToProcess) {
+    try {
+      // Call AI to determine action type
+      const aiRec = await analyzeGapAction(gap, state.modules);
+      
+      // Create suggestion object
+      const suggestion = {
+        id: `gap-${gap.docTopic.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}`,
+        gap: gap,
+        actionType: aiRec.actionType,
+        targetModule: aiRec.targetModuleObject || null,
+        targetUnit: aiRec.targetUnit || null,
+        reasoning: aiRec.reasoning,
+        confidence: aiRec.confidence,
+        estimatedEffort: aiRec.estimatedEffort,
+        status: 'pending',
+        generatedContent: null,
+        prInfo: null
+      };
 
-    const expandUnitItems = [];
-    const addUnitItems = [];
-    const newModuleItems = [];
+      suggestions.push(suggestion);
+      processed++;
 
-    for (const r of uncovered) {
-      const topicKw = extractKeywords(r.docTopic.title + ' ' + (r.docTopic.path || ''));
-      if (topicKw.length === 0) { newModuleItems.push({ topic: r.docTopic }); continue; }
-
-      let bestUnitScore = 0, bestUnitMod = null, bestUnitUnit = null;
-      let bestModScore = 0, bestModModule = null;
-      const moduleCandidates = [];
-
-      for (const mc of moduleCache) {
-        const modScore = keywordOverlap(topicKw, mc.keywords);
-        if (modScore > bestModScore) { bestModScore = modScore; bestModModule = mc.mod; }
-        if (modScore >= 0.1) moduleCandidates.push({ mod: mc.mod, score: modScore });
-        for (const uc of mc.units) {
-          if (uc.keywords.length === 0) continue;
-          const unitScore = keywordOverlap(topicKw, uc.keywords);
-          const combined = unitScore * 0.7 + modScore * 0.3;
-          if (unitScore >= 0.25 && combined > bestUnitScore) {
-            bestUnitScore = combined; bestUnitMod = mc.mod; bestUnitUnit = uc;
-          }
-        }
+      // Update progress every 5 items
+      if (processed % 5 === 0 && progressContainer) {
+        progressContainer.innerHTML = `<div style="padding:2rem;text-align:center;"><div class="spinner"></div><p style="margin-top:1rem;color:var(--text-muted);">Analyzed ${processed}/${gapsToProcess.length} gaps...</p></div>`;
       }
 
-      if (bestUnitScore < 0.25 && bestModScore < 0.15) {
-        for (const mc of moduleCache) {
-          const revScore = keywordOverlap(mc.keywords, topicKw);
-          const avg = (revScore + keywordOverlap(topicKw, mc.keywords)) / 2;
-          if (avg > bestModScore) { bestModScore = avg; bestModModule = mc.mod; }
-          for (const uc of mc.units) {
-            if (uc.keywords.length === 0) continue;
-            const revUnit = keywordOverlap(uc.keywords, topicKw);
-            const avgUnit = (revUnit + keywordOverlap(topicKw, uc.keywords)) / 2;
-            const combined = avgUnit * 0.7 + bestModScore * 0.3;
-            if (avgUnit >= 0.2 && combined > bestUnitScore) {
-              bestUnitScore = combined; bestUnitMod = mc.mod; bestUnitUnit = uc;
-            }
-          }
-        }
-      }
-
-      const topCandidates = moduleCandidates.sort((a, b) => b.score - a.score).slice(0, 3);
-
-      if (bestUnitScore >= 0.2 && bestUnitUnit) {
-        expandUnitItems.push({ topic: r.docTopic, targetModule: bestUnitMod, targetUnit: bestUnitUnit, score: bestUnitScore, allCandidates: topCandidates });
-      } else if (bestModScore >= 0.12) {
-        addUnitItems.push({ topic: r.docTopic, targetModule: bestModModule, score: bestModScore, allCandidates: topCandidates });
-      } else {
-        newModuleItems.push({ topic: r.docTopic });
-      }
-    }
-
-    // Group expand-unit items
-    const expandGroups = {};
-    for (const item of expandUnitItems) {
-      const key = `${item.targetModule.title}||${item.targetUnit.title}`;
-      if (!expandGroups[key]) expandGroups[key] = { ...item, topics: [] };
-      expandGroups[key].topics.push(item.topic);
-    }
-    for (const group of Object.values(expandGroups)) {
-      const n = group.topics.length;
-      suggestions.push({
-        type: 'new', recommendation: 'expand-unit',
-        category: group.topics[0].path.split(' > ')[0] || group.topics[0].title,
-        topics: group.topics, topicCount: n,
-        priority: n >= 3 ? 'high' : n >= 2 ? 'medium' : 'low',
-        targetModule: group.targetModule, targetUnit: group.targetUnit,
-        targetOverlap: group.score, allCandidates: group.allCandidates || [],
-        title: n === 1 ? group.topics[0].title : `${group.topics[0].title} (+${n - 1} more)`,
-        reason: `Add as ${n > 1 ? 'subsections' : 'a subsection'} within unit "${group.targetUnit.title}" in "${group.targetModule.title}" (${Math.round(group.score * 100)}% match).`,
-        suggestedPlacement: `${state.selectedProduct.folder}/`,
-      });
-    }
-
-    // Group add-unit items
-    const addUnitGroups = {};
-    for (const item of addUnitItems) {
-      const key = item.targetModule.title;
-      if (!addUnitGroups[key]) addUnitGroups[key] = { ...item, topics: [] };
-      addUnitGroups[key].topics.push(item.topic);
-    }
-    for (const [key, group] of Object.entries(addUnitGroups)) {
-      const n = group.topics.length;
-      suggestions.push({
-        type: 'new', recommendation: 'add-unit',
-        category: group.topics[0].path.split(' > ')[0] || group.topics[0].title,
-        topics: group.topics, topicCount: n,
-        priority: n >= 3 ? 'high' : n >= 2 ? 'medium' : 'low',
-        targetModule: group.targetModule, targetOverlap: group.score,
-        allCandidates: group.allCandidates || [],
-        title: n === 1 ? group.topics[0].title : `${key} — ${n} new topics`,
-        reason: `Add as ${n > 1 ? 'new units' : 'a new unit'} in "${group.targetModule.title}" (${Math.round(group.score * 100)}% module match).`,
-        suggestedPlacement: `${state.selectedProduct.folder}/`,
-      });
-    }
-
-    // Group new-module items
-    const newModGroups = {};
-    for (const item of newModuleItems) {
-      const parentKey = item.topic.path.split(' > ')[0] || item.topic.title;
-      if (!newModGroups[parentKey]) newModGroups[parentKey] = [];
-      newModGroups[parentKey].push(item.topic);
-    }
-    for (const [parent, topics] of Object.entries(newModGroups)) {
-      suggestions.push({
-        type: 'new', recommendation: 'new-module',
-        category: parent, topics, topicCount: topics.length,
-        priority: topics.length >= 5 ? 'high' : topics.length >= 2 ? 'medium' : 'low',
-        title: topics.length === 1 ? topics[0].title : `${parent} (${topics.length} topics)`,
-        reason: `${topics.length} documentation topic${topics.length > 1 ? 's' : ''} under "${parent}" — checked all ${state.modules.length} modules with no match. Requires new training content.`,
-        suggestedPlacement: `${state.selectedProduct.folder}/`,
-      });
-    }
-
-    // 2. Update suggestions from partial coverage
-    const partial = state.gapResults.results.filter(r => r.coverage === 'partial' && r.bestMatch);
-    for (const r of partial) {
-      suggestions.push({
-        type: 'update', docTopic: r.docTopic, module: r.bestMatch, score: r.score,
-        priority: r.score < 0.25 ? 'high' : 'medium',
-        title: r.bestMatch.title,
-        reason: `Partially covers "${r.docTopic.title}" (${Math.round(r.score * 100)}% match). Content expansion recommended.`,
-      });
+    } catch (e) {
+      console.error('Failed to analyze gap:', gap.docTopic.title, e);
+      // Continue processing other gaps even if one fails
     }
   }
 
-  // 3. Outdated modules (>12 months)
-  for (const m of state.modules) {
-    if (!m.msDate) continue;
-    const ageMonths = Math.floor((now - new Date(m.msDate).getTime()) / (30 * 24 * 60 * 60 * 1000));
-    if (ageMonths > 12) {
-      suggestions.push({
-        type: 'outdated', module: m, ageMonths,
-        priority: ageMonths > 24 ? 'high' : ageMonths > 18 ? 'medium' : 'low',
-        title: m.title,
-        reason: `Last updated ${ageMonths} months ago (${m.msDate}). May contain outdated information.`,
-      });
-    }
-  }
+  // Store suggestions in state
+  state.editorSuggestions = suggestions;
 
-  const priorityOrder = { high: 0, medium: 1, low: 2 };
-  suggestions.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+  // Group suggestions by action type for summary
+  const byAction = {
+    EDIT_EXISTING: suggestions.filter(s => s.actionType === ACTION_TYPES.EDIT_EXISTING).length,
+    ADD_TO_UNIT: suggestions.filter(s => s.actionType === ACTION_TYPES.ADD_TO_UNIT).length,
+    NEW_UNIT: suggestions.filter(s => s.actionType === ACTION_TYPES.NEW_UNIT).length,
+    NEW_MODULE: suggestions.filter(s => s.actionType === ACTION_TYPES.NEW_MODULE).length
+  };
 
-  editorState.suggestions = suggestions;
-  editorState.selectedIdx = -1;
-  editorState.currentModule = null;
-
-  document.getElementById('count-suggestions').textContent = suggestions.length;
+  // Update UI
   renderEditorView();
-  toast(`${suggestions.length} content suggestions generated`, 'success');
+  
+  const summary = `Generated ${suggestions.length} suggestions: ${byAction.EDIT_EXISTING} edits, ${byAction.ADD_TO_UNIT} additions, ${byAction.NEW_UNIT} new units, ${byAction.NEW_MODULE} new modules`;
+  toast(summary, 'success');
+}
+
+// Wrapper function for button click
+async function refreshEditorSuggestions() {
+  const btn = document.getElementById('refresh-suggestions-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Analyzing...';
+  }
+  
+  try {
+    await buildEditorSuggestions();
+  } catch (e) {
+    console.error('Error building suggestions:', e);
+    toast(`Error: ${e.message}`, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🔄 Generate Suggestions';
+    }
+  }
 }
 
 function renderEditorView() {
-  const s = editorState.suggestions;
-  if (s.length === 0) {
-    document.getElementById('editor-empty').style.display = '';
-    document.getElementById('editor-content').style.display = 'none';
+  const s = state.editorSuggestions;
+  
+  console.log('renderEditorView called, suggestions:', s.length);
+  
+  // Find container
+  const container = document.getElementById('editor-suggestions-container') || 
+                    document.getElementById('editor-content');
+  
+  if (!container) {
+    console.error('Editor container not found');
     return;
   }
-  document.getElementById('editor-empty').style.display = 'none';
-  document.getElementById('editor-content').style.display = '';
-  document.getElementById('tab-count-new').textContent = s.filter(x => x.type === 'new').length;
-  document.getElementById('tab-count-update').textContent = s.filter(x => x.type === 'update').length;
-  document.getElementById('tab-count-outdated').textContent = s.filter(x => x.type === 'outdated').length;
-  renderSuggestionList();
+
+  console.log('Container found:', container.id);
+
+  if (s.length === 0) {
+    container.innerHTML = `
+    <div class="empty-state" style="padding:3rem;">
+      <div class="empty-state-icon">✅</div>
+      <p>No content suggestions yet. Run Gap Analysis first, then generate suggestions.</p>
+    </div>`;
+    return;
+  }
+
+  // Group suggestions by action type
+  const byAction = {
+    [ACTION_TYPES.EDIT_EXISTING]: s.filter(x => x.actionType === ACTION_TYPES.EDIT_EXISTING),
+    [ACTION_TYPES.ADD_TO_UNIT]: s.filter(x => x.actionType === ACTION_TYPES.ADD_TO_UNIT),
+    [ACTION_TYPES.NEW_UNIT]: s.filter(x => x.actionType === ACTION_TYPES.NEW_UNIT),
+    [ACTION_TYPES.NEW_MODULE]: s.filter(x => x.actionType === ACTION_TYPES.NEW_MODULE),
+  };
+
+  console.log('Suggestions by action:', {
+    EDIT: byAction[ACTION_TYPES.EDIT_EXISTING].length,
+    ADD: byAction[ACTION_TYPES.ADD_TO_UNIT].length,
+    NEW_UNIT: byAction[ACTION_TYPES.NEW_UNIT].length,
+    NEW_MODULE: byAction[ACTION_TYPES.NEW_MODULE].length
+  });
+
+  // Render grouped by action type
+  container.innerHTML = `
+  <div style="display:flex;flex-direction:column;gap:20px;">
+    ${renderActionTypeSection(ACTION_TYPES.EDIT_EXISTING, byAction[ACTION_TYPES.EDIT_EXISTING], '✏️', 'Edit Existing Units', 'Modify existing unit content to cover gaps')}
+    ${renderActionTypeSection(ACTION_TYPES.ADD_TO_UNIT, byAction[ACTION_TYPES.ADD_TO_UNIT], '➕', 'Add Sections to Units', 'Append new sections to existing units')}
+    ${renderActionTypeSection(ACTION_TYPES.NEW_UNIT, byAction[ACTION_TYPES.NEW_UNIT], '📄', 'Create New Units', 'Add new units to existing modules')}
+    ${renderActionTypeSection(ACTION_TYPES.NEW_MODULE, byAction[ACTION_TYPES.NEW_MODULE], '🆕', 'Create New Modules', 'Build entirely new training modules')}
+  </div>`;
+
+  // Update count badge if it exists
+  const countEl = document.getElementById('count-suggestions');
+  if (countEl) countEl.textContent = s.length;
+  
+  console.log('Render complete');
+}
+
+function renderActionTypeSection(actionType, suggestions, icon, title, subtitle) {
+  if (suggestions.length === 0) return '';
+
+  const suggestionsHtml = suggestions.map((s, idx) => {
+    const globalIdx = state.editorSuggestions.indexOf(s);
+    const confidenceClass = s.confidence >= 0.8 ? 'tag-green' : s.confidence >= 0.5 ? 'tag-blue' : 'tag-yellow';
+    const effortClass = s.estimatedEffort === 'low' ? 'tag-green' : s.estimatedEffort === 'medium' ? 'tag-yellow' : 'tag-red';
+    
+    let targetInfo = '';
+    if (s.targetModule) {
+      targetInfo = `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">📦 Module: ${escHtml(s.targetModule.title)}</div>`;
+      if (s.targetUnit) {
+        targetInfo += `<div style="font-size:11px;color:var(--text-muted);">📄 Unit: ${escHtml(s.targetUnit)}</div>`;
+      }
+    }
+
+    const statusIcon = {
+      'pending': '⏳',
+      'generating': '🔄',
+      'generated': '✅',
+      'approved': '👍',
+      'rejected': '❌',
+      'committed': '🚀'
+    }[s.status] || '⏳';
+
+    return `
+    <div class="suggestion-card" style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg);">
+      <div style="display:flex;align-items:start;gap:10px;">
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <h4 style="margin:0;font-size:13px;">${escHtml(s.gap.docTopic.title)}</h4>
+            <span class="tag ${confidenceClass}" title="AI Confidence">${Math.round(s.confidence * 100)}%</span>
+            <span class="tag ${effortClass}">${s.estimatedEffort}</span>
+            <span style="font-size:14px;" title="Status: ${s.status}">${statusIcon}</span>
+          </div>
+          <p style="font-size:12px;color:var(--text-muted);margin:0 0 8px 0;line-height:1.5;">${escHtml(s.reasoning)}</p>
+          ${targetInfo}
+        </div>
+        <button 
+          class="btn btn-sm btn-primary" 
+          onclick="generateContentForSuggestion(${globalIdx})"
+          ${s.status === 'generating' ? 'disabled' : ''}
+          style="flex-shrink:0;">
+          ${s.status === 'pending' ? '🏗️ Generate' : s.status === 'generating' ? '⏳ ...' : '🔄 Regenerate'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="card" style="border:1px solid var(--border);">
+    <div class="card-header" style="background:var(--bg-muted);">
+      <span style="font-size:20px;">${icon}</span>
+      <div style="flex:1;">
+        <h3 style="margin:0;font-size:14px;">${title}</h3>
+        <p style="margin:0;font-size:11px;color:var(--text-muted);">${subtitle}</p>
+      </div>
+      <span class="tag tag-blue">${suggestions.length}</span>
+    </div>
+    <div style="padding:12px;display:flex;flex-direction:column;gap:10px;">
+      ${suggestionsHtml}
+    </div>
+  </div>`;
 }
 
 function switchEditorTab(tab) {

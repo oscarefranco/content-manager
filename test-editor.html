@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Content Editor Test</title>
+  <style>
+    body { font-family: system-ui; padding: 20px; max-width: 800px; margin: 0 auto; }
+    .step { padding: 15px; margin: 10px 0; border: 2px solid #ddd; border-radius: 8px; }
+    .step.pass { border-color: #0a0; background: #efe; }
+    .step.fail { border-color: #a00; background: #fee; }
+    button { padding: 8px 16px; margin: 5px; cursor: pointer; }
+    pre { background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    .result { margin-top: 10px; padding: 10px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Content Editor Test Page</h1>
+  <p>This page tests if the Content Editor changes are working correctly.</p>
+
+  <div class="step" id="step1">
+    <h3>Step 1: Check if team.html is loaded</h3>
+    <button onclick="checkFileDate()">Check File Modification Date</button>
+    <div id="result1" class="result"></div>
+  </div>
+
+  <div class="step" id="step2">
+    <h3>Step 2: Verify button text in team.html</h3>
+    <button onclick="checkButtonText()">Check Button Text</button>
+    <div id="result2" class="result"></div>
+  </div>
+
+  <div class="step" id="step3">
+    <h3>Step 3: Check if refreshEditorSuggestions exists</h3>
+    <button onclick="checkFunction()">Check Function</button>
+    <div id="result3" class="result"></div>
+  </div>
+
+  <div class="step" id="step4">
+    <h3>Step 4: Cache Busting Instructions</h3>
+    <p>If the above checks fail, try these steps:</p>
+    <ol>
+      <li><strong>Hard Refresh:</strong>
+        <ul>
+          <li>Chrome/Edge: Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)</li>
+          <li>Firefox: Ctrl+F5 (Windows) or Cmd+Shift+R (Mac)</li>
+        </ul>
+      </li>
+      <li><strong>Clear Site Data:</strong>
+        <ul>
+          <li>Open DevTools (F12)</li>
+          <li>Right-click the refresh button → "Empty Cache and Hard Reload"</li>
+        </ul>
+      </li>
+      <li><strong>Add cache buster to URL:</strong>
+        <ul>
+          <li>Add <code>?v=20260617</code> to the end of your URL</li>
+          <li>Example: <code>https://oscarefranco.github.io/content-manager/team.html?v=20260617</code></li>
+        </ul>
+      </li>
+    </ol>
+  </div>
+
+  <div class="step" id="step5">
+    <h3>Step 5: Quick File Check</h3>
+    <button onclick="quickFileCheck()">Run Quick Check</button>
+    <div id="result5" class="result"></div>
+  </div>
+
+  <script>
+    async function checkFileDate() {
+      const result = document.getElementById('result1');
+      try {
+        const response = await fetch('./team.html', { method: 'HEAD' });
+        const lastModified = response.headers.get('Last-Modified');
+        const date = new Date(lastModified);
+        const now = new Date();
+        const minAgo = Math.floor((now - date) / 1000 / 60);
+        
+        result.innerHTML = `
+          <strong>Last Modified:</strong> ${lastModified}<br>
+          <strong>Time since update:</strong> ${minAgo} minutes ago<br>
+          ${minAgo < 60 ? '✅ File was recently updated!' : '⚠️ File might be older than expected'}
+        `;
+        
+        if (minAgo < 60) {
+          document.getElementById('step1').classList.add('pass');
+        } else {
+          document.getElementById('step1').classList.add('fail');
+        }
+      } catch (e) {
+        result.innerHTML = `❌ Error: ${e.message}`;
+        document.getElementById('step1').classList.add('fail');
+      }
+    }
+
+    async function checkButtonText() {
+      const result = document.getElementById('result2');
+      try {
+        const response = await fetch('./team.html');
+        const html = await response.text();
+        
+        const hasNewButton = html.includes('onclick="refreshEditorSuggestions()"');
+        const buttonText = html.match(/id="refresh-suggestions-btn"[^>]*>([^<]+)</);
+        
+        result.innerHTML = `
+          <strong>Function call found:</strong> ${hasNewButton ? '✅ Yes' : '❌ No'}<br>
+          <strong>Button text:</strong> ${buttonText ? buttonText[1] : 'Not found'}<br>
+          ${hasNewButton ? '✅ Button is correctly updated!' : '❌ Button still uses old code'}
+        `;
+        
+        if (hasNewButton) {
+          document.getElementById('step2').classList.add('pass');
+        } else {
+          document.getElementById('step2').classList.add('fail');
+        }
+      } catch (e) {
+        result.innerHTML = `❌ Error: ${e.message}`;
+        document.getElementById('step2').classList.add('fail');
+      }
+    }
+
+    async function checkFunction() {
+      const result = document.getElementById('result3');
+      try {
+        const response = await fetch('./team.html');
+        const html = await response.text();
+        
+        const hasFunction = html.includes('async function refreshEditorSuggestions()');
+        const hasBuildFunction = html.includes('async function buildEditorSuggestions()');
+        
+        result.innerHTML = `
+          <strong>refreshEditorSuggestions found:</strong> ${hasFunction ? '✅ Yes' : '❌ No'}<br>
+          <strong>buildEditorSuggestions found:</strong> ${hasBuildFunction ? '✅ Yes' : '❌ No'}<br>
+          ${hasFunction && hasBuildFunction ? '✅ Both functions exist!' : '❌ Missing functions'}
+        `;
+        
+        if (hasFunction && hasBuildFunction) {
+          document.getElementById('step3').classList.add('pass');
+        } else {
+          document.getElementById('step3').classList.add('fail');
+        }
+      } catch (e) {
+        result.innerHTML = `❌ Error: ${e.message}`;
+        document.getElementById('step3').classList.add('fail');
+      }
+    }
+
+    async function quickFileCheck() {
+      const result = document.getElementById('result5');
+      result.innerHTML = '<p>Running checks...</p>';
+      
+      try {
+        const response = await fetch('./team.html?nocache=' + Date.now());
+        const html = await response.text();
+        
+        const checks = {
+          'refreshEditorSuggestions function': html.includes('async function refreshEditorSuggestions()'),
+          'Button onclick handler': html.includes('onclick="refreshEditorSuggestions()"'),
+          'ACTION_TYPES constant': html.includes('const ACTION_TYPES'),
+          'analyzeGapAction function': html.includes('async function analyzeGapAction'),
+          'editor-suggestions-container': html.includes('id="editor-suggestions-container"'),
+          'renderActionTypeSection function': html.includes('function renderActionTypeSection'),
+        };
+        
+        let allPassed = true;
+        let output = '<table style="width:100%;border-collapse:collapse;"><tr><th style="text-align:left;padding:5px;">Check</th><th style="text-align:center;padding:5px;">Status</th></tr>';
+        
+        for (const [check, passed] of Object.entries(checks)) {
+          output += `<tr><td style="padding:5px;border-top:1px solid #ddd;">${check}</td><td style="text-align:center;padding:5px;border-top:1px solid #ddd;">${passed ? '✅' : '❌'}</td></tr>`;
+          if (!passed) allPassed = false;
+        }
+        
+        output += '</table>';
+        
+        if (allPassed) {
+          output = '<h4 style="color:green;">✅ All checks passed!</h4>' + output + '<p><strong>The file has all the updates.</strong> If you still see old content, try:</p><ul><li>Hard refresh (Ctrl+Shift+R)</li><li>Clear browser cache</li><li>Open in incognito/private window</li></ul>';
+          document.getElementById('step5').classList.add('pass');
+        } else {
+          output = '<h4 style="color:red;">❌ Some checks failed</h4>' + output + '<p><strong>The file might not be fully updated or cached.</strong></p>';
+          document.getElementById('step5').classList.add('fail');
+        }
+        
+        result.innerHTML = output;
+      } catch (e) {
+        result.innerHTML = `<p style="color:red;">❌ Error: ${e.message}</p>`;
+        document.getElementById('step5').classList.add('fail');
+      }
+    }
+
+    // Auto-run quick check on load
+    window.addEventListener('load', () => {
+      setTimeout(quickFileCheck, 500);
+    });
+  </script>
+</body>
+</html>
