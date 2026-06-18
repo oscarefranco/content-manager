@@ -1204,6 +1204,7 @@ body {
           <option value="Power Automate">Power Automate</option>
         </select>
         <button class="btn btn-secondary btn-sm" onclick="checkDocumentationForFeatures()" title="Cross-reference features with loaded documentation">📚 Check Docs</button>
+        <button class="btn btn-secondary btn-sm" onclick="batchRefreshAllProducts()" title="Load features for all configured products">📥 Refresh All</button>
         <button class="btn btn-primary" onclick="refreshReleasePlanner()">🔄 Load Features</button>
       </div>
     </div>
@@ -4241,13 +4242,20 @@ function renderActionTypeSection(actionType, suggestions, icon, title, subtitle)
           <p style="font-size:12px;color:var(--text-muted);margin:0 0 8px 0;line-height:1.5;">${escHtml(s.reasoning)}</p>
           ${targetInfo}
         </div>
-        <button 
-          class="btn btn-sm btn-primary" 
-          onclick="generateContentForSuggestion(${globalIdx})"
-          ${s.status === 'generating' ? 'disabled' : ''}
-          style="flex-shrink:0;">
-          ${s.status === 'pending' ? '🏗️ Generate' : s.status === 'generating' ? '⏳ ...' : '🔄 Regenerate'}
-        </button>
+        <div style="display:flex;gap:8px;flex-shrink:0;">
+          ${s.status === 'generated' ? `
+            <button class="btn btn-sm btn-secondary" onclick="previewSuggestion(${globalIdx})" title="Preview generated content">
+              👁️ Preview
+            </button>
+          ` : ''}
+          <button 
+            class="btn btn-sm btn-primary" 
+            onclick="generateContentForSuggestion(${globalIdx})"
+            ${s.status === 'generating' ? 'disabled' : ''}
+            style="flex-shrink:0;">
+            ${s.status === 'pending' ? '🏗️ Generate' : s.status === 'generating' ? '⏳ ...' : '🔄 Regenerate'}
+          </button>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -4266,6 +4274,153 @@ function renderActionTypeSection(actionType, suggestions, icon, title, subtitle)
       ${suggestionsHtml}
     </div>
   </div>`;
+}
+
+function previewSuggestion(globalIdx) {
+  const suggestion = state.editorSuggestions[globalIdx];
+  if (!suggestion || !suggestion.generatedContent) {
+    toast('No content generated yet', 'warning');
+    return;
+  }
+  
+  const gap = suggestion.gap;
+  const content = suggestion.generatedContent;
+  
+  let contentHtml = '';
+  
+  if (content.type === 'edit') {
+    // Show edit preview
+    contentHtml = `
+      <div style="margin-bottom:16px;">
+        <h4 style="margin:0 0 8px 0;font-size:14px;">📝 Edit Preview</h4>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
+          Target: ${escHtml(content.unitPath)}
+        </div>
+        ${content.preview || ''}
+        <details style="margin-top:12px;">
+          <summary style="cursor:pointer;font-size:12px;color:var(--primary);">View full content (${content.newContent.length} chars)</summary>
+          <pre style="background:var(--bg-muted);padding:12px;border-radius:6px;overflow-x:auto;font-size:11px;margin-top:8px;">${escHtml(content.newContent)}</pre>
+        </details>
+      </div>`;
+  } else if (content.type === 'add_section') {
+    // Show add section preview
+    contentHtml = `
+      <div style="margin-bottom:16px;">
+        <h4 style="margin:0 0 8px 0;font-size:14px;">➕ New Section Preview</h4>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">${escHtml(content.sectionTitle)}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">${escHtml(content.summary)}</div>
+        <div style="background:var(--bg-muted);padding:12px;border-radius:6px;max-height:400px;overflow-y:auto;">
+          <pre style="margin:0;font-size:11px;white-space:pre-wrap;">${escHtml(content.content)}</pre>
+        </div>
+      </div>`;
+  } else if (content.type === 'new_unit') {
+    // Show new unit preview
+    contentHtml = `
+      <div style="margin-bottom:16px;">
+        <h4 style="margin:0 0 8px 0;font-size:14px;">📄 New Unit Preview</h4>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">${escHtml(content.unitTitle)}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Filename: ${escHtml(content.filename)}.md</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">${escHtml(content.description)}</div>
+        <details open>
+          <summary style="cursor:pointer;font-size:12px;font-weight:600;margin-bottom:8px;">YAML Frontmatter</summary>
+          <pre style="background:var(--bg-muted);padding:12px;border-radius:6px;font-size:11px;margin-bottom:12px;">${escHtml(content.yamlFrontmatter)}</pre>
+        </details>
+        <details>
+          <summary style="cursor:pointer;font-size:12px;font-weight:600;margin-bottom:8px;">Full Content (${content.content.length} chars)</summary>
+          <div style="background:var(--bg-muted);padding:12px;border-radius:6px;max-height:400px;overflow-y:auto;margin-top:8px;">
+            <pre style="margin:0;font-size:11px;white-space:pre-wrap;">${escHtml(content.content)}</pre>
+          </div>
+        </details>
+      </div>`;
+  } else {
+    // Full module from editorState
+    const module = editorState.generatedModule;
+    if (module && module.units) {
+      contentHtml = `
+        <div style="margin-bottom:16px;">
+          <h4 style="margin:0 0 8px 0;font-size:14px;">🆕 New Module Preview</h4>
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;">${escHtml(module.title || 'Untitled Module')}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">${module.units.length} units generated</div>
+          ${module.units.map((unit, i) => `
+            <details ${i === 0 ? 'open' : ''} style="margin-bottom:8px;">
+              <summary style="cursor:pointer;font-size:12px;font-weight:600;padding:8px;background:var(--bg-muted);border-radius:4px;">
+                ${escHtml(unit.title || `Unit ${i+1}`)}
+              </summary>
+              <div style="background:var(--bg-muted);padding:12px;border-radius:6px;max-height:300px;overflow-y:auto;margin-top:4px;">
+                <pre style="margin:0;font-size:11px;white-space:pre-wrap;">${escHtml(unit.content.substring(0, 2000))}${unit.content.length > 2000 ? '\n...(truncated)' : ''}</pre>
+              </div>
+            </details>
+          `).join('')}
+        </div>`;
+    } else {
+      contentHtml = '<div style="padding:20px;text-align:center;color:var(--text-muted);">No preview available</div>';
+    }
+  }
+  
+  // Show preview modal
+  const modalHtml = `
+  <div class="modal-overlay" id="preview-modal" style="display:flex;z-index:9999;">
+    <div class="modal" style="max-width:900px;max-height:90vh;">
+      <div class="modal-header">
+        <h2>👁️ Content Preview</h2>
+        <button class="btn btn-ghost" onclick="closePreviewModal()">✕</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+        <div style="margin-bottom:16px;padding:12px;background:var(--bg-muted);border-radius:6px;">
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px;">${escHtml(gap.docTopic.title)}</div>
+          <div style="font-size:11px;color:var(--text-muted);">Action: ${suggestion.actionType.replace(/_/g, ' ')}</div>
+          <div style="font-size:11px;color:var(--text-muted);">Confidence: ${Math.round(suggestion.confidence * 100)}% | Effort: ${suggestion.estimatedEffort}</div>
+        </div>
+        ${contentHtml}
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closePreviewModal()">Close</button>
+        <button class="btn btn-ghost" onclick="copyPreviewContent(${globalIdx})">📋 Copy Content</button>
+        <button class="btn btn-primary" onclick="approveAndCreatePR(${globalIdx})">✓ Approve & Create PR</button>
+      </div>
+    </div>
+  </div>`;
+  
+  const existing = document.getElementById('preview-modal');
+  if (existing) existing.remove();
+  
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  window.closePreviewModal = () => {
+    const modal = document.getElementById('preview-modal');
+    if (modal) modal.remove();
+  };
+  
+  window.copyPreviewContent = (idx) => {
+    const s = state.editorSuggestions[idx];
+    if (!s || !s.generatedContent) return;
+    
+    let textToCopy = '';
+    const content = s.generatedContent;
+    
+    if (content.type === 'edit' || content.type === 'add_section') {
+      textToCopy = content.newContent || content.content;
+    } else if (content.type === 'new_unit') {
+      textToCopy = `${content.yamlFrontmatter}\n\n${content.content}`;
+    } else if (editorState.generatedModule && editorState.generatedModule.units) {
+      textToCopy = editorState.generatedModule.units.map(u => u.content).join('\n\n---\n\n');
+    }
+    
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      toast('Content copied to clipboard', 'success');
+    }).catch(err => {
+      console.error('Copy failed:', err);
+      toast('Failed to copy content', 'error');
+    });
+  };
+  
+  window.approveAndCreatePR = (idx) => {
+    const s = state.editorSuggestions[idx];
+    s.status = 'approved';
+    closePreviewModal();
+    toast('Content approved! PR creation coming soon...', 'info');
+    // TODO: CE-8, CE-9, CE-10 - GitHub PR workflow
+  };
 }
 
 function switchEditorTab(tab) {
@@ -6573,6 +6728,118 @@ function refreshReleasePlanner() {
     return;
   }
   loadReleasePlannerData(productKey);
+}
+
+async function batchRefreshAllProducts() {
+  const products = Object.keys(RELEASE_PLANNER_PRODUCTS);
+  
+  if (products.length === 0) {
+    toast('No products configured', 'error');
+    return;
+  }
+  
+  // Show progress modal
+  const modalHtml = `
+  <div class="modal-overlay" id="batch-refresh-modal" style="display:flex;z-index:9999;">
+    <div class="modal" style="max-width:600px;">
+      <div class="modal-header">
+        <h2>📥 Batch Refresh All Products</h2>
+      </div>
+      <div class="modal-body">
+        <p style="margin:0 0 16px 0;">Loading features from all ${products.length} configured products...</p>
+        <div id="batch-progress-container"></div>
+        <div style="margin-top:16px;padding:12px;background:var(--bg-muted);border-radius:6px;">
+          <div style="font-size:12px;color:var(--text-muted);">
+            ⚠️ This may take several minutes. Rate limiting applied to avoid server overload.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  const progressContainer = document.getElementById('batch-progress-container');
+  
+  let successCount = 0;
+  let failCount = 0;
+  
+  for (let i = 0; i < products.length; i++) {
+    const product = products[i];
+    
+    // Update progress UI
+    const status = `<div style="padding:8px;margin:4px 0;border-radius:4px;background:var(--bg-muted);font-size:12px;">
+      <span style="font-weight:600;">${i + 1}/${products.length}</span> - ${product} 
+      <span style="color:#ffc107;">⏳ Loading...</span>
+    </div>`;
+    progressContainer.insertAdjacentHTML('beforeend', status);
+    progressContainer.lastElementChild.scrollIntoView({ behavior: 'smooth' });
+    
+    try {
+      // Load features for this product
+      const features = await fetchReleaseFeatures(product);
+      
+      // Detect changes if we had previous data
+      const previousFeatures = state.releasePlanner.features.filter(f => f.product === product);
+      if (previousFeatures.length > 0) {
+        const changes = detectFeatureChanges(previousFeatures, features);
+        if (changes.length > 0) {
+          state.releasePlanner.history.push({
+            timestamp: Date.now(),
+            product: product,
+            changes: changes
+          });
+          state.releasePlanner.changesSinceLastRun.push(...changes);
+        }
+      }
+      
+      // Update state
+      state.releasePlanner.features = state.releasePlanner.features.filter(f => f.product !== product);
+      state.releasePlanner.features.push(...features);
+      
+      if (!state.releasePlanner.products.includes(product)) {
+        state.releasePlanner.products.push(product);
+      }
+      
+      // Update UI to show success
+      progressContainer.lastElementChild.innerHTML = `<span style="font-weight:600;">${i + 1}/${products.length}</span> - ${product} <span style="color:#28a745;">✓ ${features.length} features</span>`;
+      successCount++;
+      
+    } catch (err) {
+      console.error(`Failed to load ${product}:`, err);
+      progressContainer.lastElementChild.innerHTML = `<span style="font-weight:600;">${i + 1}/${products.length}</span> - ${product} <span style="color:#dc3545;">✗ Failed</span>`;
+      failCount++;
+    }
+    
+    // Rate limiting: wait 2 seconds between products
+    if (i < products.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+  
+  // Update last fetch time and save
+  state.releasePlanner.lastFetch = Date.now();
+  saveReleasePlannerToCache();
+  
+  // Show completion message
+  progressContainer.insertAdjacentHTML('beforeend', `
+    <div style="margin-top:16px;padding:12px;background:#d4edda;border:1px solid #28a745;border-radius:6px;text-align:center;">
+      <strong>✓ Batch refresh complete!</strong><br>
+      <span style="font-size:12px;">Success: ${successCount} | Failed: ${failCount}</span>
+    </div>
+  `);
+  
+  // Add close button
+  const modal = document.getElementById('batch-refresh-modal');
+  const closeBtn = `<div class="modal-footer"><button class="btn btn-primary" onclick="closeBatchRefreshModal()">Close</button></div>`;
+  modal.querySelector('.modal').insertAdjacentHTML('beforeend', closeBtn);
+  
+  window.closeBatchRefreshModal = () => {
+    modal.remove();
+    renderReleasePlannerView();
+    toast(`Batch refresh complete: ${successCount} products loaded`, 'success');
+  };
+  
+  toast(`Loaded ${successCount} products successfully`, 'success');
 }
 
 // ══════════════════════════════════════════════════════════════════════════
