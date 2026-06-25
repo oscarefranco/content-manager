@@ -75,6 +75,9 @@
       <li><a onclick="switchView('insights')" data-view="insights">
         <span class="nav-icon">🔗</span> GitHub Insights
       </a></li>
+      <li><a onclick="switchView('ai-chat')" data-view="ai-chat">
+        <span class="nav-icon">💬</span> AI Chat
+      </a></li>
     </ul>
   </div>
   <div class="sidebar-footer">
@@ -556,6 +559,49 @@
     </div>
   </section>
 
+  <!-- AI CHAT VIEW -->
+  <section class="view" id="view-ai-chat">
+    <div class="page-header">
+      <div class="page-header-text">
+        <h1>💬 AI Chat</h1>
+        <p>Ask questions about your content, gaps, modules, and documentation</p>
+      </div>
+      <div class="page-header-actions">
+        <button class="btn btn-secondary btn-sm" onclick="clearChatHistory()">🗑 Clear Chat</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportChatHistory()">📋 Export</button>
+      </div>
+    </div>
+    <div class="page-body" style="display:flex;flex-direction:column;height:calc(100vh - 140px);padding:0;">
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-welcome">
+          <div class="chat-welcome-icon">🤖</div>
+          <h3>Content Gap AI Assistant</h3>
+          <p>I have access to your loaded modules, documentation, and gap analysis results. Ask me anything about your content!</p>
+          <div class="chat-suggestions" id="chat-suggestions">
+            <button class="chat-suggestion-chip" onclick="sendChatSuggestion(this)">What are the biggest content gaps?</button>
+            <button class="chat-suggestion-chip" onclick="sendChatSuggestion(this)">Which modules need updating?</button>
+            <button class="chat-suggestion-chip" onclick="sendChatSuggestion(this)">Summarize coverage for this product</button>
+            <button class="chat-suggestion-chip" onclick="sendChatSuggestion(this)">Suggest priorities for new content</button>
+          </div>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <div class="chat-context-bar" id="chat-context-bar">
+          <span class="chat-context-label">📎 Context:</span>
+          <span class="chat-context-tag" id="chat-ctx-modules">0 modules</span>
+          <span class="chat-context-tag" id="chat-ctx-docs">0 docs</span>
+          <span class="chat-context-tag" id="chat-ctx-gaps">0 gaps</span>
+        </div>
+        <div class="chat-input-row">
+          <textarea id="chat-input" placeholder="Ask about your content gaps, modules, or documentation..." rows="1" onkeydown="handleChatKeydown(event)" oninput="autoResizeChatInput(this)"></textarea>
+          <button class="btn btn-primary chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()">
+            <span>↑</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
 </div><!-- /main -->
 
 <!-- SETTINGS MODAL -->
@@ -642,6 +688,7 @@
 <script src="js/content-generation.js"></script>
 <script src="js/release-planner.js"></script>
 <script src="js/module-generator.js"></script>
+<script src="js/ai-chat.js"></script>
 <script src="js/nav-settings.js"></script>
 </body>
 </html>

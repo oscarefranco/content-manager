@@ -212,6 +212,7 @@ function renderAll() {
   renderDocTree();
   renderModulesByAuthor();
   renderUpdateCycles();
+  updateChatContextBar();
   document.getElementById('count-modules').textContent = state.modules.length;
   document.getElementById('count-docs').textContent = state.flatDocTopics.length;
   // Reset gap UI

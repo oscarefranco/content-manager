@@ -143,6 +143,7 @@ function runClientGapAnalysis() {
     renderGapHeatmap(results);
     renderGapTimeline();
     renderGapResultCards(results);
+    updateChatContextBar();
     document.getElementById('export-csv-btn').style.display = 'inline-flex';
     document.getElementById('export-html-btn').style.display = 'inline-flex';
     toast(`Gap analysis complete: ${coveragePct}% coverage`, 'success');
