@@ -380,7 +380,7 @@
           <button class="btn btn-ghost btn-sm" onclick="toggleDocRefPanel()">✕</button>
         </div>
         <div class="doc-ref-search">
-          <input type="text" id="doc-ref-search-input" placeholder="Search documentation..." oninput="searchDocRef(this.value)" />
+          <input type="text" id="doc-ref-search-input" placeholder="Search documentation..." oninput="debouncedDocRefSearch(this.value)" />
         </div>
         <div class="doc-ref-content" id="doc-ref-content">
           <div class="doc-ref-empty">

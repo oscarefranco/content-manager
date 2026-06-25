@@ -3,14 +3,16 @@
 // ══════════════════════════════════════════════════════════════════════════
 
 async function init() {
-  // Handle OAuth callback if redirected from GitHub
-  const oauthHandled = await handleOAuthCallback();
-  
-  loadSettings();
-  updateAuthBadge();
-  
-  // Load cached release planner data
-  loadReleasePlannerFromCache();
+  try {
+    // Handle OAuth callback if redirected from GitHub
+    await handleOAuthCallback();
+  } catch (e) {
+    console.warn('OAuth callback error:', e);
+  }
+
+  try { loadSettings(); } catch (e) { console.warn('loadSettings error:', e); }
+  try { updateAuthBadge(); } catch (e) { console.warn('updateAuthBadge error:', e); }
+  try { loadReleasePlannerFromCache(); } catch (e) { console.warn('loadReleasePlannerFromCache error:', e); }
 
   // Try GitHub Trees API first (rich data), fall back to public Catalog API
   let useGitHub = false;

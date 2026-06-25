@@ -135,30 +135,35 @@ function renderDocRefTopic(topic, type) {
   const path = parts.slice(0, -1).join(' > ');
   const score = topic.score ? Math.round(topic.score * 100) : 0;
   const isPinned = docRefState.pinnedTopics.some(p => p.breadcrumb === topic.breadcrumb);
+  const topicIdx = docRefState.currentTopics.indexOf(topic);
 
   const url = topic.href ? `https://learn.microsoft.com${topic.href}` : '';
-  const linkAttr = url ? `href="${url}" target="_blank"` : 'href="#"';
+  const linkHtml = url
+    ? `<a class="doc-ref-item-title" href="${url}" target="_blank">${escHtml(title)}</a>`
+    : `<span class="doc-ref-item-title">${escHtml(title)}</span>`;
 
   return `<div class="doc-ref-item ${type}">
     <div class="doc-ref-item-content">
-      <a class="doc-ref-item-title" ${linkAttr}>${escHtml(title)}</a>
+      ${linkHtml}
       ${path ? `<div class="doc-ref-item-path">${escHtml(path)}</div>` : ''}
     </div>
     <div class="doc-ref-item-actions">
       <span class="doc-ref-score">${score}%</span>
-      <button class="doc-ref-pin-btn ${isPinned ? 'pinned' : ''}" onclick="togglePinDocRef('${escHtml(breadcrumb).replace(/'/g, "\\'")}')" title="${isPinned ? 'Unpin' : 'Pin'}">📌</button>
+      <button class="doc-ref-pin-btn ${isPinned ? 'pinned' : ''}" onclick="togglePinDocRef(${topicIdx})" title="${isPinned ? 'Unpin' : 'Pin'}">📌</button>
     </div>
   </div>`;
 }
 
-// Pin/unpin a doc topic
-function togglePinDocRef(breadcrumb) {
-  const idx = docRefState.pinnedTopics.findIndex(p => p.breadcrumb === breadcrumb);
-  if (idx >= 0) {
-    docRefState.pinnedTopics.splice(idx, 1);
+// Pin/unpin a doc topic by index in currentTopics
+function togglePinDocRef(topicIdx) {
+  const topic = docRefState.currentTopics[topicIdx];
+  if (!topic) return;
+  const breadcrumb = topic.breadcrumb || topic.title || '';
+  const pinIdx = docRefState.pinnedTopics.findIndex(p => (p.breadcrumb || p.title) === breadcrumb);
+  if (pinIdx >= 0) {
+    docRefState.pinnedTopics.splice(pinIdx, 1);
   } else {
-    const topic = docRefState.currentTopics.find(t => (t.breadcrumb || t.title) === breadcrumb);
-    if (topic) docRefState.pinnedTopics.push(topic);
+    docRefState.pinnedTopics.push(topic);
   }
   refreshDocRefPanel();
 }
@@ -192,6 +197,8 @@ function searchDocRef(query) {
   container.innerHTML = `
     <div class="doc-ref-section">
       <h4 class="doc-ref-section-title">🔎 Search Results (${results.length})</h4>
-      ${results.map(t => renderDocRefTopic(t, 'search')).join('')}
+       ${results.map(t => renderDocRefTopic(t, 'search')).join('')}
     </div>`;
 }
+
+const debouncedDocRefSearch = debounce(searchDocRef, 250);
