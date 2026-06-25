@@ -287,6 +287,7 @@ async function generateModuleFromSuggestion(idx) {
   if (!s) return;
   editorState.selectedIdx = idx;
   renderSuggestionList();
+  if (docRefState.isOpen) refreshDocRefPanel();
   const source = buildSourceFromSuggestion(s);
   await generateFullModule(source);
 }

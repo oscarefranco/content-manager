@@ -366,12 +366,29 @@
         <p id="editor-subtitle">AI-powered module generation from gaps or URLs</p>
       </div>
       <div class="page-header-actions">
+        <button class="btn btn-secondary btn-sm" id="doc-ref-toggle-btn" onclick="toggleDocRefPanel()">📖 Doc Reference</button>
         <button class="btn btn-secondary" id="refresh-suggestions-btn" onclick="refreshEditorSuggestions()">🔄 Generate Suggestions</button>
         <button class="btn btn-primary" id="generate-plan-btn" onclick="generateContentPlan()">📋 Content Plan</button>
         <button class="btn btn-secondary" id="export-plan-btn" onclick="exportContentPlan()" style="display:none;">⬇ Export Plan</button>
       </div>
     </div>
-    <div class="page-body">
+    <div class="page-body" style="position:relative;">
+      <!-- Doc Reference Panel (side panel) -->
+      <div class="doc-ref-panel" id="doc-ref-panel" style="display:none;">
+        <div class="doc-ref-header">
+          <h3>📖 Documentation Reference</h3>
+          <button class="btn btn-ghost btn-sm" onclick="toggleDocRefPanel()">✕</button>
+        </div>
+        <div class="doc-ref-search">
+          <input type="text" id="doc-ref-search-input" placeholder="Search documentation..." oninput="searchDocRef(this.value)" />
+        </div>
+        <div class="doc-ref-content" id="doc-ref-content">
+          <div class="doc-ref-empty">
+            <p>📖 Select a suggestion or generate content to see related documentation topics</p>
+          </div>
+        </div>
+      </div>
+
       <!-- URL Input Section -->
       <div class="url-input-section" id="url-input-section">
         <div class="url-input-header">
@@ -684,6 +701,7 @@
 <script src="js/url-fetcher.js"></script>
 <script src="js/prompts.js"></script>
 <script src="js/content-editor.js"></script>
+<script src="js/doc-reference.js"></script>
 <script src="js/github-pr.js"></script>
 <script src="js/content-generation.js"></script>
 <script src="js/release-planner.js"></script>

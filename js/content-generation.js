@@ -11,6 +11,8 @@ async function generateContentForSuggestion(globalIdx) {
   }
 
   console.log('Generating content for suggestion:', suggestion);
+  editorState.selectedIdx = globalIdx;
+  if (docRefState.isOpen) refreshDocRefPanel();
 
   // Mark as generating
   suggestion.status = 'generating';
